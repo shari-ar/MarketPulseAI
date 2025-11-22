@@ -27,8 +27,8 @@ function normalizeTimestamp(collectedAt) {
 }
 
 export function selectTickerFromOldest(
-  records,
-  { sampleSize = 10, seed = DEFAULT_SEED } = {},
+  records = [],
+  { sampleSize = 10, seed = DEFAULT_SEED } = {}
 ) {
   const ordered = records
     .filter((record) => record?.symbol)
@@ -63,10 +63,7 @@ export function selectTickerFromOldest(
   return unique[index];
 }
 
-export async function chooseOldestTicker({
-  sampleSize = 10,
-  seed = DEFAULT_SEED,
-} = {}) {
+export async function chooseOldestTicker({ sampleSize = 10, seed = DEFAULT_SEED } = {}) {
   await db.open();
   const limited = await db
     .table(OHLC_TABLE)

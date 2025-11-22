@@ -1,0 +1,8 @@
+node_modules
+.husky
+package-lock.json
+package.json
+README.md
+
+# Build artifacts
+extension/dist

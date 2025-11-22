@@ -48,4 +48,11 @@ describe("oldest-first ticker selection", () => {
     const pick = selectTickerFromOldest([], { seed: "empty" });
     assert.strictEqual(pick, null);
   });
+
+  it("handles missing record lists without throwing", async () => {
+    const { selectTickerFromOldest } = await import("../extension/storage/selection.js");
+
+    const pick = selectTickerFromOldest(undefined, { seed: "missing" });
+    assert.strictEqual(pick, null);
+  });
 });

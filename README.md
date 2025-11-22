@@ -36,4 +36,3 @@ MarketPulseAI is a browser extension tailored for the [Iranian Stock Market](htt
 - Model inputs: normalize OHLC arrays before feeding TensorFlow.js.
 - Data validation: ensure each daily record contains open, high, low, close, and timestamp fields before writes.
 - Export fidelity: align Excel column ordering with the on-screen table (Symbol | Swing | Analysis Date).
-- 

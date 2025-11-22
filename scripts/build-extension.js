@@ -1,13 +1,16 @@
 const fs = require("fs");
 const path = require("path");
+const { loadEnvConfig } = require("./env-config");
 
 const projectRoot = path.resolve(__dirname, "..");
-const srcDir = path.join(projectRoot, "extension");
-const distDir = path.join(projectRoot, "dist");
-const targetDir = path.join(distDir, "extension");
+const config = loadEnvConfig();
 
-fs.rmSync(distDir, { recursive: true, force: true });
-fs.mkdirSync(distDir, { recursive: true });
-fs.cpSync(srcDir, targetDir, { recursive: true });
+const srcDir = path.join(projectRoot, config.extensionSrcDir);
+const distDir = path.join(projectRoot, config.extensionDistDir);
+const distRoot = path.dirname(distDir);
 
-console.log(`Extension copied to ${targetDir}`);
+fs.rmSync(distRoot, { recursive: true, force: true });
+fs.mkdirSync(distRoot, { recursive: true });
+fs.cpSync(srcDir, distDir, { recursive: true });
+
+console.log(`Extension copied from ${srcDir} to ${distDir}`);

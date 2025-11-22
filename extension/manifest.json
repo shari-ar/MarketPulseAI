@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "MarketPulseAI",
+  "description": "Hello World scaffold for MarketPulseAI browser extension.",
+  "version": "0.0.1",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "MarketPulseAI"
+  }
+}

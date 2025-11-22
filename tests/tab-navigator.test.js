@@ -82,4 +82,36 @@ describe("TabNavigator", () => {
     assert.ok(navigator.pendingCount >= 1);
     assert.strictEqual(navigator.running, false);
   });
+
+  it("emits progress updates with totals and remaining counts", async () => {
+    const fakeTabs = createFakeTabsApi();
+    const { TabNavigator } = await import("../extension/navigation/tabNavigator.js");
+
+    const progress = [];
+    const navigator = new TabNavigator({
+      tabsApi: fakeTabs,
+      delayMs: 0,
+      onProgress: (snapshot) => progress.push(snapshot),
+    });
+
+    navigator.enqueueSymbols(["AAA", "BBB"]);
+    await navigator.start();
+
+    navigator.enqueueSymbols(["CCC"]);
+    await navigator.whenIdle();
+
+    assert.deepStrictEqual(
+      progress.map(({ symbol, completed, total, remaining }) => ({
+        symbol,
+        completed,
+        total,
+        remaining,
+      })),
+      [
+        { symbol: "AAA", completed: 1, total: 2, remaining: 1 },
+        { symbol: "BBB", completed: 2, total: 3, remaining: 1 },
+        { symbol: "CCC", completed: 3, total: 3, remaining: 0 },
+      ]
+    );
+  });
 });

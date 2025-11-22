@@ -7,6 +7,32 @@ const navigator = new TabNavigator({
   onVisit: ({ symbol, url }) => {
     console.debug("Visited symbol", { symbol, url });
   },
+  onProgress: ({ symbol, tabId, completed, total, remaining }) => {
+    const summary = total > 0 ? `${completed}/${total}` : `${completed}`;
+    const payload = {
+      type: "COLLECTION_PROGRESS",
+      symbol,
+      completed,
+      total,
+      remaining,
+      summary,
+    };
+
+    console.info(`MarketPulseAI collection progress ${summary}`, {
+      symbol,
+      remaining,
+      total,
+    });
+
+    if (tabId && chromeApi?.tabs?.sendMessage) {
+      chromeApi.tabs.sendMessage(tabId, payload, () => {
+        const runtimeError = chromeApi.runtime?.lastError;
+        if (runtimeError) {
+          console.debug("Toast dispatch skipped", runtimeError.message);
+        }
+      });
+    }
+  },
 });
 
 function normalizeSymbols(symbols = []) {
@@ -25,7 +51,7 @@ if (chromeApi?.runtime?.onMessage) {
       navigator.enqueueSymbols(symbols);
       navigator.start();
       sendResponse({ status: "queued", pending: navigator.pendingCount });
-      return true;
+      return undefined;
     }
 
     if (message.type === "STOP_NAVIGATION") {

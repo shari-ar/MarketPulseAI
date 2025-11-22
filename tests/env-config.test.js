@@ -53,7 +53,7 @@ test("allows overriding directories and URLs via environment variables", () => {
     marketCloseTime: overrides.MARKET_CLOSE_TIME,
     marketTimezone: overrides.MARKET_TIMEZONE,
     dexieDbName: overrides.DEXIE_DB_NAME,
-    dexieDbVersion: overrides.DEXIE_DB_VERSION,
+    dexieDbVersion: Number.parseInt(overrides.DEXIE_DB_VERSION, 10),
     extensionSrcDir: overrides.EXTENSION_SRC_DIR,
     extensionDistDir: overrides.EXTENSION_DIST_DIR,
   });

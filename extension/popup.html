@@ -8,9 +8,26 @@
   </head>
   <body>
     <main class="panel">
-      <h1>MarketPulseAI</h1>
-      <p id="message">Hello World!</p>
-      <button id="ping">Say Hi</button>
+      <header class="panel__header">
+        <div>
+          <p class="eyebrow">Data Collection &amp; Storage</p>
+          <h1>MarketPulseAI</h1>
+        </div>
+        <div class="badge badge--beta">Pre-close lock</div>
+      </header>
+
+      <section id="lock-banner" class="notice notice--locked">
+        <div class="notice__top">
+          <span id="lock-tag" class="pill pill--locked">Locked</span>
+          <span id="market-clock" class="notice__clock">--:-- Asia/Tehran</span>
+        </div>
+        <p id="lock-copy" class="notice__body"></p>
+      </section>
+
+      <section class="card">
+        <p id="message" class="card__message"></p>
+        <button id="ping" class="card__button">Check IndexedDB</button>
+      </section>
     </main>
     <script type="module" src="popup.js"></script>
   </body>

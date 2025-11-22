@@ -11,6 +11,13 @@
     "service_worker": "navigator.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://*.tsetmc.com/*"],
+      "js": ["toast.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "permissions": ["tabs"],
   "host_permissions": ["https://*.tsetmc.com/*"]
 }

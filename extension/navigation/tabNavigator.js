@@ -53,6 +53,7 @@ export class TabNavigator {
     loadTimeoutMs = DEFAULT_LOAD_TIMEOUT_MS,
     reuseTab = true,
     onVisit = () => {},
+    onProgress = () => {},
   } = {}) {
     this.tabsApi = tabsApi;
     this.baseUrl = baseUrl;
@@ -60,6 +61,7 @@ export class TabNavigator {
     this.loadTimeoutMs = loadTimeoutMs;
     this.reuseTab = reuseTab;
     this.onVisit = onVisit;
+    this.onProgress = onProgress;
 
     this.queue = [];
     this.running = false;
@@ -67,20 +69,31 @@ export class TabNavigator {
     this.activeSymbol = null;
     this._timer = null;
     this._idleResolvers = [];
+    this.totalCount = 0;
+    this.completedCount = 0;
   }
 
   enqueueSymbols(symbols = []) {
     const unique = normalizeSymbols(symbols);
     this.queue.push(...unique);
+    if (this.running) {
+      this.totalCount += unique.length;
+    } else {
+      this.totalCount = this.queue.length;
+    }
   }
 
   replaceQueue(symbols = []) {
     this.queue = normalizeSymbols(symbols);
+    this.totalCount = this.queue.length;
+    this.completedCount = 0;
   }
 
   stop() {
     this.running = false;
     this.activeSymbol = null;
+    this.completedCount = 0;
+    this.totalCount = this.queue.length;
     if (this._timer) {
       clearTimeout(this._timer);
       this._timer = null;
@@ -91,6 +104,8 @@ export class TabNavigator {
   async start() {
     if (this.running || this.queue.length === 0) return;
     this.running = true;
+    this.completedCount = 0;
+    this.totalCount = this.queue.length;
     await this._processQueue();
   }
 
@@ -131,9 +146,10 @@ export class TabNavigator {
     }
 
     this.activeSymbol = symbol;
+    let tab = null;
 
     try {
-      const tab = await this._visitSymbol(symbol);
+      tab = await this._visitSymbol(symbol);
       await this.onVisit({
         symbol,
         tabId: tab?.id ?? null,
@@ -142,6 +158,9 @@ export class TabNavigator {
     } catch (error) {
       console.error("tab navigation failed", error);
     }
+
+    this.completedCount += 1;
+    this._reportProgress({ symbol, tabId: tab?.id ?? null });
 
     if (!this.running || this.queue.length === 0) {
       this.running = this.queue.length > 0;
@@ -217,6 +236,20 @@ export class TabNavigator {
       const resolve = this._idleResolvers.shift();
       resolve();
     }
+  }
+
+  _reportProgress({ symbol, tabId }) {
+    if (typeof this.onProgress !== "function") return;
+
+    const total = Math.max(this.totalCount, this.completedCount + this.queue.length);
+
+    this.onProgress({
+      symbol,
+      tabId,
+      completed: this.completedCount,
+      remaining: this.queue.length,
+      total,
+    });
   }
 }
 

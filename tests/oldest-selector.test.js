@@ -1,0 +1,51 @@
+const assert = require("assert");
+const { describe, it } = require("node:test");
+
+describe("oldest-first ticker selection", () => {
+  const sampleRecords = [
+    { symbol: "AAA", collectedAt: "2024-02-01T00:00:00Z" },
+    { symbol: "BBB", collectedAt: "2024-01-01T00:00:00Z" },
+    { symbol: "AAA", collectedAt: "2024-03-01T00:00:00Z" },
+    { symbol: "CCC" },
+    { symbol: "DDD", collectedAt: "2024-01-05T00:00:00Z" },
+    { symbol: "EEE", collectedAt: "2024-01-07T00:00:00Z" },
+  ];
+
+  it("picks a deterministic ticker from the 10 oldest symbols", async () => {
+    const { selectTickerFromOldest } = await import("../extension/storage/selection.js");
+
+    const pick = selectTickerFromOldest(sampleRecords, {
+      sampleSize: 5,
+      seed: "deterministic-seed",
+    });
+
+    assert.deepStrictEqual(pick, { symbol: "BBB", collectedAt: "2024-01-01T00:00:00Z" });
+  });
+
+  it("yields the same result with the same seed and different with another", async () => {
+    const { selectTickerFromOldest } = await import("../extension/storage/selection.js");
+
+    const first = selectTickerFromOldest(sampleRecords, {
+      sampleSize: 3,
+      seed: "repeatable",
+    });
+    const second = selectTickerFromOldest(sampleRecords, {
+      sampleSize: 3,
+      seed: "repeatable",
+    });
+    const alternative = selectTickerFromOldest(sampleRecords, {
+      sampleSize: 3,
+      seed: "alternate",
+    });
+
+    assert.deepStrictEqual(first, second);
+    assert.notDeepStrictEqual(first, alternative);
+  });
+
+  it("returns null when there are no ticker candidates", async () => {
+    const { selectTickerFromOldest } = await import("../extension/storage/selection.js");
+
+    const pick = selectTickerFromOldest([], { seed: "empty" });
+    assert.strictEqual(pick, null);
+  });
+});

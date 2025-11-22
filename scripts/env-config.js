@@ -6,10 +6,15 @@ const DEFAULTS = {
   marketCloseTime: "13:00",
   marketTimezone: "Asia/Tehran",
   dexieDbName: "marketpulseai",
-  dexieDbVersion: "1",
+  dexieDbVersion: 2,
   extensionSrcDir: "extension",
   extensionDistDir: "dist/extension",
 };
+
+function parseIntOrDefault(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
 
 function loadEnvConfig() {
   const projectRoot = path.resolve(__dirname, "..");
@@ -20,7 +25,7 @@ function loadEnvConfig() {
     marketCloseTime: process.env.MARKET_CLOSE_TIME || DEFAULTS.marketCloseTime,
     marketTimezone: process.env.MARKET_TIMEZONE || DEFAULTS.marketTimezone,
     dexieDbName: process.env.DEXIE_DB_NAME || DEFAULTS.dexieDbName,
-    dexieDbVersion: process.env.DEXIE_DB_VERSION || DEFAULTS.dexieDbVersion,
+    dexieDbVersion: parseIntOrDefault(process.env.DEXIE_DB_VERSION, DEFAULTS.dexieDbVersion),
     extensionSrcDir: process.env.EXTENSION_SRC_DIR || DEFAULTS.extensionSrcDir,
     extensionDistDir: process.env.EXTENSION_DIST_DIR || DEFAULTS.extensionDistDir,
   };

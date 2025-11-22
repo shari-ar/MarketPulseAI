@@ -16,4 +16,16 @@ describe("extension manifest", () => {
     assert.ok(manifest.action, "action is defined");
     assert.strictEqual(manifest.action.default_popup, "popup.html");
   });
+
+  it("registers a background navigator service worker", () => {
+    assert.deepStrictEqual(manifest.background, {
+      service_worker: "navigator.js",
+      type: "module",
+    });
+  });
+
+  it("declares the permissions needed for tab navigation", () => {
+    assert.deepStrictEqual(manifest.permissions, ["tabs"]);
+    assert.deepStrictEqual(manifest.host_permissions, ["https://*.tsetmc.com/*"]);
+  });
 });

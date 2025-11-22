@@ -1,9 +1,9 @@
 # MarketPulseAI
 
-MarketPulseAI is a browser extension that automatically gathers daily OHLC data after market close and runs on-device volatility analysis using TensorFlow.js. Dexie.js manages IndexedDB persistence while SheetJS powers one-click Excel exports, letting you review historical forecasts offline.
+MarketPulseAI is a browser extension tailored for the [Iranian Stock Market](https://www.tsetmc.com/) that automatically gathers daily OHLC data after market close and runs on-device volatility analysis using TensorFlow.js. Dexie.js manages IndexedDB persistence while SheetJS powers one-click Excel exports, letting you review historical forecasts offline.
 
 ## Core Behaviors
-- **Post-close collection**: Workflow only starts once the market closes (13:00). If tabs are open earlier, the extension stays read-only until the session ends.
+- **Post-close collection**: Workflow only starts once the [Iranian Stock Market](https://www.tsetmc.com/) closes at 13:00 Iran Standard Time (UTC+03:30). If tabs are open earlier, the extension stays read-only until the session ends.
 - **Oldest-first refresh**: Locates symbols with the stalest daily records in IndexedDB, then visits each symbol page sequentially to capture fresh OHLC entries.
 - **Complete cycle**: Continues visiting symbols until every ticker has a new daily record stored locally.
 - **Strict data storage**: No writes occur before 13:00; all captured OHLC values are persisted in IndexedDB via Dexie.js.

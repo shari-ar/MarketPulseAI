@@ -10,6 +10,7 @@
     "lint:test:build": "npm run lint && npm run test && npm run build"
   },
   "devDependencies": {
+    "dotenv": "^17.2.3",
     "eslint": "^8.57.0"
   }
 }

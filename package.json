@@ -1,0 +1,15 @@
+{
+  "name": "marketpulseai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tooling and automation for the MarketPulseAI browser extension.",
+  "scripts": {
+    "lint": "eslint extension --ext .js",
+    "test": "node --test",
+    "build": "node scripts/build-extension.js",
+    "lint:test:build": "npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  }
+}

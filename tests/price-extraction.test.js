@@ -136,4 +136,40 @@ describe("price extraction", () => {
 
     assert.strictEqual(result, null);
   });
+
+  it("falls back to DOM selector when Next.js data is unavailable", async () => {
+    const { extractPriceInfoFromDom, extractPriceInfoFromPage } = await import(
+      "../extension/parsing/price.js"
+    );
+
+    const fakeDocument = {
+      querySelector: (selector) => {
+        if (
+          selector ===
+          "body > div > div > div:nth-child(2) > div:nth-child(3) > div:nth-child(3) > div:nth-child(1) > div:nth-child(2)"
+        ) {
+          return { textContent: "98,765" };
+        }
+        return null;
+      },
+    };
+
+    const extractedDirect = extractPriceInfoFromDom(fakeDocument);
+
+    const originalDocument = globalThis.document;
+    globalThis.document = fakeDocument;
+    const extractedViaPageHelper = extractPriceInfoFromPage("<html><body></body></html>");
+    globalThis.document = originalDocument;
+
+    const expected = {
+      open: null,
+      high: null,
+      low: null,
+      close: null,
+      last: 98765,
+    };
+
+    assert.deepStrictEqual(extractedDirect, expected);
+    assert.deepStrictEqual(extractedViaPageHelper, expected);
+  });
 });

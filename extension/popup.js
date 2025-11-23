@@ -1,6 +1,6 @@
 import db from "./storage/db.js";
 import { DB_VERSION, OHLC_TABLE } from "./storage/schema.js";
-import { summarizeRecords } from "./storage/snapshots.js";
+import { summarizeRecords, latestRecordsBySymbol } from "./storage/snapshots.js";
 import { formatMarketClock, isBeforeMarketClose, currentMarketTimestamp } from "./time.js";
 
 const message = document.getElementById("message");
@@ -15,6 +15,20 @@ const statsSymbols = document.getElementById("stat-symbols");
 const statsLatest = document.getElementById("stat-latest");
 const recentList = document.getElementById("recent-list");
 const recentEmpty = document.getElementById("recent-empty");
+const pagePriceStatus = document.getElementById("page-price-status");
+const pagePriceRefresh = document.getElementById("page-price-refresh");
+const pagePriceTitle = document.getElementById("page-price-title");
+const pagePriceValues = {
+  open: document.getElementById("page-price-open"),
+  high: document.getElementById("page-price-high"),
+  low: document.getElementById("page-price-low"),
+  close: document.getElementById("page-price-close"),
+  last: document.getElementById("page-price-last"),
+};
+const companyList = document.getElementById("company-list");
+const companyListEmpty = document.getElementById("company-list-empty");
+const companyListButton = document.getElementById("company-list-button");
+const companyListLoading = document.getElementById("company-list-loading");
 
 function updateLockState(now = new Date()) {
   const locked = isBeforeMarketClose(now);
@@ -57,6 +71,19 @@ ping.addEventListener("click", async () => {
 
 function formatPrice(value) {
   return Number.isFinite(value) ? value.toLocaleString("en-US") : "—";
+}
+
+function formatTradeDate(record) {
+  if (!record?.tradeDate) return "—";
+  return String(record.tradeDate);
+}
+
+function resetPagePrices(messageText) {
+  pagePriceStatus.textContent = messageText;
+  pagePriceTitle.textContent = "";
+  for (const value of Object.values(pagePriceValues)) {
+    value.textContent = "—";
+  }
 }
 
 function renderRecent(records = []) {
@@ -116,8 +143,139 @@ async function loadSnapshot() {
   }
 }
 
+function queryActiveTab() {
+  return new Promise((resolve) => {
+    const chromeApi = globalThis.chrome;
+    const query = chromeApi?.tabs?.query;
+    if (!query) {
+      resolve(null);
+      return;
+    }
+
+    query.call(chromeApi.tabs, { active: true, currentWindow: true }, (tabs) => {
+      const runtimeError = chromeApi.runtime?.lastError;
+      if (runtimeError) {
+        console.debug("Active tab query failed", runtimeError.message);
+        resolve(null);
+        return;
+      }
+
+      resolve(Array.isArray(tabs) && tabs[0] ? tabs[0] : null);
+    });
+  });
+}
+
+function sendMessageToTab(tabId, payload) {
+  return new Promise((resolve) => {
+    const chromeApi = globalThis.chrome;
+    const sendMessage = chromeApi?.tabs?.sendMessage;
+    if (!sendMessage || !tabId) {
+      resolve(null);
+      return;
+    }
+
+    sendMessage.call(chromeApi.tabs, tabId, payload, (response) => {
+      const runtimeError = chromeApi.runtime?.lastError;
+      if (runtimeError) {
+        console.debug("Message to tab failed", runtimeError.message);
+        resolve(null);
+        return;
+      }
+
+      resolve(response ?? null);
+    });
+  });
+}
+
+function renderPagePrices({ price, title }) {
+  pagePriceStatus.textContent = "Price data detected";
+  pagePriceTitle.textContent = title || "Current page";
+
+  pagePriceValues.open.textContent = formatPrice(price.open);
+  pagePriceValues.high.textContent = formatPrice(price.high);
+  pagePriceValues.low.textContent = formatPrice(price.low);
+  pagePriceValues.close.textContent = formatPrice(price.close);
+  pagePriceValues.last.textContent = formatPrice(price.last);
+}
+
+async function loadPagePrices() {
+  resetPagePrices("Checking active tab...");
+  const tab = await queryActiveTab();
+  if (!tab) {
+    resetPagePrices("Open a tsetmc.com symbol page to view live prices.");
+    return;
+  }
+
+  const response = await sendMessageToTab(tab.id, { type: "SCRAPE_PAGE_PRICE" });
+  if (!response || response.status !== "ok") {
+    resetPagePrices("No price data found on this page.");
+    return;
+  }
+
+  renderPagePrices(response);
+}
+
+async function loadCompanyList() {
+  companyListEmpty.hidden = true;
+  companyListLoading.hidden = false;
+  companyList.innerHTML = "";
+
+  try {
+    await db.open();
+    const records = await db.table(OHLC_TABLE).toArray();
+    const latest = latestRecordsBySymbol(records);
+
+    if (!latest.length) {
+      companyListEmpty.hidden = false;
+      return;
+    }
+
+    for (const record of latest) {
+      const row = document.createElement("li");
+      row.className = "company__item";
+
+      const top = document.createElement("div");
+      top.className = "company__top";
+
+      const symbol = document.createElement("p");
+      symbol.className = "company__symbol";
+      symbol.textContent = record.symbol;
+      top.appendChild(symbol);
+
+      const date = document.createElement("p");
+      date.className = "company__date";
+      date.textContent = formatTradeDate(record);
+      top.appendChild(date);
+
+      row.appendChild(top);
+
+      const prices = document.createElement("p");
+      prices.className = "company__prices";
+      prices.textContent = `O ${formatPrice(record.open)} | H ${formatPrice(record.high)} | L ${formatPrice(record.low)} | C ${formatPrice(record.close)} | Last ${formatPrice(record.last ?? record.close)}`;
+
+      row.appendChild(prices);
+      companyList.appendChild(row);
+    }
+  } catch (error) {
+    console.error("Failed to load company list", error);
+    companyListEmpty.textContent = "Could not load company prices.";
+    companyListEmpty.hidden = false;
+  } finally {
+    companyListLoading.hidden = true;
+  }
+}
+
 refreshSnapshot?.addEventListener("click", () => {
   loadSnapshot();
 });
 
+pagePriceRefresh?.addEventListener("click", () => {
+  loadPagePrices();
+});
+
+companyListButton?.addEventListener("click", () => {
+  loadCompanyList();
+});
+
 loadSnapshot();
+loadPagePrices();

@@ -32,6 +32,46 @@
       <section class="card">
         <div class="card__top">
           <div>
+            <p class="eyebrow">Stock exchange page</p>
+            <h2>Live price</h2>
+          </div>
+          <button id="page-price-refresh" class="card__button card__button--ghost">
+            Refresh price
+          </button>
+        </div>
+
+        <p id="page-price-status" class="card__message">
+          Open a tsetmc.com symbol page to view live prices.
+        </p>
+        <p id="page-price-title" class="price__title"></p>
+
+        <dl class="price-grid">
+          <div class="price-grid__item">
+            <dt>Open</dt>
+            <dd id="page-price-open">—</dd>
+          </div>
+          <div class="price-grid__item">
+            <dt>High</dt>
+            <dd id="page-price-high">—</dd>
+          </div>
+          <div class="price-grid__item">
+            <dt>Low</dt>
+            <dd id="page-price-low">—</dd>
+          </div>
+          <div class="price-grid__item">
+            <dt>Close</dt>
+            <dd id="page-price-close">—</dd>
+          </div>
+          <div class="price-grid__item">
+            <dt>Last</dt>
+            <dd id="page-price-last">—</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card">
+        <div class="card__top">
+          <div>
             <p class="eyebrow">Collected snapshots</p>
             <h2>Stored OHLC</h2>
           </div>
@@ -61,6 +101,22 @@
           </p>
           <ul id="recent-list" class="recent__list" aria-live="polite"></ul>
         </div>
+      </section>
+
+      <section class="card">
+        <div class="card__top">
+          <div>
+            <p class="eyebrow">Company prices</p>
+            <h2>Latest updates</h2>
+          </div>
+          <button id="company-list-button" class="card__button">Show companies</button>
+        </div>
+
+        <p id="company-list-loading" class="card__message" hidden>Loading company prices...</p>
+        <p id="company-list-empty" class="recent__empty" hidden>
+          No company prices stored yet. Run collection to populate this list.
+        </p>
+        <ul id="company-list" class="company__list"></ul>
       </section>
     </main>
     <script type="module" src="popup.js"></script>

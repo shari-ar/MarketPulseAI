@@ -3,10 +3,10 @@
 MarketPulseAI is a browser extension tailored for the [Iranian Stock Market](https://www.tsetmc.com/) that automatically gathers daily OHLC data after market close and runs on-device volatility analysis using TensorFlow.js. Dexie.js manages IndexedDB persistence while SheetJS powers one-click Excel exports, letting you review historical forecasts offline.
 
 ## Core Behaviors
-- **Post-close collection**: Workflow only starts once the [Iranian Stock Market](https://www.tsetmc.com/) closes at 13:00 Iran Standard Time (UTC+03:30). If tabs are open earlier, the extension stays read-only until the session ends.
+- **Post-close collection**: Workflow only starts once the [Iranian Stock Market](https://www.tsetmc.com/) closes at 08:00 Iran Standard Time (UTC+03:30). If tabs are open earlier, the extension stays read-only until the session ends.
 - **Oldest-first refresh**: Locates symbols with the stalest daily records in IndexedDB, then visits each symbol page sequentially to capture fresh OHLC entries.
 - **Complete cycle**: Continues visiting symbols until every ticker has a new daily record stored locally.
-- **Strict data storage**: No writes occur before 13:00; all captured OHLC values are persisted in IndexedDB via Dexie.js.
+- **Strict data storage**: No writes occur before 08:00; all captured OHLC values are persisted in IndexedDB via Dexie.js.
 
 ## Analysis Mode
 - **User-triggered modal**: When analysis is activated, a modal appears showing real-time progress that reaches 100% when calculations finish.
@@ -15,7 +15,7 @@ MarketPulseAI is a browser extension tailored for the [Iranian Stock Market](htt
 - **Excel export**: Users can export the same dataset to a structured Excel file via SheetJS for downstream analysis.
 
 ## Data Flow
-1. **Wait for close** → Detect 13:00 cutoff and block writes until then.
+1. **Wait for close** → Detect 08:00 cutoff and block writes until then.
 2. **Select symbols** → Query IndexedDB for oldest records per symbol.
 3. **Navigate & fetch** → Visit symbol pages and scrape daily OHLC values.
 4. **Persist** → Store entries in IndexedDB using Dexie.js schema.

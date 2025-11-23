@@ -25,11 +25,11 @@ function updateLockState(now = new Date()) {
   if (locked) {
     lockBanner.classList.add("notice--locked");
     lockBanner.classList.remove("notice--open");
-    lockTag.textContent = "Locked until 13:00";
+    lockTag.textContent = "Locked until 08:00";
     lockTag.classList.add("pill--locked");
     lockTag.classList.remove("pill--open");
     lockCopy.textContent =
-      "Collection is in read-only mode until the market closes at 13:00 Asia/Tehran.";
+      "Collection is in read-only mode until the market closes at 08:00 Asia/Tehran.";
     message.textContent = "Hold tight—writes unlock after the closing bell.";
     ping.disabled = true;
     ping.setAttribute("aria-disabled", "true");
@@ -39,7 +39,7 @@ function updateLockState(now = new Date()) {
     lockTag.textContent = "Unlocked";
     lockTag.classList.remove("pill--locked");
     lockTag.classList.add("pill--open");
-    lockCopy.textContent = `Market closed at 13:00 Asia/Tehran. Collection is greenlit as of ${currentMarketTimestamp(now)}.`;
+    lockCopy.textContent = `Market closed at 08:00 Asia/Tehran. Collection is greenlit as of ${currentMarketTimestamp(now)}.`;
     message.textContent = "Post-close collection is ready to run.";
     ping.disabled = false;
     ping.removeAttribute("aria-disabled");

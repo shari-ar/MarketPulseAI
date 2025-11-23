@@ -35,6 +35,11 @@ h1 {
   letter-spacing: 0.5px;
 }
 
+h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
 .eyebrow {
   margin: 0 0 2px;
   text-transform: uppercase;
@@ -131,6 +136,13 @@ h1 {
   font-size: 15px;
 }
 
+.card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .card__button {
   padding: 12px 14px;
   border: none;
@@ -158,4 +170,91 @@ h1 {
 .card__button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.card__button--ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 6px;
+}
+
+.stat__label {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.stat__value {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.recent {
+  display: grid;
+  gap: 10px;
+}
+
+.recent__empty {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.recent__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.recent__item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 4px;
+}
+
+.recent__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.recent__symbol {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.recent__date {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.recent__prices {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 14px;
 }

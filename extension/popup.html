@@ -28,6 +28,40 @@
         <p id="message" class="card__message"></p>
         <button id="ping" class="card__button">Check IndexedDB</button>
       </section>
+
+      <section class="card">
+        <div class="card__top">
+          <div>
+            <p class="eyebrow">Collected snapshots</p>
+            <h2>Stored OHLC</h2>
+          </div>
+          <button id="refresh-snapshot" class="card__button card__button--ghost">
+            Refresh view
+          </button>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <p class="stat__label">Records</p>
+            <p id="stat-records" class="stat__value">—</p>
+          </div>
+          <div class="stat">
+            <p class="stat__label">Symbols tracked</p>
+            <p id="stat-symbols" class="stat__value">—</p>
+          </div>
+          <div class="stat">
+            <p class="stat__label">Latest trade date</p>
+            <p id="stat-latest" class="stat__value">—</p>
+          </div>
+        </div>
+
+        <div id="recent-wrapper" class="recent">
+          <p id="recent-empty" class="recent__empty">
+            No OHLC records yet. Kick off collection after the closing bell.
+          </p>
+          <ul id="recent-list" class="recent__list" aria-live="polite"></ul>
+        </div>
+      </section>
     </main>
     <script type="module" src="popup.js"></script>
   </body>

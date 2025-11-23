@@ -1,0 +1,109 @@
+const assert = require("assert");
+const { describe, it } = require("node:test");
+
+const htmlTemplate = (pricePayload) => `
+<!DOCTYPE html>
+<html>
+  <head>
+    <script id="__NEXT_DATA__" type="application/json">
+      ${JSON.stringify(pricePayload)}
+    </script>
+  </head>
+  <body></body>
+</html>
+`;
+
+describe("price extraction", () => {
+  it("pulls OHLC values from embedded Next.js data", async () => {
+    const { extractPriceInfoFromPage } = await import("../extension/parsing/price.js");
+
+    const html = htmlTemplate({
+      props: {
+        pageProps: {
+          instrument: {
+            priceInfo: {
+              open: "12,300",
+              high: 12500,
+              low: "12,100",
+              close: "12,450",
+              last: "12,500",
+            },
+          },
+        },
+      },
+    });
+
+    const result = extractPriceInfoFromPage(html);
+
+    assert.deepStrictEqual(result, {
+      open: 12300,
+      high: 12500,
+      low: 12100,
+      close: 12450,
+      last: 12500,
+    });
+  });
+
+  it("falls back to alternative price fields when standard keys are missing", async () => {
+    const { extractPriceInfoFromPage } = await import("../extension/parsing/price.js");
+
+    const html = htmlTemplate({
+      props: {
+        pageProps: {
+          instrumentInfo: {
+            closingPriceInfo: {
+              priceYesterday: "10,000",
+              priceMax: "10,800",
+              priceMin: "9,700",
+              finalPrice: "10,300",
+              lastPrice: "10,450",
+            },
+          },
+        },
+      },
+    });
+
+    const result = extractPriceInfoFromPage(html);
+
+    assert.deepStrictEqual(result, {
+      open: 10000,
+      high: 10800,
+      low: 9700,
+      close: 10300,
+      last: 10450,
+    });
+  });
+
+  it("returns null for pages without usable price data", async () => {
+    const { extractPriceInfoFromPage } = await import("../extension/parsing/price.js");
+
+    const html = htmlTemplate({ props: { pageProps: { foo: "bar" } } });
+    const result = extractPriceInfoFromPage(html);
+
+    assert.strictEqual(result, null);
+  });
+
+  it("ignores empty string price values instead of coercing to zero", async () => {
+    const { extractPriceInfoFromPage } = await import("../extension/parsing/price.js");
+
+    const html = htmlTemplate({
+      props: {
+        pageProps: {
+          instrument: {
+            priceInfo: {
+              open: " ",
+              high: "",
+              low: "",
+              close: "",
+              last: null,
+            },
+          },
+        },
+      },
+    });
+
+    const result = extractPriceInfoFromPage(html);
+
+    assert.strictEqual(result, null);
+  });
+});

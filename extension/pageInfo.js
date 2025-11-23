@@ -1,4 +1,4 @@
-import { chromeApi } from "./vendor/chromeApi.js";
+const chromeApi = globalThis?.chrome ?? globalThis?.browser ?? null;
 
 (() => {
   let priceModulePromise;

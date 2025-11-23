@@ -1,38 +1,49 @@
-import { TabNavigator } from "./navigation/tabNavigator.js";
-import { chromeApi } from "./vendor/chromeApi.js";
+import { TabNavigator as ImportedTabNavigator } from "./navigation/tabNavigator.js";
 
-const navigator = new TabNavigator({
-  tabsApi: chromeApi?.tabs,
-  onVisit: ({ symbol, url }) => {
-    console.debug("Visited symbol", { symbol, url });
-  },
-  onProgress: ({ symbol, tabId, completed, total, remaining }) => {
-    const summary = total > 0 ? `${completed}/${total}` : `${completed}`;
-    const payload = {
-      type: "COLLECTION_PROGRESS",
-      symbol,
-      completed,
-      total,
-      remaining,
-      summary,
-    };
+const chromeApi = globalThis?.chrome ?? globalThis?.browser ?? null;
 
-    console.info(`MarketPulseAI collection progress ${summary}`, {
-      symbol,
-      remaining,
-      total,
-    });
+async function createNavigator() {
+  const TabNavigator = globalThis.TabNavigator ?? ImportedTabNavigator ?? null;
+  if (!TabNavigator) {
+    console.error("TabNavigator unavailable; navigation disabled");
+    return null;
+  }
 
-    if (tabId && chromeApi?.tabs?.sendMessage) {
-      chromeApi.tabs.sendMessage(tabId, payload, () => {
-        const runtimeError = chromeApi.runtime?.lastError;
-        if (runtimeError) {
-          console.debug("Toast dispatch skipped", runtimeError.message);
-        }
+  return new TabNavigator({
+    tabsApi: chromeApi?.tabs,
+    onVisit: ({ symbol, url }) => {
+      console.debug("Visited symbol", { symbol, url });
+    },
+    onProgress: ({ symbol, tabId, completed, total, remaining }) => {
+      const summary = total > 0 ? `${completed}/${total}` : `${completed}`;
+      const payload = {
+        type: "COLLECTION_PROGRESS",
+        symbol,
+        completed,
+        total,
+        remaining,
+        summary,
+      };
+
+      console.info(`MarketPulseAI collection progress ${summary}`, {
+        symbol,
+        remaining,
+        total,
       });
-    }
-  },
-});
+
+      if (tabId && chromeApi?.tabs?.sendMessage) {
+        chromeApi.tabs.sendMessage(tabId, payload, () => {
+          const runtimeError = chromeApi.runtime?.lastError;
+          if (runtimeError) {
+            console.debug("Toast dispatch skipped", runtimeError.message);
+          }
+        });
+      }
+    },
+  });
+}
+
+const navigatorReady = createNavigator();
 
 function normalizeSymbols(symbols = []) {
   return symbols
@@ -46,20 +57,43 @@ if (chromeApi?.runtime?.onMessage) {
     if (!message?.type) return undefined;
 
     if (message.type === "NAVIGATE_SYMBOLS") {
-      const symbols = normalizeSymbols(message.symbols || []);
-      navigator.enqueueSymbols(symbols);
-      navigator.start();
-      sendResponse({ status: "queued", pending: navigator.pendingCount });
-      return undefined;
+      navigatorReady.then((activeNavigator) => {
+        if (!activeNavigator) {
+          sendResponse({ status: "unavailable" });
+          return;
+        }
+
+        const symbols = normalizeSymbols(message.symbols || []);
+        activeNavigator.enqueueSymbols(symbols);
+        activeNavigator.start();
+        sendResponse({ status: "queued", pending: activeNavigator.pendingCount });
+      });
+      return true;
     }
 
     if (message.type === "STOP_NAVIGATION") {
-      navigator.stop();
-      sendResponse({ status: "stopped" });
+      navigatorReady.then((activeNavigator) => {
+        if (!activeNavigator) {
+          sendResponse({ status: "unavailable" });
+          return;
+        }
+
+        activeNavigator.stop();
+        sendResponse({ status: "stopped" });
+      });
+      return true;
     }
 
     if (message.type === "NAVIGATION_STATE") {
-      sendResponse(navigator.state());
+      navigatorReady.then((activeNavigator) => {
+        if (!activeNavigator) {
+          sendResponse({ status: "unavailable" });
+          return;
+        }
+
+        sendResponse(activeNavigator.state());
+      });
+      return true;
     }
 
     return undefined;

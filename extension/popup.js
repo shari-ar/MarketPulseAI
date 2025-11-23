@@ -198,21 +198,58 @@ function renderPagePrices({ price, title }) {
   pagePriceValues.last.textContent = formatPrice(price.last);
 }
 
-async function loadPagePrices() {
-  resetPagePrices("Checking active tab...");
-  const tab = await queryActiveTab();
+const PAGE_PRICE_RETRY_LIMIT = 5;
+const PAGE_PRICE_RETRY_DELAY_MS = 2000;
+let pagePriceRetryTimer = null;
+
+async function loadPagePrices({ attempt = 1, tabId } = {}) {
+  if (pagePriceRetryTimer) {
+    clearTimeout(pagePriceRetryTimer);
+    pagePriceRetryTimer = null;
+  }
+
+  if (attempt === 1) {
+    resetPagePrices("Checking active tab...");
+  }
+
+  const tab = tabId ? { id: tabId } : await queryActiveTab();
   if (!tab) {
     resetPagePrices("Open a tsetmc.com symbol page to view live prices.");
     return;
   }
 
-  const response = await sendMessageToTab(tab.id, { type: "SCRAPE_PAGE_PRICE" });
-  if (!response || response.status !== "ok") {
-    resetPagePrices("No price data found on this page.");
+  const tabHost = (() => {
+    try {
+      return new URL(tab.url ?? "").hostname;
+    } catch (_error) {
+      return "";
+    }
+  })();
+
+  if (!tabHost.includes("tsetmc.com")) {
+    resetPagePrices("Open a tsetmc.com symbol page to view live prices.");
     return;
   }
 
-  renderPagePrices(response);
+  const response = await sendMessageToTab(tab.id, { type: "SCRAPE_PAGE_PRICE" });
+  if (response?.status === "ok") {
+    renderPagePrices(response);
+    pagePriceRetryTimer = null;
+    return;
+  }
+
+  if (attempt < PAGE_PRICE_RETRY_LIMIT) {
+    const attemptCopy = `Waiting for live price data (try ${attempt + 1} of ${PAGE_PRICE_RETRY_LIMIT})...`;
+    pagePriceStatus.textContent = attemptCopy;
+    pagePriceRetryTimer = setTimeout(
+      () => loadPagePrices({ attempt: attempt + 1, tabId: tab.id }),
+      PAGE_PRICE_RETRY_DELAY_MS
+    );
+    return;
+  }
+
+  resetPagePrices("No price data found on this page.");
+  pagePriceRetryTimer = null;
 }
 
 async function loadCompanyList() {

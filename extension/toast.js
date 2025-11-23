@@ -1,13 +1,16 @@
-const TOAST_STYLE_ID = "marketpulseai-toast-style";
-const TOAST_CONTAINER_ID = "marketpulseai-toast-container";
-const DEFAULT_DURATION_MS = 4500;
+(() => {
+  const chromeApi = globalThis.chrome;
 
-function ensureToastStyles() {
-  if (document.getElementById(TOAST_STYLE_ID)) return;
+  const TOAST_STYLE_ID = "marketpulseai-toast-style";
+  const TOAST_CONTAINER_ID = "marketpulseai-toast-container";
+  const DEFAULT_DURATION_MS = 4500;
 
-  const style = document.createElement("style");
-  style.id = TOAST_STYLE_ID;
-  style.textContent = `
+  function ensureToastStyles() {
+    if (document.getElementById(TOAST_STYLE_ID)) return;
+
+    const style = document.createElement("style");
+    style.id = TOAST_STYLE_ID;
+    style.textContent = `
     #${TOAST_CONTAINER_ID} {
       position: fixed;
       bottom: 18px;
@@ -62,71 +65,70 @@ function ensureToastStyles() {
     }
   `;
 
-  document.head.appendChild(style);
-}
+    document.head.appendChild(style);
+  }
 
-function ensureToastContainer() {
-  const existing = document.getElementById(TOAST_CONTAINER_ID);
-  if (existing) return existing;
+  function ensureToastContainer() {
+    const existing = document.getElementById(TOAST_CONTAINER_ID);
+    if (existing) return existing;
 
-  const container = document.createElement("div");
-  container.id = TOAST_CONTAINER_ID;
-  (document.body || document.documentElement).appendChild(container);
-  return container;
-}
+    const container = document.createElement("div");
+    container.id = TOAST_CONTAINER_ID;
+    (document.body || document.documentElement).appendChild(container);
+    return container;
+  }
 
-function createToast({ title, subtitle, summary, duration = DEFAULT_DURATION_MS }) {
-  ensureToastStyles();
-  const container = ensureToastContainer();
+  function createToast({ title, subtitle, summary, duration = DEFAULT_DURATION_MS }) {
+    ensureToastStyles();
+    const container = ensureToastContainer();
 
-  const toast = document.createElement("article");
-  toast.className = "marketpulseai-toast";
+    const toast = document.createElement("article");
+    toast.className = "marketpulseai-toast";
 
-  const pill = document.createElement("span");
-  pill.className = "marketpulseai-toast__pill";
-  pill.textContent = "Batch";
+    const pill = document.createElement("span");
+    pill.className = "marketpulseai-toast__pill";
+    pill.textContent = "Batch";
 
-  const heading = document.createElement("p");
-  heading.className = "marketpulseai-toast__title";
-  heading.textContent = title || "Collection updated";
+    const heading = document.createElement("p");
+    heading.className = "marketpulseai-toast__title";
+    heading.textContent = title || "Collection updated";
 
-  const spacer = document.createElement("span");
+    const spacer = document.createElement("span");
 
-  const detail = document.createElement("p");
-  detail.className = "marketpulseai-toast__subtitle";
-  detail.textContent = subtitle || summary || "Progress noted";
+    const detail = document.createElement("p");
+    detail.className = "marketpulseai-toast__subtitle";
+    detail.textContent = subtitle || summary || "Progress noted";
 
-  toast.appendChild(pill);
-  toast.appendChild(heading);
-  toast.appendChild(spacer);
-  toast.appendChild(detail);
+    toast.appendChild(pill);
+    toast.appendChild(heading);
+    toast.appendChild(spacer);
+    toast.appendChild(detail);
 
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), duration);
-}
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), duration);
+  }
 
-function renderProgressToast({ symbol, summary, remaining }) {
-  const title = symbol ? `Captured ${symbol}` : "Collection batch saved";
-  const subtitle = summary ? `Progress ${summary}` : undefined;
-  const tail = Number.isFinite(remaining) ? `Remaining ${remaining}` : null;
-  const mergedSubtitle = tail ? `${subtitle} · ${tail}` : subtitle;
+  function renderProgressToast({ symbol, summary, remaining }) {
+    const title = symbol ? `Captured ${symbol}` : "Collection batch saved";
+    const subtitle = summary ? `Progress ${summary}` : undefined;
+    const tail = Number.isFinite(remaining) ? `Remaining ${remaining}` : null;
+    const mergedSubtitle = tail ? `${subtitle} · ${tail}` : subtitle;
 
-  createToast({ title, subtitle: mergedSubtitle, summary });
-}
+    createToast({ title, subtitle: mergedSubtitle, summary });
+  }
 
-const chromeApi = globalThis.chrome;
+  if (chromeApi?.runtime?.onMessage) {
+    chromeApi.runtime.onMessage.addListener((message) => {
+      if (!message?.type) return undefined;
 
-if (chromeApi?.runtime?.onMessage) {
-  chromeApi.runtime.onMessage.addListener((message) => {
-    if (!message?.type) return undefined;
+      if (message.type === "COLLECTION_PROGRESS") {
+        const { symbol, summary, remaining } = message;
+        console.debug("Collection progress", message);
+        renderProgressToast({ symbol, summary, remaining });
+        return undefined;
+      }
 
-    if (message.type === "COLLECTION_PROGRESS") {
-      const { symbol, summary, remaining } = message;
-      console.debug("Collection progress", message);
-      renderProgressToast({ symbol, summary, remaining });
       return undefined;
-    }
-
-    return undefined;
-  });
-}
+    });
+  }
+})();

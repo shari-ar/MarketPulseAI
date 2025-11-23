@@ -144,10 +144,7 @@ describe("price extraction", () => {
 
     const fakeDocument = {
       querySelector: (selector) => {
-        if (
-          selector ===
-          "body > div > div > div:nth-child(2) > div:nth-child(3) > div:nth-child(3) > div:nth-child(1) > div:nth-child(2)"
-        ) {
+        if (selector === "#TopBox > div.box2.zi1") {
           return { textContent: "98,765" };
         }
         return null;

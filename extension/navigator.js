@@ -1,6 +1,5 @@
 import { TabNavigator } from "./navigation/tabNavigator.js";
-
-const chromeApi = globalThis.chrome;
+import { chromeApi } from "./vendor/chromeApi.js";
 
 const navigator = new TabNavigator({
   tabsApi: chromeApi?.tabs,

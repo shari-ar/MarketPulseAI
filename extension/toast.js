@@ -1,6 +1,6 @@
-(() => {
-  const chromeApi = globalThis.chrome;
+import { chromeApi } from "./vendor/chromeApi.js";
 
+(() => {
   const TOAST_STYLE_ID = "marketpulseai-toast-style";
   const TOAST_CONTAINER_ID = "marketpulseai-toast-container";
   const DEFAULT_DURATION_MS = 4500;

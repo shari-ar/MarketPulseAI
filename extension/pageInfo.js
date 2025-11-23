@@ -1,6 +1,6 @@
-(() => {
-  const chromeApi = globalThis.chrome;
+import { chromeApi } from "./vendor/chromeApi.js";
 
+(() => {
   let priceModulePromise;
 
   async function loadPriceModule() {

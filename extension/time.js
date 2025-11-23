@@ -1,5 +1,5 @@
 export const MARKET_TIMEZONE = "Asia/Tehran";
-export const MARKET_CLOSE_HOUR = 13;
+export const MARKET_CLOSE_HOUR = 8;
 export const MARKET_CLOSE_MINUTE = 0;
 
 function extractMarketParts(now = new Date()) {

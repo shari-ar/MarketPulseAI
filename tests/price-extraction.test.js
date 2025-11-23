@@ -44,6 +44,36 @@ describe("price extraction", () => {
     });
   });
 
+  it("parses raw __NEXT_DATA__ JSON without markup", async () => {
+    const { extractPriceInfoFromPage } = await import("../extension/parsing/price.js");
+
+    const rawJson = JSON.stringify({
+      props: {
+        pageProps: {
+          instrument: {
+            priceInfo: {
+              open: 9000,
+              high: 9900,
+              low: 8800,
+              close: 9500,
+              last: 9520,
+            },
+          },
+        },
+      },
+    });
+
+    const result = extractPriceInfoFromPage(rawJson);
+
+    assert.deepStrictEqual(result, {
+      open: 9000,
+      high: 9900,
+      low: 8800,
+      close: 9500,
+      last: 9520,
+    });
+  });
+
   it("falls back to alternative price fields when standard keys are missing", async () => {
     const { extractPriceInfoFromPage } = await import("../extension/parsing/price.js");
 

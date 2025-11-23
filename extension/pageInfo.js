@@ -3,8 +3,9 @@ import { extractPriceInfoFromPage } from "./parsing/price.js";
 const chromeApi = globalThis.chrome;
 
 function readPagePrice() {
-  const html = document?.documentElement?.innerHTML ?? "";
-  const price = extractPriceInfoFromPage(html);
+  const nextData = document.getElementById("__NEXT_DATA__");
+  const source = nextData?.textContent ?? document?.documentElement?.innerHTML ?? "";
+  const price = extractPriceInfoFromPage(source);
   const title = document?.title ?? "";
 
   if (!price) return null;

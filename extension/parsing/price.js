@@ -56,9 +56,19 @@ function searchForPriceObject(node) {
   return null;
 }
 
-function extractJsonFromNextData(html) {
-  if (typeof html !== "string") return null;
-  const match = html.match(NEXT_DATA_SCRIPT_REGEX);
+function extractJsonFromNextData(htmlOrJson) {
+  if (typeof htmlOrJson !== "string") return null;
+
+  const trimmed = htmlOrJson.trim();
+  if (!trimmed) return null;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch (_error) {
+    // fall through to search inside markup
+  }
+
+  const match = trimmed.match(NEXT_DATA_SCRIPT_REGEX);
   if (!match) return null;
 
   const jsonText = match[1]?.trim();

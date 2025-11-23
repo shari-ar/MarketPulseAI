@@ -50,3 +50,43 @@ describe("summarizeRecords", () => {
     assert.strictEqual(summary.mostRecent[1].symbol, "AAA");
   });
 });
+
+describe("latestRecordsBySymbol", () => {
+  it("keeps the newest record per symbol using collectedAt first", async () => {
+    const { latestRecordsBySymbol } = await import("../extension/storage/snapshots.js");
+
+    const latest = latestRecordsBySymbol([
+      { symbol: "AAA", tradeDate: "2024-03-01", collectedAt: "2024-03-01T13:30:00Z" },
+      { symbol: "BBB", tradeDate: "2024-03-01", collectedAt: "2024-03-02T13:30:00Z" },
+      { symbol: "AAA", tradeDate: "2024-03-02", collectedAt: "2024-03-02T13:30:00Z" },
+      { symbol: "BBB", tradeDate: "2024-02-28", collectedAt: "2024-02-28T13:30:00Z" },
+    ]);
+
+    assert.deepStrictEqual(
+      latest.map((record) => ({ symbol: record.symbol, tradeDate: record.tradeDate })),
+      [
+        { symbol: "AAA", tradeDate: "2024-03-02" },
+        { symbol: "BBB", tradeDate: "2024-03-01" },
+      ]
+    );
+  });
+
+  it("falls back to tradeDate ordering when collectedAt is missing or invalid", async () => {
+    const { latestRecordsBySymbol } = await import("../extension/storage/snapshots.js");
+
+    const latest = latestRecordsBySymbol([
+      { symbol: "CCC", tradeDate: "2024-03-05", collectedAt: "invalid" },
+      { symbol: "CCC", tradeDate: "2024-03-06" },
+      { symbol: "DDD", tradeDate: "2024-03-04", collectedAt: null },
+      { symbol: "DDD", tradeDate: "2024-03-05", collectedAt: null },
+    ]);
+
+    assert.deepStrictEqual(
+      latest.map((record) => ({ symbol: record.symbol, tradeDate: record.tradeDate })),
+      [
+        { symbol: "CCC", tradeDate: "2024-03-06" },
+        { symbol: "DDD", tradeDate: "2024-03-05" },
+      ]
+    );
+  });
+});

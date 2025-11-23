@@ -50,6 +50,24 @@ describe("write validation", () => {
     });
   });
 
+  it("blocks writes before the market closes", async () => {
+    const { saveOhlcRecord } = await import("../extension/storage/writes.js");
+
+    const errors = [];
+    const table = {
+      add: () => errors.push("add called"),
+    };
+
+    const beforeClose = new Date(Date.UTC(2024, 0, 1, 4, 0)); // 07:30 in Asia/Tehran
+
+    await assert.rejects(
+      () => saveOhlcRecord(baseRecord, { table, now: beforeClose }),
+      /Writes are locked until 08:00 Asia\/Tehran/
+    );
+
+    assert.deepStrictEqual(errors, []);
+  });
+
   it("details validation issues for timestamps, numeric ranges, and optional fields", async () => {
     const { validateOhlcRecord } = await import("../extension/storage/validation.js");
 

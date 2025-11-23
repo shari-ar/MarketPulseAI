@@ -198,10 +198,16 @@ function renderPagePrices({ price, title }) {
   pagePriceValues.last.textContent = formatPrice(price.last);
 }
 
-const PAGE_PRICE_RETRY_LIMIT = 3;
-const PAGE_PRICE_RETRY_DELAY_MS = 1500;
+const PAGE_PRICE_RETRY_LIMIT = 5;
+const PAGE_PRICE_RETRY_DELAY_MS = 2000;
+let pagePriceRetryTimer = null;
 
 async function loadPagePrices({ attempt = 1, tabId } = {}) {
+  if (pagePriceRetryTimer) {
+    clearTimeout(pagePriceRetryTimer);
+    pagePriceRetryTimer = null;
+  }
+
   if (attempt === 1) {
     resetPagePrices("Checking active tab...");
   }
@@ -212,15 +218,30 @@ async function loadPagePrices({ attempt = 1, tabId } = {}) {
     return;
   }
 
+  const tabHost = (() => {
+    try {
+      return new URL(tab.url ?? "").hostname;
+    } catch (_error) {
+      return "";
+    }
+  })();
+
+  if (!tabHost.includes("tsetmc.com")) {
+    resetPagePrices("Open a tsetmc.com symbol page to view live prices.");
+    return;
+  }
+
   const response = await sendMessageToTab(tab.id, { type: "SCRAPE_PAGE_PRICE" });
   if (response?.status === "ok") {
     renderPagePrices(response);
+    pagePriceRetryTimer = null;
     return;
   }
 
   if (attempt < PAGE_PRICE_RETRY_LIMIT) {
-    pagePriceStatus.textContent = "Waiting for live price data...";
-    setTimeout(
+    const attemptCopy = `Waiting for live price data (try ${attempt + 1} of ${PAGE_PRICE_RETRY_LIMIT})...`;
+    pagePriceStatus.textContent = attemptCopy;
+    pagePriceRetryTimer = setTimeout(
       () => loadPagePrices({ attempt: attempt + 1, tabId: tab.id }),
       PAGE_PRICE_RETRY_DELAY_MS
     );
@@ -228,6 +249,7 @@ async function loadPagePrices({ attempt = 1, tabId } = {}) {
   }
 
   resetPagePrices("No price data found on this page.");
+  pagePriceRetryTimer = null;
 }
 
 async function loadCompanyList() {

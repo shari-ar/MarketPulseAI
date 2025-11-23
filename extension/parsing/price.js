@@ -1,4 +1,6 @@
 const NEXT_DATA_SCRIPT_REGEX = /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i;
+const DOM_PRICE_SELECTOR =
+  "body > div > div > div:nth-child(2) > div:nth-child(3) > div:nth-child(3) > div:nth-child(1) > div:nth-child(2)";
 
 function coerceNumber(value) {
   if (value === undefined || value === null) return null;
@@ -81,10 +83,24 @@ function extractJsonFromNextData(htmlOrJson) {
   }
 }
 
+export function extractPriceInfoFromDom(root = globalThis?.document) {
+  if (!root?.querySelector) return null;
+
+  const priceNode = root.querySelector(DOM_PRICE_SELECTOR);
+  const text = priceNode?.textContent ?? "";
+
+  const [last] = (text.match(/[\d,.]+/g) || []).map(coerceNumber).filter((value) => value !== null);
+
+  return last !== undefined ? normalizePriceRecord({ last }) : null;
+}
+
 export function extractPriceInfoFromPage(html) {
   const parsed = extractJsonFromNextData(html);
-  if (!parsed) return null;
+  if (parsed) {
+    const rawPrice = searchForPriceObject(parsed);
+    const normalized = normalizePriceRecord(rawPrice);
+    if (normalized) return normalized;
+  }
 
-  const rawPrice = searchForPriceObject(parsed);
-  return normalizePriceRecord(rawPrice);
+  return extractPriceInfoFromDom();
 }

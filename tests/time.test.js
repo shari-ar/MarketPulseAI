@@ -2,12 +2,12 @@ const { test, describe } = require("node:test");
 const assert = require("assert");
 
 describe("market time utilities", () => {
-  test("locks before 13:00 Asia/Tehran and unlocks afterward", async () => {
+  test("locks before 08:00 Asia/Tehran and unlocks afterward", async () => {
     const { isBeforeMarketClose } = await import("../extension/time.js");
 
-    const beforeClose = new Date(Date.UTC(2024, 0, 1, 9, 0)); // 12:30 in Asia/Tehran
-    const atClose = new Date(Date.UTC(2024, 0, 1, 9, 30)); // 13:00 in Asia/Tehran
-    const afterClose = new Date(Date.UTC(2024, 0, 1, 10, 0)); // 13:30 in Asia/Tehran
+    const beforeClose = new Date(Date.UTC(2024, 0, 1, 4, 0)); // 07:30 in Asia/Tehran
+    const atClose = new Date(Date.UTC(2024, 0, 1, 4, 30)); // 08:00 in Asia/Tehran
+    const afterClose = new Date(Date.UTC(2024, 0, 1, 5, 0)); // 08:30 in Asia/Tehran
 
     assert.strictEqual(isBeforeMarketClose(beforeClose), true);
     assert.strictEqual(isBeforeMarketClose(atClose), false);

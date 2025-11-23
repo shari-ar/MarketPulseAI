@@ -3,7 +3,7 @@ const dotenv = require("dotenv");
 
 const DEFAULTS = {
   tsetmcBaseUrl: "https://www.tsetmc.com",
-  marketCloseTime: "13:00",
+  marketCloseTime: "08:00",
   marketTimezone: "Asia/Tehran",
   dexieDbName: "marketpulseai",
   dexieDbVersion: 2,

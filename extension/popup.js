@@ -198,21 +198,36 @@ function renderPagePrices({ price, title }) {
   pagePriceValues.last.textContent = formatPrice(price.last);
 }
 
-async function loadPagePrices() {
-  resetPagePrices("Checking active tab...");
-  const tab = await queryActiveTab();
+const PAGE_PRICE_RETRY_LIMIT = 3;
+const PAGE_PRICE_RETRY_DELAY_MS = 1500;
+
+async function loadPagePrices({ attempt = 1, tabId } = {}) {
+  if (attempt === 1) {
+    resetPagePrices("Checking active tab...");
+  }
+
+  const tab = tabId ? { id: tabId } : await queryActiveTab();
   if (!tab) {
     resetPagePrices("Open a tsetmc.com symbol page to view live prices.");
     return;
   }
 
   const response = await sendMessageToTab(tab.id, { type: "SCRAPE_PAGE_PRICE" });
-  if (!response || response.status !== "ok") {
-    resetPagePrices("No price data found on this page.");
+  if (response?.status === "ok") {
+    renderPagePrices(response);
     return;
   }
 
-  renderPagePrices(response);
+  if (attempt < PAGE_PRICE_RETRY_LIMIT) {
+    pagePriceStatus.textContent = "Waiting for live price data...";
+    setTimeout(
+      () => loadPagePrices({ attempt: attempt + 1, tabId: tab.id }),
+      PAGE_PRICE_RETRY_DELAY_MS
+    );
+    return;
+  }
+
+  resetPagePrices("No price data found on this page.");
 }
 
 async function loadCompanyList() {

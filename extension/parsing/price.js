@@ -1,6 +1,5 @@
 const NEXT_DATA_SCRIPT_REGEX = /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i;
-const DOM_PRICE_SELECTOR =
-  "body > div > div > div:nth-child(2) > div:nth-child(3) > div:nth-child(3) > div:nth-child(1) > div:nth-child(2)";
+const DOM_PRICE_SELECTOR = "#TopBox > div.box2.zi1";
 
 function coerceNumber(value) {
   if (value === undefined || value === null) return null;

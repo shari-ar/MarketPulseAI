@@ -48,3 +48,8 @@ export function currentMarketTimestamp(now = new Date()) {
     `T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`
   );
 }
+
+export function currentMarketDate(now = new Date()) {
+  const { year, month, day } = extractMarketParts(now);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}

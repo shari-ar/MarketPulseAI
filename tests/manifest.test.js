@@ -25,7 +25,7 @@ describe("extension manifest", () => {
   });
 
   it("declares the permissions needed for tab navigation", () => {
-    assert.deepStrictEqual(manifest.permissions, ["tabs"]);
+    assert.deepStrictEqual(manifest.permissions, ["tabs", "scripting"]);
     assert.deepStrictEqual(manifest.host_permissions, ["https://*.tsetmc.com/*"]);
   });
 });

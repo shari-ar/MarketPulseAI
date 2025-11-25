@@ -13,6 +13,26 @@ const htmlTemplate = (pricePayload) => `
 </html>
 `;
 
+const topBoxHtml = `
+<div id="TopBox">
+  <div class="box2 zi1">
+    <div class="box6 h80">
+      <table><tbody>
+        <tr><td>آخرین معامله</td><td id="d02"><div><div>19,070&nbsp;&nbsp;<span>550</span></div></div></td></tr>
+        <td>قیمت پایانی</td><td id="d03"><div><div>19,070&nbsp;&nbsp;<span>550</span></div></div></td>
+        <tr><td>اولین قیمت</td><td id="d04"><div><div>19,070</div></div></td></tr>
+        <tr><td>قیمت دیروز</td><td id="d05"><div><div>18,520</div></div></td></tr>
+      </tbody></table>
+    </div>
+    <div class="box6 h80">
+      <table><tbody>
+        <tr><td>بازه روز</td><td><div><div>18,900</div></div></td><td><div><div>19,200</div></div></td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+`;
+
 describe("price extraction", () => {
   it("pulls OHLC values from embedded Next.js data", async () => {
     const { extractPriceInfoFromPage } = await import("../extension/parsing/price.js");
@@ -81,6 +101,20 @@ describe("price extraction", () => {
     const result = extractPriceInfoFromPage(html);
 
     assert.strictEqual(result, null);
+  });
+
+  it("scrapes TopBox HTML when Next.js data is absent", async () => {
+    const { extractPriceInfoFromPage } = await import("../extension/parsing/price.js");
+
+    const result = extractPriceInfoFromPage(topBoxHtml);
+
+    assert.deepStrictEqual(result, {
+      open: 19070,
+      high: 19200,
+      low: 18900,
+      close: 19070,
+      last: 19070,
+    });
   });
 
   it("ignores empty string price values instead of coercing to zero", async () => {

@@ -28,6 +28,47 @@
         <p id="message" class="card__message"></p>
         <button id="ping" class="card__button">Check IndexedDB</button>
       </section>
+
+      <section class="card">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Active tab</p>
+            <h2 id="symbol-heading">Symbol price</h2>
+          </div>
+          <button id="refresh-price" class="card__button">Refresh price</button>
+        </div>
+        <p id="symbol-status" class="card__message"></p>
+        <div class="price-grid" aria-live="polite">
+          <div class="price-chip">
+            <p class="label">Open</p>
+            <p id="price-open" class="value">--</p>
+          </div>
+          <div class="price-chip">
+            <p class="label">High</p>
+            <p id="price-high" class="value">--</p>
+          </div>
+          <div class="price-chip">
+            <p class="label">Low</p>
+            <p id="price-low" class="value">--</p>
+          </div>
+          <div class="price-chip">
+            <p class="label">Close</p>
+            <p id="price-close" class="value">--</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Today</p>
+            <h2>All symbols</h2>
+          </div>
+          <button id="load-today" class="card__button">Show today's prices</button>
+        </div>
+        <p id="today-status" class="card__message"></p>
+        <ul id="today-list" class="symbol-list" aria-live="polite"></ul>
+      </section>
     </main>
     <script type="module" src="popup.js"></script>
   </body>

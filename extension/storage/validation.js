@@ -1,4 +1,4 @@
-const TRADE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIMESTAMP_FIELDS = ["dateTime"];
 
 function isFiniteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -10,84 +10,95 @@ function normalizeTimestamp(value) {
   return Number.isFinite(time) ? date.toISOString() : null;
 }
 
-function isValidTradeDate(tradeDate) {
-  if (!TRADE_DATE_PATTERN.test(tradeDate)) return false;
-  const date = new Date(`${tradeDate}T00:00:00Z`);
-  if (!Number.isFinite(date.getTime())) return false;
-
-  const [year, month, day] = tradeDate.split("-").map(Number);
-  return (
-    date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day
-  );
+function normalizeString(value) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized ? normalized : null;
 }
 
-export function validateOhlcRecord(record) {
+function normalizeNumber(value) {
+  return isFiniteNumber(value) ? value : null;
+}
+
+export function validateSnapshotRecord(record) {
   const errors = [];
 
   if (!record || typeof record !== "object") {
     return { valid: false, errors: ["Record must be an object"] };
   }
 
-  const { symbol, tradeDate, open, high, low, close, collectedAt } = record;
-
-  if (!symbol || typeof symbol !== "string" || !symbol.trim()) {
-    errors.push("symbol is required");
+  const id = normalizeString(record.id);
+  if (!id) {
+    errors.push("id is required");
   }
 
-  if (!tradeDate || typeof tradeDate !== "string" || !isValidTradeDate(tradeDate)) {
-    errors.push("tradeDate must be a real date in YYYY-MM-DD");
-  }
-
-  const numericFields = { open, high, low, close };
-  for (const [field, value] of Object.entries(numericFields)) {
-    if (!isFiniteNumber(value)) {
-      errors.push(`${field} must be a finite number`);
+  for (const field of TIMESTAMP_FIELDS) {
+    if (!normalizeTimestamp(record[field])) {
+      errors.push(`${field} must be a valid timestamp`);
     }
   }
 
-  if (record.volume !== undefined && !isFiniteNumber(record.volume)) {
-    errors.push("volume must be a finite number when provided");
-  }
+  const numericFields = [
+    "lastTrade",
+    "closingPrice",
+    "firstPrice",
+    "tradesCount",
+    "tradingVolume",
+    "tradingValue",
+    "marketValue",
+    "dailyLowRange",
+    "dailyHighRange",
+    "allowedLowPrice",
+    "allowedHighPrice",
+    "shareCount",
+    "baseVolume",
+    "floatingShares",
+    "averageMonthlyVolume",
+    "realBuyVolume",
+    "realSellVolume",
+    "legalBuyVolume",
+    "legalSellVolume",
+    "totalBuyVolume",
+    "totalSellVolume",
+    "realBuyCount",
+    "realSellCount",
+    "legalBuyCount",
+    "legalSellCount",
+    "totalBuyCount",
+    "totalSellCount",
+  ];
 
-  if (isFiniteNumber(low) && isFiniteNumber(high) && low > high) {
-    errors.push("low cannot exceed high");
-  }
-
-  if (isFiniteNumber(open) && isFiniteNumber(low) && open < low) {
-    errors.push("open cannot be below low");
-  }
-
-  if (isFiniteNumber(open) && isFiniteNumber(high) && open > high) {
-    errors.push("open cannot be above high");
-  }
-
-  if (isFiniteNumber(close) && isFiniteNumber(low) && close < low) {
-    errors.push("close cannot be below low");
-  }
-
-  if (isFiniteNumber(close) && isFiniteNumber(high) && close > high) {
-    errors.push("close cannot be above high");
-  }
-
-  if (!normalizeTimestamp(collectedAt)) {
-    errors.push("collectedAt must be a valid timestamp");
+  for (const field of numericFields) {
+    const value = record[field];
+    if (value === undefined || value === null || value === "") continue;
+    if (!isFiniteNumber(value)) {
+      errors.push(`${field} must be a finite number when provided`);
+    }
   }
 
   return { valid: errors.length === 0, errors };
 }
 
-export function assertValidOhlcRecord(record) {
-  const { valid, errors } = validateOhlcRecord(record);
+export function assertValidSnapshotRecord(record) {
+  const { valid, errors } = validateSnapshotRecord(record);
   if (!valid) {
-    throw new Error(`Invalid OHLC record: ${errors.join("; ")}`);
+    throw new Error(`Invalid snapshot record: ${errors.join("; ")}`);
   }
   return record;
 }
 
-export function normalizeCollectedAt(collectedAt) {
-  const normalized = normalizeTimestamp(collectedAt);
+export function normalizeDateTime(dateTime) {
+  const normalized = normalizeTimestamp(dateTime);
   if (!normalized) {
-    throw new Error("Invalid OHLC record: collectedAt must be a valid timestamp");
+    throw new Error("Invalid snapshot record: dateTime must be a valid timestamp");
   }
   return normalized;
+}
+
+export function normalizeText(value) {
+  return normalizeString(value);
+}
+
+export function normalizeNumeric(value) {
+  return normalizeNumber(value);
 }

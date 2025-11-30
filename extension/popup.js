@@ -1,13 +1,15 @@
 import db from "./storage/db.js";
-import { OHLC_TABLE } from "./storage/schema.js";
-import { saveOhlcRecord } from "./storage/writes.js";
+import { SNAPSHOT_TABLE } from "./storage/schema.js";
+import { saveSnapshotRecord } from "./storage/writes.js";
 import {
   formatMarketClock,
   isBeforeMarketClose,
   currentMarketTimestamp,
   currentMarketDate,
+  MARKET_TIMEZONE,
 } from "./time.js";
 import { detectSymbolFromUrl, pickLatestBySymbol } from "./popup-helpers.js";
+import { extractTopBoxSnapshotFromPage } from "./parsing/price.js";
 
 const message = document.getElementById("message");
 const ping = document.getElementById("ping");
@@ -86,97 +88,55 @@ ping.addEventListener("click", async () => {
   message.textContent = `IndexedDB tables: ${tableNames || "none"}`;
 });
 
-function formatPrice(value) {
+function formatNumber(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "--";
   return Number(value).toLocaleString("en-US");
 }
 
-function renderPriceCard({ symbol, open, high, low, close, source }) {
-  symbolHeading.textContent = symbol ? `${symbol} price` : "Symbol price";
+function renderPriceCard({ symbol, snapshot, source }) {
+  symbolHeading.textContent = symbol ? `${symbol} TopBox` : "Symbol snapshot";
   symbolStatus.textContent = source || "";
-  priceOpen.textContent = formatPrice(open);
-  priceHigh.textContent = formatPrice(high);
-  priceLow.textContent = formatPrice(low);
-  priceClose.textContent = formatPrice(close);
+  priceOpen.textContent = formatNumber(snapshot?.lastTrade ?? null);
+  priceHigh.textContent = formatNumber(snapshot?.closingPrice ?? null);
+  priceLow.textContent = formatNumber(snapshot?.firstPrice ?? null);
+  priceClose.textContent = formatNumber(snapshot?.tradingVolume ?? null);
 }
 
-async function loadLatestFromDb(symbol, tradeDate) {
+async function loadLatestFromDb(symbol) {
   if (!symbol) return null;
   await db.open();
-  const matches = await db
-    .table(OHLC_TABLE)
-    .where("[symbol+tradeDate]")
-    .equals([symbol, tradeDate])
-    .toArray();
-
+  const matches = await db.table(SNAPSHOT_TABLE).where("id").equals(symbol).sortBy("dateTime");
   if (!matches.length) return null;
-  const sorted = matches
-    .map((record) => ({ ...record, collectedAt: record.collectedAt ?? null }))
-    .sort((a, b) => {
-      const aTime = a.collectedAt ? new Date(a.collectedAt).getTime() : 0;
-      const bTime = b.collectedAt ? new Date(b.collectedAt).getTime() : 0;
-      return bTime - aTime;
-    });
-  return sorted[0];
+  return matches[matches.length - 1];
 }
 
-async function extractPriceFromTab(tabId) {
+async function extractSnapshotFromTab(tabId) {
   if (!chromeApi?.scripting?.executeScript || !tabId) return null;
 
   const [result] = await chromeApi.scripting.executeScript({
     target: { tabId },
+    func: () => ({
+      html: document.documentElement?.outerHTML ?? "",
+      href: window.location.href,
+    }),
     world: "MAIN",
-    func: () => {
-      function parseNum(text) {
-        if (typeof text !== "string") return null;
-        const cleaned = text.replace(/[^\d.-]/g, "").replace(/\.(?=.*\.)/g, "");
-        if (!cleaned.trim()) return null;
-        const value = Number(cleaned);
-        return Number.isFinite(value) ? value : null;
-      }
-
-      const container = document.querySelector("#TopBox") ?? document;
-      const openText = container.querySelector("#d04")?.textContent ?? null;
-      const closeText = container.querySelector("#d03")?.textContent ?? null;
-      const highNode = Array.from(container.querySelectorAll("td"))
-        .find((cell) => cell.textContent?.includes("بازه روز"))
-        ?.parentElement?.querySelectorAll("div");
-
-      let low = null;
-      let high = null;
-      if (highNode && highNode.length >= 2) {
-        low = parseNum(highNode[0].textContent);
-        high = parseNum(highNode[1].textContent);
-      }
-
-      const price = {
-        open: parseNum(openText),
-        close: parseNum(closeText),
-        low,
-        high,
-      };
-
-      const hasAll = [price.open, price.high, price.low, price.close].every((v) =>
-        Number.isFinite(v)
-      );
-
-      const symbolMatch = window.location.href.match(/\/InstInfo\/([^/?#]+)/i);
-      const symbol = symbolMatch ? decodeURIComponent(symbolMatch[1]) : null;
-
-      return hasAll ? { symbol, price } : { symbol, price: null };
-    },
   });
 
-  return result?.result ?? null;
+  const html = result?.result?.html ?? "";
+  const symbolMatch = (result?.result?.href ?? "").match(/\/InstInfo\/([^/?#]+)/i);
+  const symbol = symbolMatch ? decodeURIComponent(symbolMatch[1]) : null;
+  const snapshot = html ? extractTopBoxSnapshotFromPage(html) : null;
+
+  return { symbol, snapshot };
 }
 
-async function pollForPrice(tabId, { timeoutMs = 5000, intervalMs = 600 } = {}) {
+async function pollForSnapshot(tabId, { timeoutMs = 5000, intervalMs = 600 } = {}) {
   const start = Date.now();
   let last = null;
 
   while (Date.now() - start < timeoutMs) {
-    const snapshot = await extractPriceFromTab(tabId);
-    if (snapshot?.price && snapshot.symbol) return snapshot;
+    const snapshot = await extractSnapshotFromTab(tabId);
+    if (snapshot?.snapshot && snapshot.symbol) return snapshot;
     last = snapshot;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
@@ -184,48 +144,55 @@ async function pollForPrice(tabId, { timeoutMs = 5000, intervalMs = 600 } = {}) 
   return last;
 }
 
-async function saveScrapedPrice(symbol, price) {
-  if (!symbol || !price) return;
+async function saveScrapedSnapshot(symbol, snapshot) {
+  if (!symbol || !snapshot) return;
   if (isBeforeMarketClose()) return;
 
-  await saveOhlcRecord({
-    symbol,
-    tradeDate: currentMarketDate(),
-    open: price.open,
-    high: price.high,
-    low: price.low,
-    close: price.close,
-    collectedAt: new Date().toISOString(),
+  await saveSnapshotRecord({
+    id: symbol,
+    dateTime: new Date().toISOString(),
+    ...snapshot,
   });
+}
+
+function marketDateFromIso(isoString) {
+  const date = new Date(isoString);
+  if (!Number.isFinite(date.getTime())) return null;
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: MARKET_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date);
 }
 
 async function renderActiveTabPrice() {
   symbolStatus.textContent = "Detecting symbol...";
-  renderPriceCard({ symbol: null, open: null, high: null, low: null, close: null });
+  renderPriceCard({ symbol: null, snapshot: null, source: null });
 
   const [tab] = (await queryActiveTab()) || [];
   const symbol = detectSymbolFromUrl(tab?.url ?? "");
 
   if (!symbol) {
-    symbolStatus.textContent = "Open a TSETMC instrument page to view its price.";
+    symbolStatus.textContent = "Open a TSETMC instrument page to view its TopBox.";
     return;
   }
 
-  const tradeDate = currentMarketDate();
-  const fromDb = await loadLatestFromDb(symbol, tradeDate);
+  const fromDb = await loadLatestFromDb(symbol);
   if (fromDb) {
-    renderPriceCard({ ...fromDb, symbol, source: "Loaded from IndexedDB" });
+    renderPriceCard({ symbol, snapshot: fromDb, source: "Loaded from IndexedDB" });
     return;
   }
 
   symbolStatus.textContent = "Scraping this tab...";
-  const snapshot = await pollForPrice(tab?.id, { timeoutMs: 6000, intervalMs: 700 });
-  if (snapshot?.price) {
-    renderPriceCard({ ...snapshot.price, symbol, source: "Captured from page" });
-    await saveScrapedPrice(symbol, snapshot.price);
+  const snapshot = await pollForSnapshot(tab?.id, { timeoutMs: 6000, intervalMs: 700 });
+  if (snapshot?.snapshot) {
+    renderPriceCard({ symbol, snapshot: snapshot.snapshot, source: "Captured from page" });
+    await saveScrapedSnapshot(symbol, snapshot.snapshot);
   } else {
-    renderPriceCard({ symbol, open: null, high: null, low: null, close: null });
-    symbolStatus.textContent = "No TopBox prices found yet. Try again after the page loads.";
+    renderPriceCard({ symbol, snapshot: null, source: null });
+    symbolStatus.textContent = "No TopBox metrics found yet. Try again after the page loads.";
   }
 }
 
@@ -235,11 +202,14 @@ async function loadTodayPrices() {
 
   await db.open();
   const tradeDate = currentMarketDate();
-  const entries = await db.table(OHLC_TABLE).where("tradeDate").equals(tradeDate).toArray();
-  const latestPerSymbol = pickLatestBySymbol(entries);
+  const entries = await db.table(SNAPSHOT_TABLE).toArray();
+  const todaysEntries = entries.filter(
+    (entry) => entry?.dateTime && marketDateFromIso(entry.dateTime) === tradeDate
+  );
+  const latestPerSymbol = pickLatestBySymbol(todaysEntries);
 
   if (!latestPerSymbol.length) {
-    todayStatus.textContent = "No prices stored for today yet.";
+    todayStatus.textContent = "No snapshots stored for today yet.";
     return;
   }
 
@@ -249,16 +219,17 @@ async function loadTodayPrices() {
 
   const fragment = document.createDocumentFragment();
   latestPerSymbol
-    .sort((a, b) => a.symbol.localeCompare(b.symbol))
+    .sort((a, b) => a.id.localeCompare(b.id))
     .forEach((record) => {
       const li = document.createElement("li");
       const symbolSpan = document.createElement("span");
       symbolSpan.className = "symbol";
-      symbolSpan.textContent = record.symbol;
+      symbolSpan.textContent = record.id;
 
       const priceSpan = document.createElement("span");
       priceSpan.className = "price";
-      priceSpan.textContent = formatPrice(record.close ?? record.open);
+      const displayValue = record.closingPrice ?? record.lastTrade ?? record.firstPrice ?? null;
+      priceSpan.textContent = formatNumber(displayValue);
 
       li.appendChild(symbolSpan);
       li.appendChild(priceSpan);

@@ -3,12 +3,12 @@ const { describe, it } = require("node:test");
 
 describe("oldest-first ticker selection", () => {
   const sampleRecords = [
-    { symbol: "AAA", collectedAt: "2024-02-01T00:00:00Z" },
-    { symbol: "BBB", collectedAt: "2024-01-01T00:00:00Z" },
-    { symbol: "AAA", collectedAt: "2024-03-01T00:00:00Z" },
-    { symbol: "CCC" },
-    { symbol: "DDD", collectedAt: "2024-01-05T00:00:00Z" },
-    { symbol: "EEE", collectedAt: "2024-01-07T00:00:00Z" },
+    { id: "AAA", dateTime: "2024-02-01T00:00:00Z" },
+    { id: "BBB", dateTime: "2024-01-01T00:00:00Z" },
+    { id: "AAA", dateTime: "2024-03-01T00:00:00Z" },
+    { id: "CCC" },
+    { id: "DDD", dateTime: "2024-01-05T00:00:00Z" },
+    { id: "EEE", dateTime: "2024-01-07T00:00:00Z" },
   ];
 
   it("picks a deterministic ticker from the 10 oldest symbols", async () => {
@@ -19,7 +19,7 @@ describe("oldest-first ticker selection", () => {
       seed: "deterministic-seed",
     });
 
-    assert.deepStrictEqual(pick, { symbol: "BBB", collectedAt: "2024-01-01T00:00:00Z" });
+    assert.deepStrictEqual(pick, { id: "BBB", dateTime: "2024-01-01T00:00:00Z" });
   });
 
   it("yields the same result with the same seed and different with another", async () => {

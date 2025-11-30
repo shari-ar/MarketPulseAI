@@ -1,5 +1,5 @@
 import db from "./db.js";
-import { OHLC_TABLE } from "./schema.js";
+import { SNAPSHOT_TABLE } from "./schema.js";
 
 const DEFAULT_SEED = "marketpulseai-oldest";
 
@@ -20,9 +20,9 @@ function createSeededRandom(seed = DEFAULT_SEED) {
   };
 }
 
-function normalizeTimestamp(collectedAt) {
-  if (!collectedAt) return Number.NEGATIVE_INFINITY;
-  const value = new Date(collectedAt).getTime();
+function normalizeTimestamp(dateTime) {
+  if (!dateTime) return Number.NEGATIVE_INFINITY;
+  const value = new Date(dateTime).getTime();
   return Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
 }
 
@@ -31,15 +31,15 @@ export function selectTickerFromOldest(
   { sampleSize = 10, seed = DEFAULT_SEED } = {}
 ) {
   const ordered = records
-    .filter((record) => record?.symbol)
+    .filter((record) => record?.id)
     .map((record) => ({
-      symbol: record.symbol,
-      collectedAt: record.collectedAt ?? null,
-      timestamp: normalizeTimestamp(record.collectedAt),
+      id: record.id,
+      dateTime: record.dateTime ?? null,
+      timestamp: normalizeTimestamp(record.dateTime),
     }))
     .sort((a, b) => {
       if (a.timestamp === b.timestamp) {
-        return a.symbol.localeCompare(b.symbol);
+        return a.id.localeCompare(b.id);
       }
       return a.timestamp - b.timestamp;
     });
@@ -48,9 +48,9 @@ export function selectTickerFromOldest(
   const seen = new Set();
 
   for (const entry of ordered) {
-    if (seen.has(entry.symbol)) continue;
-    seen.add(entry.symbol);
-    unique.push({ symbol: entry.symbol, collectedAt: entry.collectedAt });
+    if (seen.has(entry.id)) continue;
+    seen.add(entry.id);
+    unique.push({ id: entry.id, dateTime: entry.dateTime });
     if (unique.length >= sampleSize) break;
   }
 
@@ -66,8 +66,8 @@ export function selectTickerFromOldest(
 export async function chooseOldestTicker({ sampleSize = 10, seed = DEFAULT_SEED } = {}) {
   await db.open();
   const limited = await db
-    .table(OHLC_TABLE)
-    .orderBy("collectedAt")
+    .table(SNAPSHOT_TABLE)
+    .orderBy("dateTime")
     .limit(sampleSize * 3)
     .toArray();
 
@@ -76,6 +76,6 @@ export async function chooseOldestTicker({ sampleSize = 10, seed = DEFAULT_SEED 
     return pick;
   }
 
-  const fullRecords = await db.table(OHLC_TABLE).orderBy("collectedAt").toArray();
+  const fullRecords = await db.table(SNAPSHOT_TABLE).orderBy("dateTime").toArray();
   return selectTickerFromOldest(fullRecords, { sampleSize, seed });
 }

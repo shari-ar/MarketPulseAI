@@ -9,65 +9,45 @@
   <body>
     <main class="panel">
       <header class="panel__header">
-        <div>
-          <p class="eyebrow">Data Collection &amp; Storage</p>
-          <h1>MarketPulseAI</h1>
-        </div>
-        <div class="badge badge--beta">Pre-close lock</div>
+        <h1>MarketPulseAI</h1>
+        <span id="lock-chip" class="lock-chip">--</span>
       </header>
 
-      <section id="lock-banner" class="notice notice--locked">
-        <div class="notice__top">
-          <span id="lock-tag" class="pill pill--locked">Locked</span>
-          <span id="market-clock" class="notice__clock">--:-- Asia/Tehran</span>
-        </div>
-        <p id="lock-copy" class="notice__body"></p>
-      </section>
+      <p id="lock-copy" class="lock-copy"></p>
 
       <section class="card">
-        <p id="message" class="card__message"></p>
-        <button id="ping" class="card__button">Check IndexedDB</button>
+        <div class="card__header">
+          <div>
+            <p class="eyebrow">Active symbol</p>
+            <h2 id="symbol-title">Waiting for a stock page...</h2>
+          </div>
+        </div>
+        <p id="symbol-hint" class="card__message"></p>
+        <table class="detail-table" aria-live="polite">
+          <tbody id="stock-details"></tbody>
+        </table>
       </section>
 
       <section class="card">
         <div class="card__header">
           <div>
-            <p class="eyebrow">Active tab</p>
-            <h2 id="symbol-heading">Symbol snapshot</h2>
+            <p class="eyebrow">Stored symbols</p>
+            <h2>Database overview</h2>
           </div>
-          <button id="refresh-price" class="card__button">Refresh snapshot</button>
+          <button id="show-stored" class="card__button">Show stored symbols</button>
         </div>
-        <p id="symbol-status" class="card__message"></p>
-        <div class="price-grid" aria-live="polite">
-          <div class="price-chip">
-            <p class="label">Last trade</p>
-            <p id="price-open" class="value">--</p>
-          </div>
-          <div class="price-chip">
-            <p class="label">Closing</p>
-            <p id="price-high" class="value">--</p>
-          </div>
-          <div class="price-chip">
-            <p class="label">First price</p>
-            <p id="price-low" class="value">--</p>
-          </div>
-          <div class="price-chip">
-            <p class="label">Volume</p>
-            <p id="price-close" class="value">--</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="card__header">
-          <div>
-            <p class="eyebrow">Today</p>
-            <h2>All symbols</h2>
-          </div>
-          <button id="load-today" class="card__button">Show today's prices</button>
-        </div>
-        <p id="today-status" class="card__message"></p>
-        <ul id="today-list" class="symbol-list" aria-live="polite"></ul>
+        <p id="stored-status" class="card__message"></p>
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Closing</th>
+              <th>Volume</th>
+              <th>Captured</th>
+            </tr>
+          </thead>
+          <tbody id="stored-table"></tbody>
+        </table>
       </section>
     </main>
     <script type="module" src="popup.js"></script>

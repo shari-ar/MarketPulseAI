@@ -5,30 +5,19 @@ import {
   formatMarketClock,
   isBeforeMarketClose,
   currentMarketTimestamp,
-  currentMarketDate,
   MARKET_TIMEZONE,
 } from "./time.js";
 import { detectSymbolFromUrl, pickLatestBySymbol } from "./popup-helpers.js";
 import { extractTopBoxSnapshotFromPage } from "./parsing/price.js";
 
-const message = document.getElementById("message");
-const ping = document.getElementById("ping");
-const lockBanner = document.getElementById("lock-banner");
-const lockTag = document.getElementById("lock-tag");
-const marketClock = document.getElementById("market-clock");
+const lockChip = document.getElementById("lock-chip");
 const lockCopy = document.getElementById("lock-copy");
-
-const symbolHeading = document.getElementById("symbol-heading");
-const symbolStatus = document.getElementById("symbol-status");
-const priceOpen = document.getElementById("price-open");
-const priceHigh = document.getElementById("price-high");
-const priceLow = document.getElementById("price-low");
-const priceClose = document.getElementById("price-close");
-const refreshPrice = document.getElementById("refresh-price");
-
-const todayStatus = document.getElementById("today-status");
-const todayList = document.getElementById("today-list");
-const loadToday = document.getElementById("load-today");
+const symbolTitle = document.getElementById("symbol-title");
+const symbolHint = document.getElementById("symbol-hint");
+const stockDetails = document.getElementById("stock-details");
+const storedStatus = document.getElementById("stored-status");
+const storedTable = document.getElementById("stored-table");
+const showStored = document.getElementById("show-stored");
 
 const chromeApi = globalThis.chrome;
 
@@ -52,54 +41,78 @@ function queryActiveTab() {
 function updateLockState(now = new Date()) {
   const locked = isBeforeMarketClose(now);
   const formattedClock = `${formatMarketClock(now)} Asia/Tehran`;
-
-  marketClock.textContent = formattedClock;
+  lockChip.textContent = locked ? "Locked" : "Unlocked";
+  lockChip.classList.toggle("lock-chip--locked", locked);
+  lockChip.classList.toggle("lock-chip--open", !locked);
 
   if (locked) {
-    lockBanner.classList.add("notice--locked");
-    lockBanner.classList.remove("notice--open");
-    lockTag.textContent = "Locked until 13:00";
-    lockTag.classList.add("pill--locked");
-    lockTag.classList.remove("pill--open");
-    lockCopy.textContent =
-      "Collection is in read-only mode until the market closes at 13:00 Asia/Tehran.";
-    message.textContent = "Hold tight—writes unlock after the closing bell.";
-    ping.disabled = true;
-    ping.setAttribute("aria-disabled", "true");
+    lockCopy.textContent = `Read-only until market close (13:00 ${MARKET_TIMEZONE}). Current time: ${formattedClock}.`;
   } else {
-    lockBanner.classList.remove("notice--locked");
-    lockBanner.classList.add("notice--open");
-    lockTag.textContent = "Unlocked";
-    lockTag.classList.remove("pill--locked");
-    lockTag.classList.add("pill--open");
-    lockCopy.textContent = `Market closed at 13:00 Asia/Tehran. Collection is greenlit as of ${currentMarketTimestamp(now)}.`;
-    message.textContent = "Post-close collection is ready to run.";
-    ping.disabled = false;
-    ping.removeAttribute("aria-disabled");
+    lockCopy.textContent = `Market closed at 13:00 ${MARKET_TIMEZONE}. Writes are open as of ${currentMarketTimestamp(now)}.`;
   }
+
+  return locked;
 }
 
 updateLockState();
 setInterval(() => updateLockState(), 30000);
-
-ping.addEventListener("click", async () => {
-  await db.open();
-  const tableNames = db.tables.map((table) => table.name).join(", ");
-  message.textContent = `IndexedDB tables: ${tableNames || "none"}`;
-});
 
 function formatNumber(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "--";
   return Number(value).toLocaleString("en-US");
 }
 
-function renderPriceCard({ symbol, snapshot, source }) {
-  symbolHeading.textContent = symbol ? `${symbol} TopBox` : "Symbol snapshot";
-  symbolStatus.textContent = source || "";
-  priceOpen.textContent = formatNumber(snapshot?.lastTrade ?? null);
-  priceHigh.textContent = formatNumber(snapshot?.closingPrice ?? null);
-  priceLow.textContent = formatNumber(snapshot?.firstPrice ?? null);
-  priceClose.textContent = formatNumber(snapshot?.tradingVolume ?? null);
+function renderDetailsRows(snapshot) {
+  const rows = [
+    { key: "lastTrade", label: "Last trade" },
+    { key: "closingPrice", label: "Closing price" },
+    { key: "firstPrice", label: "First price" },
+    { key: "tradesCount", label: "Trades" },
+    { key: "tradingVolume", label: "Volume" },
+    { key: "tradingValue", label: "Value" },
+    { key: "marketValue", label: "Market value" },
+    { key: "lastPriceTime", label: "Last price time" },
+    { key: "status", label: "Status" },
+    { key: "dailyLowRange", label: "Daily low" },
+    { key: "dailyHighRange", label: "Daily high" },
+    { key: "allowedLowPrice", label: "Allowed low" },
+    { key: "allowedHighPrice", label: "Allowed high" },
+    { key: "shareCount", label: "Share count" },
+    { key: "baseVolume", label: "Base volume" },
+    { key: "floatingShares", label: "Floating shares" },
+    { key: "averageMonthlyVolume", label: "Avg monthly vol" },
+    { key: "realBuyVolume", label: "Real buy vol" },
+    { key: "legalBuyVolume", label: "Legal buy vol" },
+    { key: "realSellVolume", label: "Real sell vol" },
+    { key: "legalSellVolume", label: "Legal sell vol" },
+    { key: "totalBuyVolume", label: "Total buy vol" },
+    { key: "totalSellVolume", label: "Total sell vol" },
+    { key: "realBuyCount", label: "Real buy count" },
+    { key: "legalBuyCount", label: "Legal buy count" },
+    { key: "realSellCount", label: "Real sell count" },
+    { key: "legalSellCount", label: "Legal sell count" },
+    { key: "totalBuyCount", label: "Total buy count" },
+    { key: "totalSellCount", label: "Total sell count" },
+  ];
+
+  stockDetails.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+
+  rows.forEach(({ key, label }) => {
+    const tr = document.createElement("tr");
+    const labelTd = document.createElement("td");
+    labelTd.textContent = label;
+    const valueTd = document.createElement("td");
+    const value = snapshot ? snapshot[key] : null;
+    const display = typeof value === "string" ? value || "--" : formatNumber(value);
+    valueTd.textContent = display;
+    if (display === "--") valueTd.classList.add("placeholder");
+    tr.appendChild(labelTd);
+    tr.appendChild(valueTd);
+    fragment.appendChild(tr);
+  });
+
+  stockDetails.appendChild(fragment);
 }
 
 async function loadLatestFromDb(symbol) {
@@ -167,79 +180,98 @@ function marketDateFromIso(isoString) {
   return formatter.format(date);
 }
 
-async function renderActiveTabPrice() {
-  symbolStatus.textContent = "Detecting symbol...";
-  renderPriceCard({ symbol: null, snapshot: null, source: null });
-
-  const [tab] = (await queryActiveTab()) || [];
-  const symbol = detectSymbolFromUrl(tab?.url ?? "");
-
-  if (!symbol) {
-    symbolStatus.textContent = "Open a TSETMC instrument page to view its TopBox.";
-    return;
-  }
-
-  const fromDb = await loadLatestFromDb(symbol);
-  if (fromDb) {
-    renderPriceCard({ symbol, snapshot: fromDb, source: "Loaded from IndexedDB" });
-    return;
-  }
-
-  symbolStatus.textContent = "Scraping this tab...";
-  const snapshot = await pollForSnapshot(tab?.id, { timeoutMs: 6000, intervalMs: 700 });
-  if (snapshot?.snapshot) {
-    renderPriceCard({ symbol, snapshot: snapshot.snapshot, source: "Captured from page" });
-    await saveScrapedSnapshot(symbol, snapshot.snapshot);
-  } else {
-    renderPriceCard({ symbol, snapshot: null, source: null });
-    symbolStatus.textContent = "No TopBox metrics found yet. Try again after the page loads.";
-  }
+function renderEmptyState() {
+  symbolHint.textContent = "Open a TSETMC instrument page to capture details.";
+  renderDetailsRows(null);
 }
 
-async function loadTodayPrices() {
-  todayStatus.textContent = "Loading today's captures...";
-  todayList.innerHTML = "";
-
+async function renderStoredSymbols(activeSymbol) {
+  storedStatus.textContent = "Fetching stored symbols...";
+  storedTable.innerHTML = "";
   await db.open();
-  const tradeDate = currentMarketDate();
   const entries = await db.table(SNAPSHOT_TABLE).toArray();
-  const todaysEntries = entries.filter(
-    (entry) => entry?.dateTime && marketDateFromIso(entry.dateTime) === tradeDate
-  );
-  const latestPerSymbol = pickLatestBySymbol(todaysEntries);
-
-  if (!latestPerSymbol.length) {
-    todayStatus.textContent = "No snapshots stored for today yet.";
+  if (!entries.length) {
+    storedStatus.textContent = "No stored symbols yet.";
     return;
   }
 
-  todayStatus.textContent = `Showing ${latestPerSymbol.length} symbol${
+  const latestPerSymbol = pickLatestBySymbol(entries).filter((row) => row.id !== activeSymbol);
+  if (!latestPerSymbol.length) {
+    storedStatus.textContent = "Only the active symbol is stored right now.";
+    return;
+  }
+
+  storedStatus.textContent = `Showing ${latestPerSymbol.length} stored symbol${
     latestPerSymbol.length === 1 ? "" : "s"
-  } for ${tradeDate}.`;
+  }.`;
 
   const fragment = document.createDocumentFragment();
   latestPerSymbol
     .sort((a, b) => a.id.localeCompare(b.id))
-    .forEach((record) => {
-      const li = document.createElement("li");
-      const symbolSpan = document.createElement("span");
-      symbolSpan.className = "symbol";
-      symbolSpan.textContent = record.id;
-
-      const priceSpan = document.createElement("span");
-      priceSpan.className = "price";
-      const displayValue = record.closingPrice ?? record.lastTrade ?? record.firstPrice ?? null;
-      priceSpan.textContent = formatNumber(displayValue);
-
-      li.appendChild(symbolSpan);
-      li.appendChild(priceSpan);
-      fragment.appendChild(li);
+    .forEach((row) => {
+      const tr = document.createElement("tr");
+      const symbolTd = document.createElement("td");
+      symbolTd.textContent = row.id;
+      const closingTd = document.createElement("td");
+      closingTd.textContent = formatNumber(row.closingPrice ?? row.lastTrade ?? null);
+      const volumeTd = document.createElement("td");
+      volumeTd.textContent = formatNumber(row.tradingVolume ?? null);
+      const capturedTd = document.createElement("td");
+      capturedTd.textContent = marketDateFromIso(row.dateTime) ?? "--";
+      tr.append(symbolTd, closingTd, volumeTd, capturedTd);
+      fragment.appendChild(tr);
     });
 
-  todayList.appendChild(fragment);
+  storedTable.appendChild(fragment);
 }
 
-refreshPrice.addEventListener("click", () => renderActiveTabPrice());
-loadToday.addEventListener("click", () => loadTodayPrices());
+async function hydrateActiveSymbol() {
+  symbolTitle.textContent = "Detecting symbol...";
+  symbolHint.textContent = "";
+  renderDetailsRows(null);
 
-renderActiveTabPrice();
+  const [tab] = (await queryActiveTab()) || [];
+  const symbolFromUrl = detectSymbolFromUrl(tab?.url ?? "");
+
+  if (!symbolFromUrl) {
+    symbolTitle.textContent = "No symbol detected";
+    renderEmptyState();
+    return;
+  }
+
+  symbolTitle.textContent = `Symbol: ${symbolFromUrl}`;
+  const latest = await loadLatestFromDb(symbolFromUrl);
+  if (latest) {
+    symbolHint.textContent = "Loaded the latest stored snapshot.";
+    renderDetailsRows(latest);
+  }
+
+  symbolHint.textContent = "Reading live HTML from the active tab...";
+  const scraped = await pollForSnapshot(tab?.id, { timeoutMs: 6000, intervalMs: 700 });
+  const snapshot = scraped?.snapshot ?? null;
+  const resolvedSymbol = scraped?.symbol || symbolFromUrl;
+
+  if (!snapshot) {
+    symbolHint.textContent = "No metrics found on this page yet.";
+    return;
+  }
+
+  symbolTitle.textContent = `Symbol: ${resolvedSymbol || symbolFromUrl}`;
+  renderDetailsRows(snapshot);
+
+  if (isBeforeMarketClose()) {
+    symbolHint.textContent = "Captured from page (read-only until market close).";
+    return;
+  }
+
+  await saveScrapedSnapshot(resolvedSymbol, snapshot);
+  symbolHint.textContent = "Captured from page and stored in the database.";
+}
+
+showStored.addEventListener("click", async () => {
+  const [tab] = (await queryActiveTab()) || [];
+  const symbolFromUrl = detectSymbolFromUrl(tab?.url ?? "");
+  await renderStoredSymbols(symbolFromUrl);
+});
+
+hydrateActiveSymbol();

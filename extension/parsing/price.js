@@ -1,4 +1,3 @@
-const NEXT_DATA_SCRIPT_REGEX = /<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i;
 const INST_INFO_LINK_REGEX = /\/InstInfo\/([^/?#"'\s]+)/i;
 
 function parseNumberFromText(text) {
@@ -9,167 +8,260 @@ function parseNumberFromText(text) {
   return Number.isFinite(value) ? value : null;
 }
 
-function coerceNumber(value) {
+function sumNumbers(values = []) {
+  const numeric = values.filter((value) => typeof value === "number" && Number.isFinite(value));
+  if (!numeric.length) return null;
+  return numeric.reduce((total, value) => total + value, 0);
+}
+
+function coerceText(value) {
   if (value === undefined || value === null) return null;
-  const normalized = String(value).replace(/,/g, "").trim();
-  if (normalized === "") return null;
-  const num = Number(normalized);
-  return Number.isFinite(num) ? num : null;
+  const normalized = String(value).trim();
+  return normalized ? normalized : null;
 }
 
-function coerceTextNumber(value) {
-  if (value === undefined || value === null) return null;
-  const normalized = parseNumberFromText(String(value));
-  return normalized ?? null;
+function extractTextById(html, id) {
+  const regex = new RegExp(`id=["']${id}["'][^>]*>([\\s\\S]*?)<\\/[^>]+>`, "i");
+  const match = html.match(regex);
+  if (!match) return null;
+
+  const content = match[1];
+  const titleMatch = content.match(/title=["']([^"']+)["']/i);
+  if (titleMatch) return titleMatch[1];
+
+  const stripped = content.replace(/<[^>]*>/g, " ").trim();
+  return stripped || null;
 }
 
-function looksLikePriceShape(candidate = {}) {
-  if (!candidate || typeof candidate !== "object") return false;
-  const numericKeys = [
-    "open",
-    "high",
-    "low",
-    "close",
-    "final",
-    "finalPrice",
-    "last",
-    "lastPrice",
-    "priceMin",
-    "priceMax",
-    "priceYesterday",
-  ];
-  return numericKeys.some((key) => candidate[key] !== undefined);
+function parseNumberById(html, id) {
+  return parseNumberFromText(extractTextById(html, id));
 }
 
-function normalizePriceRecord(raw = {}) {
-  if (!raw || typeof raw !== "object") return null;
-  const open = coerceNumber(raw.open ?? raw.priceYesterday);
-  const high = coerceNumber(raw.high ?? raw.priceMax);
-  const low = coerceNumber(raw.low ?? raw.priceMin);
-  const close = coerceNumber(raw.close ?? raw.final ?? raw.finalPrice);
-  const last = coerceNumber(raw.last ?? raw.lastPrice);
+function extractRangePair(html, label) {
+  const regex = new RegExp(
+    `${label}</td>\\s*<td[^>]*>\\s*<div[^>]*>\\s*<div[^>]*>([^<]*)<\\/div>.*?<td[^>]*>\\s*<div[^>]*>\\s*<div[^>]*>([^<]*)`,
+    "i"
+  );
+  const match = html.match(regex);
+  if (!match) return { low: null, high: null };
 
-  const values = { open, high, low, close, last };
-  const hasAny = Object.values(values).some((value) => value !== null);
-  return hasAny ? values : null;
+  const first = parseNumberFromText(match[1]);
+  const second = parseNumberFromText(match[2]);
+  const [low, high] = [first, second].sort((a, b) => {
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return a - b;
+  });
+
+  return { low, high };
 }
 
-function normalizePriceRecordFromText(raw = {}) {
-  if (!raw || typeof raw !== "object") return null;
-  const open = coerceTextNumber(raw.open);
-  const high = coerceTextNumber(raw.high);
-  const low = coerceTextNumber(raw.low);
-  const close = coerceTextNumber(raw.close);
-  const last = coerceTextNumber(raw.last);
+function extractLabeledRowNumber(html, label) {
+  const rowRegex = new RegExp(`${label}</td>\\s*<td[^>]*>([\\s\\S]*?)</td>`, "i");
+  const rowMatch = html.match(rowRegex);
+  if (!rowMatch) return null;
 
-  const values = { open, high, low, close, last };
-  const hasAny = Object.values(values).some((value) => value !== null);
-  return hasAny ? values : null;
-}
-
-function searchForPriceObject(node) {
-  if (!node || typeof node !== "object") return null;
-
-  if (looksLikePriceShape(node)) {
-    return node;
+  const titleMatch = rowMatch[1].match(/title=["']([^"']+)["']/i);
+  if (titleMatch) {
+    const parsed = parseNumberFromText(titleMatch[1]);
+    if (parsed !== null) return parsed;
   }
 
-  for (const value of Object.values(node)) {
-    if (value && typeof value === "object") {
-      const found = searchForPriceObject(value);
-      if (found) return found;
-    }
-  }
-
-  return null;
+  const text = rowMatch[1].replace(/<[^>]*>/g, "");
+  return parseNumberFromText(text);
 }
 
-function extractTopBoxFromDom(root = globalThis.document) {
+function extractCountRow(html, label) {
+  const countsSection = html.split(/تعداد<\/td>\s*<td>خرید<\/td><td>فروش<\/td>/i)[1] ?? html;
+  const regex = new RegExp(
+    `${label}</td>\\s*<td[^>]*>[\\s\\S]*?<div[^>]*>\\s*<div[^>]*>([^<]*)<\\/div>[\\s\\S]*?<td[^>]*>[\\s\\S]*?<div[^>]*>\\s*<div[^>]*>([^<]*)`,
+    "i"
+  );
+  const match = countsSection.match(regex);
+  if (!match) return { buy: null, sell: null };
+  return { buy: parseNumberFromText(match[1]), sell: parseNumberFromText(match[2]) };
+}
+
+export function extractTopBoxSnapshotFromPage(html = "") {
+  if (typeof html !== "string" || !html.trim()) return null;
+
+  const lastTrade = parseNumberById(html, "d02");
+  const closingPrice = parseNumberById(html, "d03");
+  const firstPrice = parseNumberById(html, "d04");
+  const tradesCount = parseNumberById(html, "d08");
+  const tradingVolume = parseNumberById(html, "d09");
+  const tradingValue = parseNumberById(html, "d10");
+  const marketValue = parseNumberById(html, "d11");
+  const lastPriceTime = coerceText(extractTextById(html, "d00"));
+  const status = coerceText(extractTextById(html, "d01"));
+
+  const dayRange = extractRangePair(html, "بازه روز");
+  const { low: dailyLowRange, high: dailyHighRange } = dayRange;
+  const allowedHighPrice = parseNumberById(html, "PRange1");
+  const allowedLowPrice = parseNumberById(html, "PRange2");
+
+  const shareCount = extractLabeledRowNumber(html, "تعداد سهام");
+  const baseVolume = extractLabeledRowNumber(html, "حجم مبنا");
+  const floatingShares = extractLabeledRowNumber(html, "سهام شناور");
+  const averageMonthlyVolume = extractLabeledRowNumber(html, "میانگین حجم ماه");
+
+  const realBuyVolume = parseNumberById(html, "e0");
+  const legalBuyVolume = parseNumberById(html, "e1");
+  const realSellVolume = parseNumberById(html, "e3");
+  const legalSellVolume = parseNumberById(html, "e4");
+
+  const totalBuyVolume = sumNumbers([realBuyVolume, legalBuyVolume]);
+  const totalSellVolume = sumNumbers([realSellVolume, legalSellVolume]);
+
+  const totalCounts = extractCountRow(html, "مجموع");
+  const realCounts = extractCountRow(html, "حقیقی");
+  const legalCounts = extractCountRow(html, "حقوقی");
+
+  const snapshot = {
+    lastTrade,
+    closingPrice,
+    firstPrice,
+    tradesCount,
+    tradingVolume,
+    tradingValue,
+    marketValue,
+    lastPriceTime,
+    status,
+    dailyLowRange,
+    dailyHighRange,
+    allowedLowPrice,
+    allowedHighPrice,
+    shareCount,
+    baseVolume,
+    floatingShares,
+    averageMonthlyVolume,
+    realBuyVolume,
+    realSellVolume,
+    legalBuyVolume,
+    legalSellVolume,
+    totalBuyVolume: Number.isFinite(totalBuyVolume) ? totalBuyVolume : null,
+    totalSellVolume: Number.isFinite(totalSellVolume) ? totalSellVolume : null,
+    realBuyCount: realCounts.buy,
+    realSellCount: realCounts.sell,
+    legalBuyCount: legalCounts.buy,
+    legalSellCount: legalCounts.sell,
+    totalBuyCount: totalCounts.buy,
+    totalSellCount: totalCounts.sell,
+  };
+
+  const hasValues = Object.values(snapshot).some((value) => value !== null && value !== undefined);
+  return hasValues ? snapshot : null;
+}
+
+export function extractTopBoxSnapshotFromDom(root = globalThis.document) {
   if (!root?.querySelector) return null;
   const container = root.querySelector("#TopBox") ?? root;
 
-  const openText = container.querySelector("#d04")?.textContent ?? null;
-  const closeText = container.querySelector("#d03")?.textContent ?? null;
-  const lastText = container.querySelector("#d02")?.textContent ?? null;
+  function textFromId(id) {
+    const node = container.querySelector(`#${id}`);
+    const candidate = node?.getAttribute?.("title") ?? node?.textContent ?? null;
+    return parseNumberFromText(candidate);
+  }
 
-  let rangeLow = null;
-  let rangeHigh = null;
+  function rawTextById(id) {
+    const node = container.querySelector(`#${id}`);
+    if (!node) return null;
+    return node.textContent ? node.textContent.trim() : null;
+  }
+
+  function labeledValue(label) {
+    const cell = Array.from(container.querySelectorAll("td")).find((td) =>
+      td.textContent?.includes(label)
+    );
+    if (!cell?.parentElement) return null;
+    const valueCell = Array.from(cell.parentElement.querySelectorAll("td")).find(
+      (td, idx) => idx > 0
+    );
+    if (!valueCell) return null;
+    const titleText = valueCell.getAttribute?.("title");
+    const parsedTitle = parseNumberFromText(titleText);
+    if (parsedTitle !== null) return parsedTitle;
+    return parseNumberFromText(valueCell.textContent ?? "");
+  }
+
+  function extractCountsRow(label) {
+    const rows = Array.from(container.querySelectorAll("tr"));
+    const target = rows.find((row) => {
+      const cells = Array.from(row.querySelectorAll("td"));
+      return cells.length >= 3 && cells[0].textContent?.trim().includes(label);
+    });
+
+    if (!target) return { buy: null, sell: null };
+    const cells = Array.from(target.querySelectorAll("td"));
+    return {
+      buy: parseNumberFromText(cells[1]?.textContent ?? ""),
+      sell: parseNumberFromText(cells[2]?.textContent ?? ""),
+    };
+  }
 
   const rangeLabel = Array.from(container.querySelectorAll("td")).find((cell) =>
     cell.textContent?.includes("بازه روز")
   );
-
+  let dailyLowRange = null;
+  let dailyHighRange = null;
   if (rangeLabel?.parentElement) {
-    const values = Array.from(rangeLabel.parentElement.querySelectorAll("div"))
-      .map((node) => coerceTextNumber(node.textContent))
+    const numbers = Array.from(rangeLabel.parentElement.querySelectorAll("div"))
+      .map((node) => parseNumberFromText(node.textContent))
       .filter((num) => num !== null);
-
-    if (values.length >= 2) {
-      [rangeLow, rangeHigh] = values;
-    } else if (values.length === 1) {
-      rangeLow = rangeHigh = values[0];
+    if (numbers.length >= 2) {
+      dailyLowRange = Math.min(...numbers);
+      dailyHighRange = Math.max(...numbers);
+    } else if (numbers.length === 1) {
+      dailyLowRange = dailyHighRange = numbers[0];
     }
   }
 
-  return normalizePriceRecordFromText({
-    open: openText,
-    close: closeText,
-    last: lastText,
-    low: rangeLow,
-    high: rangeHigh,
-  });
-}
+  const realCounts = extractCountsRow("حقیقی");
+  const legalCounts = extractCountsRow("حقوقی");
+  const totalCounts = extractCountsRow("مجموع");
 
-function extractTopBoxFromHtml(html) {
-  if (typeof html !== "string") return null;
+  const realBuyVolume = textFromId("e0");
+  const legalBuyVolume = textFromId("e1");
+  const realSellVolume = textFromId("e3");
+  const legalSellVolume = textFromId("e4");
 
-  const openMatch = html.match(/id=["']d04["'][^>]*>\s*<div[^>]*>\s*<div[^>]*>([^<]*)/i);
-  const closeMatch = html.match(/id=["']d03["'][^>]*>\s*<div[^>]*>\s*<div[^>]*>([^<]*)/i);
-  const lastMatch = html.match(/id=["']d02["'][^>]*>\s*<div[^>]*>\s*<div[^>]*>([^<]*)/i);
-  const rangeMatch = html.match(
-    /بازه روز<\/td>\s*<td>\s*<div[^>]*>\s*<div[^>]*>([^<]*)<\/div>\s*<\/div>\s*<\/td>\s*<td>\s*<div[^>]*>\s*<div[^>]*>([^<]*)/i
-  );
+  const totalBuyVolume = sumNumbers([realBuyVolume, legalBuyVolume]);
+  const totalSellVolume = sumNumbers([realSellVolume, legalSellVolume]);
 
-  const open = coerceTextNumber(openMatch?.[1]);
-  const close = coerceTextNumber(closeMatch?.[1]);
-  const last = coerceTextNumber(lastMatch?.[1]);
-  const low = coerceTextNumber(rangeMatch?.[1]);
-  const high = coerceTextNumber(rangeMatch?.[2]);
+  const snapshot = {
+    lastTrade: textFromId("d02"),
+    closingPrice: textFromId("d03"),
+    firstPrice: textFromId("d04"),
+    tradesCount: textFromId("d08"),
+    tradingVolume: textFromId("d09"),
+    tradingValue: textFromId("d10"),
+    marketValue: textFromId("d11"),
+    lastPriceTime: rawTextById("d00"),
+    status: rawTextById("d01"),
+    dailyLowRange,
+    dailyHighRange,
+    allowedLowPrice: textFromId("PRange2"),
+    allowedHighPrice: textFromId("PRange1"),
+    shareCount: labeledValue("تعداد سهام"),
+    baseVolume: labeledValue("حجم مبنا"),
+    floatingShares: labeledValue("سهام شناور"),
+    averageMonthlyVolume: labeledValue("میانگین حجم ماه"),
+    realBuyVolume,
+    realSellVolume,
+    legalBuyVolume,
+    legalSellVolume,
+    totalBuyVolume: Number.isFinite(totalBuyVolume) ? totalBuyVolume : null,
+    totalSellVolume: Number.isFinite(totalSellVolume) ? totalSellVolume : null,
+    realBuyCount: realCounts.buy,
+    realSellCount: realCounts.sell,
+    legalBuyCount: legalCounts.buy,
+    legalSellCount: legalCounts.sell,
+    totalBuyCount: totalCounts.buy,
+    totalSellCount: totalCounts.sell,
+  };
 
-  return normalizePriceRecordFromText({ open, close, last, low, high });
-}
-
-function extractJsonFromNextData(html) {
-  if (typeof html !== "string") return null;
-  const match = html.match(NEXT_DATA_SCRIPT_REGEX);
-  if (!match) return null;
-
-  const jsonText = match[1]?.trim();
-  if (!jsonText) return null;
-
-  try {
-    return JSON.parse(jsonText);
-  } catch (_error) {
-    return null;
-  }
-}
-
-export function extractPriceInfoFromPage(html) {
-  const parsed = extractJsonFromNextData(html);
-  if (parsed) {
-    const rawPrice = searchForPriceObject(parsed);
-    const normalized = normalizePriceRecord(rawPrice);
-    if (normalized) return normalized;
-  }
-
-  const domPrices = extractTopBoxFromHtml(html);
-  if (domPrices) return domPrices;
-
-  return null;
-}
-
-export function extractPriceInfoFromDom(root = globalThis.document) {
-  return extractTopBoxFromDom(root);
+  const hasValues = Object.values(snapshot).some((value) => value !== null && value !== undefined);
+  return hasValues ? snapshot : null;
 }
 
 export function extractSymbolsFromHtml(html = "") {

@@ -1,24 +1,65 @@
 import db from "./db.js";
-import { OHLC_TABLE } from "./schema.js";
-import { assertValidOhlcRecord, normalizeCollectedAt } from "./validation.js";
+import { SNAPSHOT_TABLE } from "./schema.js";
+import {
+  assertValidSnapshotRecord,
+  normalizeDateTime,
+  normalizeNumeric,
+  normalizeText,
+} from "./validation.js";
 
-function buildPayload(record) {
-  const normalizedCollectedAt = normalizeCollectedAt(record.collectedAt);
-  return {
-    symbol: String(record.symbol).trim(),
-    tradeDate: record.tradeDate,
-    open: record.open,
-    high: record.high,
-    low: record.low,
-    close: record.close,
-    volume: record.volume ?? undefined,
-    collectedAt: normalizedCollectedAt,
-  };
+function sumNumbers(...values) {
+  const numeric = values.filter((value) => typeof value === "number" && Number.isFinite(value));
+  if (!numeric.length) return null;
+  return numeric.reduce((total, value) => total + value, 0);
 }
 
-export async function saveOhlcRecord(record, { table } = {}) {
-  assertValidOhlcRecord(record);
-  const targetTable = table ?? db.table(OHLC_TABLE);
+function buildPayload(record) {
+  const normalizedDateTime = normalizeDateTime(record.dateTime);
+
+  const payload = {
+    id: String(record.id).trim(),
+    dateTime: normalizedDateTime,
+    lastTrade: normalizeNumeric(record.lastTrade),
+    closingPrice: normalizeNumeric(record.closingPrice),
+    firstPrice: normalizeNumeric(record.firstPrice),
+    tradesCount: normalizeNumeric(record.tradesCount),
+    tradingVolume: normalizeNumeric(record.tradingVolume),
+    tradingValue: normalizeNumeric(record.tradingValue),
+    marketValue: normalizeNumeric(record.marketValue),
+    lastPriceTime: normalizeText(record.lastPriceTime),
+    status: normalizeText(record.status),
+    dailyLowRange: normalizeNumeric(record.dailyLowRange),
+    dailyHighRange: normalizeNumeric(record.dailyHighRange),
+    allowedLowPrice: normalizeNumeric(record.allowedLowPrice),
+    allowedHighPrice: normalizeNumeric(record.allowedHighPrice),
+    shareCount: normalizeNumeric(record.shareCount),
+    baseVolume: normalizeNumeric(record.baseVolume),
+    floatingShares: normalizeNumeric(record.floatingShares),
+    averageMonthlyVolume: normalizeNumeric(record.averageMonthlyVolume),
+    realBuyVolume: normalizeNumeric(record.realBuyVolume),
+    realSellVolume: normalizeNumeric(record.realSellVolume),
+    legalBuyVolume: normalizeNumeric(record.legalBuyVolume),
+    legalSellVolume: normalizeNumeric(record.legalSellVolume),
+    realBuyCount: normalizeNumeric(record.realBuyCount),
+    realSellCount: normalizeNumeric(record.realSellCount),
+    legalBuyCount: normalizeNumeric(record.legalBuyCount),
+    legalSellCount: normalizeNumeric(record.legalSellCount),
+    totalBuyCount: normalizeNumeric(record.totalBuyCount),
+    totalSellCount: normalizeNumeric(record.totalSellCount),
+  };
+
+  const computedTotalBuyVolume = sumNumbers(payload.realBuyVolume, payload.legalBuyVolume);
+  const computedTotalSellVolume = sumNumbers(payload.realSellVolume, payload.legalSellVolume);
+
+  payload.totalBuyVolume = normalizeNumeric(record.totalBuyVolume) ?? computedTotalBuyVolume;
+  payload.totalSellVolume = normalizeNumeric(record.totalSellVolume) ?? computedTotalSellVolume;
+
+  return payload;
+}
+
+export async function saveSnapshotRecord(record, { table } = {}) {
+  assertValidSnapshotRecord(record);
+  const targetTable = table ?? db.table(SNAPSHOT_TABLE);
   const payload = buildPayload(record);
   return targetTable.add(payload);
 }

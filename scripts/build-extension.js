@@ -1,9 +1,10 @@
 const fs = require("fs");
 const path = require("path");
-const { loadEnvConfig } = require("./env-config");
+const { loadEnvConfig, writeRuntimeConfig } = require("./env-config");
 
 const projectRoot = path.resolve(__dirname, "..");
 const config = loadEnvConfig();
+writeRuntimeConfig(config);
 
 const srcDir = path.join(projectRoot, config.extensionSrcDir);
 const distDir = path.join(projectRoot, config.extensionDistDir);

@@ -1,6 +1,27 @@
-export const MARKET_TIMEZONE = "Asia/Tehran";
-export const MARKET_CLOSE_HOUR = 13;
-export const MARKET_CLOSE_MINUTE = 0;
+import { RUNTIME_CONFIG } from "./runtime-config.js";
+
+const DEFAULT_TIMEZONE = "Asia/Tehran";
+const DEFAULT_LOCK_START = { hour: 8, minute: 0 };
+const DEFAULT_LOCK_END = { hour: 13, minute: 0 };
+
+export const MARKET_TIMEZONE = RUNTIME_CONFIG?.MARKET_TIMEZONE || DEFAULT_TIMEZONE;
+
+function parseTime(value, fallback) {
+  if (typeof value !== "string") return fallback;
+  const [hourStr, minuteStr = "0"] = value.split(":");
+  const hour = Number.parseInt(hourStr, 10);
+  const minute = Number.parseInt(minuteStr, 10);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return fallback;
+  return { hour, minute };
+}
+
+const lockStart = parseTime(RUNTIME_CONFIG?.MARKET_LOCK_START_TIME, DEFAULT_LOCK_START);
+const lockEnd = parseTime(RUNTIME_CONFIG?.MARKET_LOCK_END_TIME, DEFAULT_LOCK_END);
+
+export const MARKET_LOCK_START_HOUR = lockStart.hour;
+export const MARKET_LOCK_START_MINUTE = lockStart.minute;
+export const MARKET_LOCK_END_HOUR = lockEnd.hour;
+export const MARKET_LOCK_END_MINUTE = lockEnd.minute;
 
 function extractMarketParts(now = new Date()) {
   const formatter = new Intl.DateTimeFormat("en-CA", {
@@ -34,11 +55,29 @@ export function formatMarketClock(now = new Date()) {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-export function isBeforeMarketClose(now = new Date()) {
+function isAtOrAfterLockStart(hour, minute) {
+  if (hour > MARKET_LOCK_START_HOUR) return true;
+  if (hour < MARKET_LOCK_START_HOUR) return false;
+  return minute >= MARKET_LOCK_START_MINUTE;
+}
+
+function isBeforeLockEnd(hour, minute) {
+  if (hour < MARKET_LOCK_END_HOUR) return true;
+  if (hour > MARKET_LOCK_END_HOUR) return false;
+  return minute < MARKET_LOCK_END_MINUTE;
+}
+
+export function isWithinMarketLockWindow(now = new Date()) {
   const { hour, minute } = extractMarketParts(now);
-  if (hour < MARKET_CLOSE_HOUR) return true;
-  if (hour > MARKET_CLOSE_HOUR) return false;
-  return minute < MARKET_CLOSE_MINUTE;
+  return isAtOrAfterLockStart(hour, minute) && isBeforeLockEnd(hour, minute);
+}
+
+function formatLockPoint(hour, minute) {
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+export function formatMarketLockWindow() {
+  return `${formatLockPoint(MARKET_LOCK_START_HOUR, MARKET_LOCK_START_MINUTE)}-${formatLockPoint(MARKET_LOCK_END_HOUR, MARKET_LOCK_END_MINUTE)}`;
 }
 
 export function currentMarketTimestamp(now = new Date()) {

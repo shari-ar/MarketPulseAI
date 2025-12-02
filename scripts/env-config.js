@@ -1,9 +1,11 @@
+const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
 
 const DEFAULTS = {
   tsetmcBaseUrl: "https://www.tsetmc.com",
-  marketCloseTime: "13:00",
+  marketLockStartTime: "08:00",
+  marketLockEndTime: "13:00",
   marketTimezone: "Asia/Tehran",
   dexieDbName: "marketpulseai",
   dexieDbVersion: 2,
@@ -22,7 +24,8 @@ function loadEnvConfig() {
 
   return {
     tsetmcBaseUrl: process.env.TSETMC_BASE_URL || DEFAULTS.tsetmcBaseUrl,
-    marketCloseTime: process.env.MARKET_CLOSE_TIME || DEFAULTS.marketCloseTime,
+    marketLockStartTime: process.env.MARKET_LOCK_START_TIME || DEFAULTS.marketLockStartTime,
+    marketLockEndTime: process.env.MARKET_LOCK_END_TIME || DEFAULTS.marketLockEndTime,
     marketTimezone: process.env.MARKET_TIMEZONE || DEFAULTS.marketTimezone,
     dexieDbName: process.env.DEXIE_DB_NAME || DEFAULTS.dexieDbName,
     dexieDbVersion: parseIntOrDefault(process.env.DEXIE_DB_VERSION, DEFAULTS.dexieDbVersion),
@@ -31,4 +34,18 @@ function loadEnvConfig() {
   };
 }
 
-module.exports = { loadEnvConfig, DEFAULTS };
+function writeRuntimeConfig(
+  config,
+  destination = path.resolve(__dirname, "../extension/runtime-config.js")
+) {
+  const runtimeConfig = {
+    MARKET_TIMEZONE: config.marketTimezone,
+    MARKET_LOCK_START_TIME: config.marketLockStartTime,
+    MARKET_LOCK_END_TIME: config.marketLockEndTime,
+  };
+
+  const contents = `export const RUNTIME_CONFIG = ${JSON.stringify(runtimeConfig, null, 2)};\n`;
+  fs.writeFileSync(destination, contents);
+}
+
+module.exports = { loadEnvConfig, writeRuntimeConfig, DEFAULTS };

@@ -3,7 +3,8 @@ import { SNAPSHOT_TABLE } from "./storage/schema.js";
 import { saveSnapshotRecord } from "./storage/writes.js";
 import {
   formatMarketClock,
-  isBeforeMarketClose,
+  isWithinMarketLockWindow,
+  formatMarketLockWindow,
   currentMarketTimestamp,
   MARKET_TIMEZONE,
 } from "./time.js";
@@ -39,16 +40,16 @@ function queryActiveTab() {
 }
 
 function updateLockState(now = new Date()) {
-  const locked = isBeforeMarketClose(now);
+  const locked = isWithinMarketLockWindow(now);
   const formattedClock = `${formatMarketClock(now)} Asia/Tehran`;
   lockChip.textContent = locked ? "Locked" : "Unlocked";
   lockChip.classList.toggle("lock-chip--locked", locked);
   lockChip.classList.toggle("lock-chip--open", !locked);
 
   if (locked) {
-    lockCopy.textContent = `Read-only until market close (13:00 ${MARKET_TIMEZONE}). Current time: ${formattedClock}.`;
+    lockCopy.textContent = `Read-only during ${formatMarketLockWindow()} ${MARKET_TIMEZONE}. Current time: ${formattedClock}.`;
   } else {
-    lockCopy.textContent = `Market closed at 13:00 ${MARKET_TIMEZONE}. Writes are open as of ${currentMarketTimestamp(now)}.`;
+    lockCopy.textContent = `Lock window (${formatMarketLockWindow()} ${MARKET_TIMEZONE}) has ended. Writes are open as of ${currentMarketTimestamp(now)}.`;
   }
 
   return locked;
@@ -159,7 +160,7 @@ async function pollForSnapshot(tabId, { timeoutMs = 5000, intervalMs = 600 } = {
 
 async function saveScrapedSnapshot(symbol, snapshot) {
   if (!symbol || !snapshot) return;
-  if (isBeforeMarketClose()) return;
+  if (isWithinMarketLockWindow()) return;
 
   await saveSnapshotRecord({
     id: symbol,
@@ -259,8 +260,8 @@ async function hydrateActiveSymbol() {
   symbolTitle.textContent = `Symbol: ${resolvedSymbol || symbolFromUrl}`;
   renderDetailsRows(snapshot);
 
-  if (isBeforeMarketClose()) {
-    symbolHint.textContent = "Captured from page (read-only until market close).";
+  if (isWithinMarketLockWindow()) {
+    symbolHint.textContent = "Captured from page (read-only during lock window).";
     return;
   }
 

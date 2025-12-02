@@ -1,0 +1,5 @@
+export const RUNTIME_CONFIG = {
+  MARKET_TIMEZONE: "Asia/Tehran",
+  MARKET_LOCK_START_TIME: "08:00",
+  MARKET_LOCK_END_TIME: "13:00",
+};

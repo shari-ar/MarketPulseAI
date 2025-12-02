@@ -19,6 +19,38 @@ const stockDetails = document.getElementById("stock-details");
 const storedStatus = document.getElementById("stored-status");
 const downloadStored = document.getElementById("download-stored");
 
+const SNAPSHOT_FIELD_CONFIG = [
+  { key: "lastTrade", label: "Last trade" },
+  { key: "closingPrice", label: "Closing price" },
+  { key: "firstPrice", label: "First price" },
+  { key: "tradesCount", label: "Trades" },
+  { key: "tradingVolume", label: "Volume" },
+  { key: "tradingValue", label: "Value" },
+  { key: "marketValue", label: "Market value" },
+  { key: "lastPriceTime", label: "Last price time" },
+  { key: "status", label: "Status" },
+  { key: "dailyLowRange", label: "Daily low" },
+  { key: "dailyHighRange", label: "Daily high" },
+  { key: "allowedLowPrice", label: "Allowed low" },
+  { key: "allowedHighPrice", label: "Allowed high" },
+  { key: "shareCount", label: "Share count" },
+  { key: "baseVolume", label: "Base volume" },
+  { key: "floatingShares", label: "Floating shares" },
+  { key: "averageMonthlyVolume", label: "Avg monthly vol" },
+  { key: "realBuyVolume", label: "Real buy vol" },
+  { key: "legalBuyVolume", label: "Legal buy vol" },
+  { key: "realSellVolume", label: "Real sell vol" },
+  { key: "legalSellVolume", label: "Legal sell vol" },
+  { key: "totalBuyVolume", label: "Total buy vol" },
+  { key: "totalSellVolume", label: "Total sell vol" },
+  { key: "realBuyCount", label: "Real buy count" },
+  { key: "legalBuyCount", label: "Legal buy count" },
+  { key: "realSellCount", label: "Real sell count" },
+  { key: "legalSellCount", label: "Legal sell count" },
+  { key: "totalBuyCount", label: "Total buy count" },
+  { key: "totalSellCount", label: "Total sell count" },
+];
+
 const chromeApi = globalThis.chrome;
 
 function queryActiveTab() {
@@ -63,42 +95,10 @@ function formatNumber(value) {
 }
 
 function renderDetailsRows(snapshot) {
-  const rows = [
-    { key: "lastTrade", label: "Last trade" },
-    { key: "closingPrice", label: "Closing price" },
-    { key: "firstPrice", label: "First price" },
-    { key: "tradesCount", label: "Trades" },
-    { key: "tradingVolume", label: "Volume" },
-    { key: "tradingValue", label: "Value" },
-    { key: "marketValue", label: "Market value" },
-    { key: "lastPriceTime", label: "Last price time" },
-    { key: "status", label: "Status" },
-    { key: "dailyLowRange", label: "Daily low" },
-    { key: "dailyHighRange", label: "Daily high" },
-    { key: "allowedLowPrice", label: "Allowed low" },
-    { key: "allowedHighPrice", label: "Allowed high" },
-    { key: "shareCount", label: "Share count" },
-    { key: "baseVolume", label: "Base volume" },
-    { key: "floatingShares", label: "Floating shares" },
-    { key: "averageMonthlyVolume", label: "Avg monthly vol" },
-    { key: "realBuyVolume", label: "Real buy vol" },
-    { key: "legalBuyVolume", label: "Legal buy vol" },
-    { key: "realSellVolume", label: "Real sell vol" },
-    { key: "legalSellVolume", label: "Legal sell vol" },
-    { key: "totalBuyVolume", label: "Total buy vol" },
-    { key: "totalSellVolume", label: "Total sell vol" },
-    { key: "realBuyCount", label: "Real buy count" },
-    { key: "legalBuyCount", label: "Legal buy count" },
-    { key: "realSellCount", label: "Real sell count" },
-    { key: "legalSellCount", label: "Legal sell count" },
-    { key: "totalBuyCount", label: "Total buy count" },
-    { key: "totalSellCount", label: "Total sell count" },
-  ];
-
   stockDetails.innerHTML = "";
   const fragment = document.createDocumentFragment();
 
-  rows.forEach(({ key, label }) => {
+  SNAPSHOT_FIELD_CONFIG.forEach(({ key, label }) => {
     const tr = document.createElement("tr");
     const labelTd = document.createElement("td");
     labelTd.textContent = label;
@@ -201,14 +201,27 @@ async function downloadStoredSymbols() {
   }
 
   const sorted = [...latestPerSymbol].sort((a, b) => a.id.localeCompare(b.id));
-  const rows = sorted.map((row) => ({
-    Symbol: row.id,
-    Closing: row.closingPrice ?? row.lastTrade ?? "",
-    Volume: row.tradingVolume ?? "",
-    Captured: marketDateFromIso(row.dateTime) ?? "",
-  }));
+  const columns = [
+    { key: "id", label: "Symbol" },
+    { key: "dateTime", label: "Captured (ISO)" },
+    { key: "capturedDate", label: "Captured (Market date)" },
+    ...SNAPSHOT_FIELD_CONFIG,
+  ];
 
-  const header = Object.keys(rows[0]);
+  const rows = sorted.map((row) =>
+    columns.reduce((acc, { key, label }) => {
+      if (key === "capturedDate") {
+        acc[label] = marketDateFromIso(row.dateTime) ?? "";
+        return acc;
+      }
+
+      const value = row[key];
+      acc[label] = value === null || value === undefined ? "" : value;
+      return acc;
+    }, {})
+  );
+
+  const header = columns.map(({ label }) => label);
   const tableRows = rows
     .map(
       (row) =>

@@ -17,8 +17,7 @@ const symbolTitle = document.getElementById("symbol-title");
 const symbolHint = document.getElementById("symbol-hint");
 const stockDetails = document.getElementById("stock-details");
 const storedStatus = document.getElementById("stored-status");
-const storedTable = document.getElementById("stored-table");
-const showStored = document.getElementById("show-stored");
+const downloadStored = document.getElementById("download-stored");
 
 const chromeApi = globalThis.chrome;
 
@@ -186,9 +185,8 @@ function renderEmptyState() {
   renderDetailsRows(null);
 }
 
-async function renderStoredSymbols(activeSymbol) {
-  storedStatus.textContent = "Fetching stored symbols...";
-  storedTable.innerHTML = "";
+async function downloadStoredSymbols() {
+  storedStatus.textContent = "Preparing stored symbols export...";
   await db.open();
   const entries = await db.table(SNAPSHOT_TABLE).toArray();
   if (!entries.length) {
@@ -196,34 +194,48 @@ async function renderStoredSymbols(activeSymbol) {
     return;
   }
 
-  const latestPerSymbol = pickLatestBySymbol(entries).filter((row) => row.id !== activeSymbol);
+  const latestPerSymbol = pickLatestBySymbol(entries);
   if (!latestPerSymbol.length) {
-    storedStatus.textContent = "Only the active symbol is stored right now.";
+    storedStatus.textContent = "No stored symbols yet.";
     return;
   }
 
-  storedStatus.textContent = `Showing ${latestPerSymbol.length} stored symbol${
-    latestPerSymbol.length === 1 ? "" : "s"
-  }.`;
+  const sorted = [...latestPerSymbol].sort((a, b) => a.id.localeCompare(b.id));
+  const rows = sorted.map((row) => ({
+    Symbol: row.id,
+    Closing: row.closingPrice ?? row.lastTrade ?? "",
+    Volume: row.tradingVolume ?? "",
+    Captured: marketDateFromIso(row.dateTime) ?? "",
+  }));
 
-  const fragment = document.createDocumentFragment();
-  latestPerSymbol
-    .sort((a, b) => a.id.localeCompare(b.id))
-    .forEach((row) => {
-      const tr = document.createElement("tr");
-      const symbolTd = document.createElement("td");
-      symbolTd.textContent = row.id;
-      const closingTd = document.createElement("td");
-      closingTd.textContent = formatNumber(row.closingPrice ?? row.lastTrade ?? null);
-      const volumeTd = document.createElement("td");
-      volumeTd.textContent = formatNumber(row.tradingVolume ?? null);
-      const capturedTd = document.createElement("td");
-      capturedTd.textContent = marketDateFromIso(row.dateTime) ?? "--";
-      tr.append(symbolTd, closingTd, volumeTd, capturedTd);
-      fragment.appendChild(tr);
-    });
+  const header = Object.keys(rows[0]);
+  const tableRows = rows
+    .map(
+      (row) =>
+        `<tr>${header
+          .map(
+            (key) =>
+              `<td>${String(row[key] ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")}</td>`
+          )
+          .join("")}</tr>`
+    )
+    .join("");
 
-  storedTable.appendChild(fragment);
+  const html = `<!doctype html><html><head><meta charset="UTF-8"></head><body><table><thead><tr>${header
+    .map((column) => `<th>${column}</th>`)
+    .join("")}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
+
+  const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `stored-symbols-${new Date().toISOString().slice(0, 10)}.xls`;
+  link.click();
+  URL.revokeObjectURL(url);
+
+  storedStatus.textContent = `Downloaded ${rows.length} stored symbol${rows.length === 1 ? "" : "s"}.`;
 }
 
 async function hydrateActiveSymbol() {
@@ -269,10 +281,6 @@ async function hydrateActiveSymbol() {
   symbolHint.textContent = "Captured from page and stored in the database.";
 }
 
-showStored.addEventListener("click", async () => {
-  const [tab] = (await queryActiveTab()) || [];
-  const symbolFromUrl = detectSymbolFromUrl(tab?.url ?? "");
-  await renderStoredSymbols(symbolFromUrl);
-});
+downloadStored.addEventListener("click", downloadStoredSymbols);
 
 hydrateActiveSymbol();

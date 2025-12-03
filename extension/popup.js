@@ -1,6 +1,7 @@
 import db from "./storage/db.js";
 import { SNAPSHOT_TABLE } from "./storage/schema.js";
 import { saveSnapshotRecord } from "./storage/writes.js";
+import * as XLSX from "./vendor/xlsx.mjs";
 import {
   formatMarketClock,
   isWithinMarketLockWindow,
@@ -222,25 +223,41 @@ async function downloadStoredSymbols() {
   );
 
   const header = columns.map(({ label }) => label);
-  const tableRows = rows
-    .map(
-      (row) =>
-        `<tr>${header
-          .map(
-            (key) =>
-              `<td>${String(row[key] ?? "")
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")}</td>`
-          )
-          .join("")}</tr>`
-    )
-    .join("");
+  const sheetRows = [header, ...rows.map((row) => header.map((label) => row[label] ?? ""))];
 
-  const html = `<!doctype html><html><head><meta charset="UTF-8"></head><body><table><thead><tr>${header
-    .map((column) => `<th>${column}</th>`)
-    .join("")}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet(sheetRows);
 
-  const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+  header.forEach((_, columnIndex) => {
+    const cellRef = XLSX.utils.encode_cell({ c: columnIndex, r: 0 });
+    const cell = worksheet[cellRef];
+    if (cell) {
+      cell.s = {
+        font: { color: { rgb: "FFFFFF" }, bold: true },
+        fill: { patternType: "solid", fgColor: { rgb: "000000" } },
+      };
+    }
+  });
+
+  worksheet["!freeze"] = {
+    xSplit: 0,
+    ySplit: 1,
+    topLeftCell: "A2",
+    activePane: "bottomLeft",
+    state: "frozen",
+  };
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Stored Symbols");
+
+  const arrayBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+    cellStyles: true,
+  });
+
+  const blob = new Blob([arrayBuffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

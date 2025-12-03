@@ -1,6 +1,13 @@
 const TOAST_STYLE_ID = "marketpulseai-toast-style";
 const TOAST_CONTAINER_ID = "marketpulseai-toast-container";
 const DEFAULT_DURATION_MS = 4500;
+const NAVIGATION_BOOTSTRAP_FLAG = "__marketpulseai_navigation_bootstrap__";
+
+function detectSymbolFromUrl(url) {
+  if (typeof url !== "string") return null;
+  const match = url.match(/\/InstInfo\/([^/?#"'\s]+)/i);
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
 function ensureToastStyles() {
   if (document.getElementById(TOAST_STYLE_ID)) return;
@@ -116,6 +123,26 @@ function renderProgressToast({ symbol, summary, remaining }) {
 
 const chromeApi = globalThis.chrome;
 
+function queueSymbolNavigationFromPage() {
+  const runtime = chromeApi?.runtime;
+  if (!runtime?.sendMessage || globalThis[NAVIGATION_BOOTSTRAP_FLAG]) return;
+
+  globalThis[NAVIGATION_BOOTSTRAP_FLAG] = true;
+  const symbolFromUrl = detectSymbolFromUrl(globalThis.location?.href || "");
+
+  const anchors = Array.from(document.querySelectorAll('a[href*="/InstInfo/"]'))
+    .map((anchor) => anchor.getAttribute("href") || anchor.href)
+    .map((href) => detectSymbolFromUrl(href))
+    .filter(Boolean);
+
+  const symbols = [symbolFromUrl, ...anchors].filter(Boolean);
+  if (!symbols.length) return;
+
+  runtime.sendMessage({ type: "NAVIGATE_SYMBOLS", symbols }).catch(() => {
+    globalThis[NAVIGATION_BOOTSTRAP_FLAG] = false;
+  });
+}
+
 if (chromeApi?.runtime?.onMessage) {
   chromeApi.runtime.onMessage.addListener((message) => {
     if (!message?.type) return undefined;
@@ -128,5 +155,13 @@ if (chromeApi?.runtime?.onMessage) {
     }
 
     return undefined;
+  });
+}
+
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  queueSymbolNavigationFromPage();
+} else {
+  document.addEventListener("DOMContentLoaded", queueSymbolNavigationFromPage, {
+    once: true,
   });
 }

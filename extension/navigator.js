@@ -2,6 +2,7 @@ import { TabNavigator } from "./navigation/tabNavigator.js";
 import { extractTopBoxSnapshotFromPage, extractSymbolsFromHtml } from "./parsing/price.js";
 import { findSymbolsMissingToday } from "./storage/selection.js";
 import { saveSnapshotRecord } from "./storage/writes.js";
+import { isWithinMarketLockWindow } from "./time.js";
 
 const chromeApi = globalThis.chrome;
 
@@ -97,6 +98,11 @@ async function capturePriceAndLinks({ symbol, tabId, url }) {
       : [];
 
   if (parsedSnapshot) {
+    if (isWithinMarketLockWindow()) {
+      console.info("Write skipped during market lock window", { symbol, url });
+      return linkedSymbols;
+    }
+
     try {
       await saveSnapshotRecord({
         id: symbol,

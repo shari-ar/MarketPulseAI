@@ -82,6 +82,21 @@ function extractCountRow(html, label) {
   return { buy: parseNumberFromText(match[1]), sell: parseNumberFromText(match[2]) };
 }
 
+function extractSymbolHeader(html) {
+  const headerMatch = html.match(
+    /<div[^>]*class=["'][^"']*header\s+bigheader[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
+  );
+  if (!headerMatch) return { symbolName: null, symbolAbbreviation: null };
+
+  const spanMatches = Array.from(headerMatch[1].matchAll(/<span[^>]*>([^<]*)<\/span>/gi));
+  const [symbolName, symbolAbbreviation] = spanMatches.map((match) => coerceText(match[1]));
+
+  return {
+    symbolName: symbolName || null,
+    symbolAbbreviation: symbolAbbreviation || null,
+  };
+}
+
 export function extractTopBoxSnapshotFromPage(html = "") {
   if (typeof html !== "string" || !html.trim()) return null;
 
@@ -118,6 +133,7 @@ export function extractTopBoxSnapshotFromPage(html = "") {
   const legalCounts = extractCountRow(html, "حقوقی");
 
   const snapshot = {
+    ...extractSymbolHeader(html),
     lastTrade,
     closingPrice,
     firstPrice,
@@ -220,6 +236,15 @@ export function extractTopBoxSnapshotFromDom(root = globalThis.document) {
   const legalCounts = extractCountsRow("حقوقی");
   const totalCounts = extractCountsRow("مجموع");
 
+  const header =
+    root.querySelector("#MainBox > div.header.bigheader") ??
+    root.querySelector("div.header.bigheader");
+  const [symbolName, symbolAbbreviation] = header
+    ? Array.from(header.querySelectorAll("span"))
+        .map((span) => coerceText(span.textContent))
+        .slice(0, 2)
+    : [];
+
   const realBuyVolume = textFromId("e0");
   const legalBuyVolume = textFromId("e1");
   const realSellVolume = textFromId("e3");
@@ -229,6 +254,8 @@ export function extractTopBoxSnapshotFromDom(root = globalThis.document) {
   const totalSellVolume = sumNumbers([realSellVolume, legalSellVolume]);
 
   const snapshot = {
+    symbolName: symbolName || null,
+    symbolAbbreviation: symbolAbbreviation || null,
     lastTrade: textFromId("d02"),
     closingPrice: textFromId("d03"),
     firstPrice: textFromId("d04"),

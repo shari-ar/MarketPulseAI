@@ -19,6 +19,8 @@ function buildPayload(record) {
   const payload = {
     id: String(record.id).trim(),
     dateTime: normalizedDateTime,
+    symbolName: normalizeText(record.symbolName),
+    symbolAbbreviation: normalizeText(record.symbolAbbreviation),
     lastTrade: normalizeNumeric(record.lastTrade),
     closingPrice: normalizeNumeric(record.closingPrice),
     firstPrice: normalizeNumeric(record.firstPrice),

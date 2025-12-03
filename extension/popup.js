@@ -21,6 +21,8 @@ const storedStatus = document.getElementById("stored-status");
 const downloadStored = document.getElementById("download-stored");
 
 const SNAPSHOT_FIELD_CONFIG = [
+  { key: "symbolName", label: "Symbol name" },
+  { key: "symbolAbbreviation", label: "Abbreviation" },
   { key: "lastTrade", label: "Last trade" },
   { key: "closingPrice", label: "Closing price" },
   { key: "firstPrice", label: "First price" },

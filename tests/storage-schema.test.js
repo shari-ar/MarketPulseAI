@@ -13,6 +13,8 @@ describe("Dexie schema", () => {
     assert.deepStrictEqual(Object.keys(schema.SNAPSHOT_FIELDS), [
       "id",
       "dateTime",
+      "symbolName",
+      "symbolAbbreviation",
       "lastTrade",
       "closingPrice",
       "firstPrice",

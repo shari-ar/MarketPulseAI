@@ -92,3 +92,18 @@ export function currentMarketDate(now = new Date()) {
   const { year, month, day } = extractMarketParts(now);
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
+
+export function marketDateFromIso(isoString, timeZone = MARKET_TIMEZONE) {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  if (!Number.isFinite(date.getTime())) return null;
+
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  return formatter.format(date);
+}

@@ -1,5 +1,6 @@
 import { TabNavigator } from "./navigation/tabNavigator.js";
 import { extractTopBoxSnapshotFromPage, extractSymbolsFromHtml } from "./parsing/price.js";
+import { findSymbolsMissingToday } from "./storage/selection.js";
 import { saveSnapshotRecord } from "./storage/writes.js";
 
 const chromeApi = globalThis.chrome;
@@ -9,6 +10,34 @@ const SCRAPE_TIMEOUT_MS = 8000;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeSymbols(symbols = []) {
+  return symbols
+    .filter(Boolean)
+    .map((symbol) => String(symbol).trim())
+    .filter(Boolean);
+}
+
+function buildPendingSymbolsSet(navigatorInstance) {
+  const pending = new Set(normalizeSymbols(navigatorInstance?.queue || []));
+  if (navigatorInstance?.activeSymbol) {
+    pending.add(String(navigatorInstance.activeSymbol));
+  }
+  return pending;
+}
+
+async function enqueueSymbolsMissingToday(navigatorInstance) {
+  const missingToday = normalizeSymbols(await findSymbolsMissingToday());
+  if (!missingToday.length) return 0;
+
+  const pending = buildPendingSymbolsSet(navigatorInstance);
+  const toQueue = missingToday.filter((symbol) => !pending.has(symbol));
+  if (toQueue.length) {
+    navigatorInstance.enqueueSymbols(toQueue);
+  }
+
+  return toQueue.length;
 }
 
 async function extractTopBoxFromTab(tabId) {
@@ -91,6 +120,9 @@ const navigator = new TabNavigator({
     if (Array.isArray(symbols) && symbols.length) {
       navigator.enqueueSymbols(symbols);
     }
+
+    await enqueueSymbolsMissingToday(navigator);
+    navigator.start();
   },
   onProgress: ({ symbol, tabId, completed, total, remaining }) => {
     const summary = total > 0 ? `${completed}/${total}` : `${completed}`;
@@ -120,12 +152,7 @@ const navigator = new TabNavigator({
   },
 });
 
-function normalizeSymbols(symbols = []) {
-  return symbols
-    .filter(Boolean)
-    .map((symbol) => String(symbol).trim())
-    .filter(Boolean);
-}
+enqueueSymbolsMissingToday(navigator).then(() => navigator.start());
 
 if (chromeApi?.runtime?.onMessage) {
   chromeApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -134,7 +161,7 @@ if (chromeApi?.runtime?.onMessage) {
     if (message.type === "NAVIGATE_SYMBOLS") {
       const symbols = normalizeSymbols(message.symbols || []);
       navigator.enqueueSymbols(symbols);
-      navigator.start();
+      enqueueSymbolsMissingToday(navigator).finally(() => navigator.start());
       sendResponse({ status: "queued", pending: navigator.pendingCount });
       return undefined;
     }

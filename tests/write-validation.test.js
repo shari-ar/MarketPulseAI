@@ -4,6 +4,8 @@ const { describe, it } = require("node:test");
 const baseRecord = {
   id: "FOLD",
   dateTime: "2024-06-10T13:00:00Z",
+  symbolName: "بانک ملت",
+  symbolAbbreviation: "وبملت",
   lastTrade: 3566,
   closingPrice: 3549,
   firstPrice: 3507,

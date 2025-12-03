@@ -2,6 +2,9 @@ const assert = require("assert");
 const { describe, it } = require("node:test");
 
 const topBoxHtml = `
+<div id="MainBox">
+  <div class="header bigheader"><span>بانک ملت</span> (<span>وبملت</span>)  - <span>بازار اول (تابلوی اصلی) بورس</span></div>
+</div>
 <div id="TopBox">
   <div id="divSupervision"></div>
   <div class="box2 zi1">
@@ -64,6 +67,8 @@ describe("TopBox extraction", () => {
     const snapshot = extractTopBoxSnapshotFromPage(topBoxHtml);
 
     assert.deepStrictEqual(snapshot, {
+      symbolName: "بانک ملت",
+      symbolAbbreviation: "وبملت",
       lastTrade: 3566,
       closingPrice: 3549,
       firstPrice: 3507,

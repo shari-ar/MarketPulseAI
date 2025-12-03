@@ -8,6 +8,7 @@ import {
   formatMarketLockWindow,
   currentMarketTimestamp,
   MARKET_TIMEZONE,
+  marketDateFromIso,
 } from "./time.js";
 import { detectSymbolFromUrl, pickLatestBySymbol } from "./popup-helpers.js";
 import { extractTopBoxSnapshotFromPage } from "./parsing/price.js";
@@ -169,18 +170,6 @@ async function saveScrapedSnapshot(symbol, snapshot) {
     dateTime: new Date().toISOString(),
     ...snapshot,
   });
-}
-
-function marketDateFromIso(isoString) {
-  const date = new Date(isoString);
-  if (!Number.isFinite(date.getTime())) return null;
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: MARKET_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  return formatter.format(date);
 }
 
 function renderEmptyState() {

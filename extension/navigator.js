@@ -20,6 +20,12 @@ function normalizeSymbols(symbols = []) {
     .filter(Boolean);
 }
 
+function detectSymbolFromUrl(url) {
+  if (typeof url !== "string") return null;
+  const match = url.match(/\/InstInfo\/([^/?#"'\s]+)/i);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function buildPendingSymbolsSet(navigatorInstance) {
   const pending = new Set(normalizeSymbols(navigatorInstance?.queue || []));
   if (navigatorInstance?.activeSymbol) {
@@ -159,6 +165,20 @@ const navigator = new TabNavigator({
 });
 
 enqueueSymbolsMissingToday(navigator).then(() => navigator.start());
+
+if (chromeApi?.tabs?.onUpdated?.addListener) {
+  chromeApi.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+    const url = changeInfo?.url || tab?.url;
+    const status = changeInfo?.status;
+    const symbol = detectSymbolFromUrl(url);
+
+    if (!symbol) return;
+    if (status && status !== "complete") return;
+
+    navigator.enqueueSymbols([symbol]);
+    enqueueSymbolsMissingToday(navigator).finally(() => navigator.start());
+  });
+}
 
 if (chromeApi?.runtime?.onMessage) {
   chromeApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {

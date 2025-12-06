@@ -127,8 +127,7 @@ const chromeApi = globalThis.chrome;
 function queueSymbolNavigationFromPage() {
   const runtime = chromeApi?.runtime;
   const symbols = collectSymbolsFromPage();
-  if (!runtime?.sendMessage || globalThis[NAVIGATION_BOOTSTRAP_FLAG] || !symbols.length)
-    return;
+  if (!runtime?.sendMessage || globalThis[NAVIGATION_BOOTSTRAP_FLAG] || !symbols.length) return;
 
   globalThis[NAVIGATION_BOOTSTRAP_FLAG] = true;
 

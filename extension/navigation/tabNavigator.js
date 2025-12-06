@@ -1,6 +1,6 @@
 const DEFAULT_DELAY_MS = 500;
 const DEFAULT_LOAD_TIMEOUT_MS = 15000;
-const DEFAULT_BASE_URL = "https://www.tsetmc.com/InstInfo/";
+const DEFAULT_BASE_URL = "https://www.tsetmc.com/instInfo/";
 
 function normalizeSymbols(symbols = []) {
   return Array.from(

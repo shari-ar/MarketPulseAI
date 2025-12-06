@@ -56,7 +56,7 @@ async function extractTopBoxFromTab(tabId) {
   const [result] = await chromeApi.scripting.executeScript({
     target: { tabId },
     func: () => {
-      const symbols = Array.from(document.querySelectorAll('a[href*="/InstInfo/"]'))
+      const symbols = Array.from(document.querySelectorAll('a[href*="/instinfo/" i]'))
         .map((anchor) => anchor.getAttribute("href") || anchor.href)
         .map((href) => {
           const match = href?.match(/\/InstInfo\/([^/?#"'\s]+)/i);

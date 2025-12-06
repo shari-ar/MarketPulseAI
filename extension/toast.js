@@ -131,7 +131,7 @@ function queueSymbolNavigationFromPage() {
   globalThis[NAVIGATION_BOOTSTRAP_FLAG] = true;
   const symbolFromUrl = detectSymbolFromUrl(globalThis.location?.href || "");
 
-  const anchors = Array.from(document.querySelectorAll('a[href*="/InstInfo/"]'))
+  const anchors = Array.from(document.querySelectorAll('a[href*="/instinfo/" i]'))
     .map((anchor) => anchor.getAttribute("href") || anchor.href)
     .map((href) => detectSymbolFromUrl(href))
     .filter(Boolean);

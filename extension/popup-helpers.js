@@ -1,6 +1,6 @@
 export function detectSymbolFromUrl(url) {
   if (typeof url !== "string") return null;
-  const match = url.match(/\/InstInfo\/([^/?#]+)/i);
+  const match = url.match(/\/instInfo\/([^/?#]+)/i);
   return match ? decodeURIComponent(match[1]) : null;
 }
 

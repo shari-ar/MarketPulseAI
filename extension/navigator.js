@@ -22,7 +22,7 @@ function normalizeSymbols(symbols = []) {
 
 function detectSymbolFromUrl(url) {
   if (typeof url !== "string") return null;
-  const match = url.match(/\/InstInfo\/([^/?#"'\s]+)/i);
+  const match = url.match(/\/instInfo\/([^/?#"'\s]+)/i);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
@@ -76,7 +76,7 @@ async function extractTopBoxFromTab(tabId) {
       const symbols = Array.from(document.querySelectorAll('a[href*="/instinfo/" i]'))
         .map((anchor) => anchor.getAttribute("href") || anchor.href)
         .map((href) => {
-          const match = href?.match(/\/InstInfo\/([^/?#"'\s]+)/i);
+          const match = href?.match(/\/instInfo\/([^/?#"'\s]+)/i);
           return match ? decodeURIComponent(match[1]) : null;
         })
         .filter(Boolean);

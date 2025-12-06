@@ -6,7 +6,7 @@ const SNAPSHOT_BOOTSTRAP_FLAG = "__marketpulseai_snapshot_bootstrap__";
 
 function detectSymbolFromUrl(url) {
   if (typeof url !== "string") return null;
-  const match = url.match(/\/InstInfo\/([^/?#"'\s]+)/i);
+  const match = url.match(/\/instInfo\/([^/?#"'\s]+)/i);
   return match ? decodeURIComponent(match[1]) : null;
 }
 

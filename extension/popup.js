@@ -140,7 +140,7 @@ async function extractSnapshotFromTab(tabId) {
   });
 
   const html = result?.result?.html ?? "";
-  const symbolMatch = (result?.result?.href ?? "").match(/\/InstInfo\/([^/?#]+)/i);
+  const symbolMatch = (result?.result?.href ?? "").match(/\/instInfo\/([^/?#]+)/i);
   const symbol = symbolMatch ? decodeURIComponent(symbolMatch[1]) : null;
   const snapshot = html ? extractTopBoxSnapshotFromPage(html) : null;
 

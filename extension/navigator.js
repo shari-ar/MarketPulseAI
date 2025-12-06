@@ -185,6 +185,9 @@ if (chromeApi?.tabs?.onUpdated?.addListener) {
     if (!symbol) return;
     if (status && status !== "complete") return;
 
+    const pending = buildPendingSymbolsSet(navigator);
+    if (pending.has(symbol)) return;
+
     navigator.enqueueSymbols([symbol]);
     enqueueSymbolsMissingToday(navigator).finally(() => navigator.start());
   });

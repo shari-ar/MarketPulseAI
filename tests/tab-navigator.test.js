@@ -33,6 +33,30 @@ function createFakeTabsApi() {
   };
 }
 
+function createFakeAlarmsApi() {
+  const emitter = new EventEmitter();
+  const created = [];
+  const cleared = [];
+
+  return {
+    created,
+    cleared,
+    create: (name, info) => {
+      created.push({ name, info });
+    },
+    clear: (name, callback) => {
+      cleared.push(name);
+      if (callback) callback(true);
+      return Promise.resolve(true);
+    },
+    onAlarm: {
+      addListener: (listener) => emitter.on("alarm", listener),
+      removeListener: (listener) => emitter.off("alarm", listener),
+    },
+    emit: (name) => emitter.emit("alarm", { name }),
+  };
+}
+
 describe("TabNavigator", () => {
   it("walks through symbols sequentially", async () => {
     const fakeTabs = createFakeTabsApi();
@@ -113,5 +137,33 @@ describe("TabNavigator", () => {
         { symbol: "CCC", completed: 3, total: 3, remaining: 0 },
       ]
     );
+  });
+
+  it("wakes via alarms when the service worker would otherwise idle", async () => {
+    const fakeTabs = createFakeTabsApi();
+    const fakeAlarms = createFakeAlarmsApi();
+    const { TabNavigator } = await import("../extension/navigation/tabNavigator.js");
+
+    const visited = [];
+    const navigator = new TabNavigator({
+      tabsApi: fakeTabs,
+      alarmsApi: fakeAlarms,
+      delayMs: 100000,
+      onVisit: ({ symbol }) => visited.push(symbol),
+    });
+
+    navigator.enqueueSymbols(["AAA", "BBB"]);
+    await navigator.start();
+
+    const scheduledAlarm = fakeAlarms.created.find(Boolean);
+    if (scheduledAlarm) {
+      fakeAlarms.emit(scheduledAlarm.name);
+    }
+
+    await navigator.whenIdle();
+    navigator.stop();
+
+    assert.deepStrictEqual(visited, ["AAA", "BBB"]);
+    assert.ok(fakeAlarms.cleared.includes(navigator._alarmName));
   });
 });

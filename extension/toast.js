@@ -2,6 +2,7 @@ const TOAST_STYLE_ID = "marketpulseai-toast-style";
 const TOAST_CONTAINER_ID = "marketpulseai-toast-container";
 const DEFAULT_DURATION_MS = 4500;
 const NAVIGATION_BOOTSTRAP_FLAG = "__marketpulseai_navigation_bootstrap__";
+const SNAPSHOT_BOOTSTRAP_FLAG = "__marketpulseai_snapshot_bootstrap__";
 
 function detectSymbolFromUrl(url) {
   if (typeof url !== "string") return null;
@@ -143,6 +144,48 @@ function queueSymbolNavigationFromPage() {
   });
 }
 
+function captureSnapshotFromPage() {
+  const runtime = chromeApi?.runtime;
+  if (!runtime?.sendMessage || globalThis[SNAPSHOT_BOOTSTRAP_FLAG]) return;
+
+  const url = globalThis.location?.href || "";
+  const symbol = detectSymbolFromUrl(url);
+  if (!symbol) return;
+
+  function attemptSend() {
+    const topBox = document.getElementById("TopBox");
+    const hasData = topBox && ["d02", "d03", "d04"].some((id) => {
+      const node = topBox.querySelector(`#${id}`);
+      return node && Boolean(node.textContent?.trim());
+    });
+
+    if (!hasData) return false;
+
+    const html = document.documentElement?.outerHTML ?? "";
+    if (!html.trim()) return false;
+
+    globalThis[SNAPSHOT_BOOTSTRAP_FLAG] = true;
+    runtime
+      .sendMessage({ type: "SAVE_PAGE_SNAPSHOT", url, symbol, html })
+      .catch(() => {
+        globalThis[SNAPSHOT_BOOTSTRAP_FLAG] = false;
+      });
+
+    return true;
+  }
+
+  if (attemptSend()) return;
+
+  const observer = new MutationObserver(() => {
+    if (attemptSend()) {
+      observer.disconnect();
+    }
+  });
+
+  observer.observe(document, { childList: true, subtree: true });
+  setTimeout(() => observer.disconnect(), 8000);
+}
+
 if (chromeApi?.runtime?.onMessage) {
   chromeApi.runtime.onMessage.addListener((message) => {
     if (!message?.type) return undefined;
@@ -160,8 +203,12 @@ if (chromeApi?.runtime?.onMessage) {
 
 if (document.readyState === "complete" || document.readyState === "interactive") {
   queueSymbolNavigationFromPage();
+  captureSnapshotFromPage();
 } else {
   document.addEventListener("DOMContentLoaded", queueSymbolNavigationFromPage, {
+    once: true,
+  });
+  document.addEventListener("DOMContentLoaded", captureSnapshotFromPage, {
     once: true,
   });
 }

@@ -201,6 +201,39 @@ if (chromeApi?.runtime?.onMessage) {
       sendResponse(navigator.state());
     }
 
+    if (message.type === "SAVE_PAGE_SNAPSHOT") {
+      const symbol = detectSymbolFromUrl(message.url || message.symbol || "");
+      const html = message.html || "";
+      if (!symbol || typeof html !== "string" || !html.trim()) {
+        sendResponse({ status: "ignored" });
+        return undefined;
+      }
+
+      const snapshot = extractTopBoxSnapshotFromPage(html);
+      if (!snapshot) {
+        sendResponse({ status: "no_snapshot" });
+        return undefined;
+      }
+
+      if (isWithinMarketLockWindow()) {
+        sendResponse({ status: "locked" });
+        return undefined;
+      }
+
+      saveSnapshotRecord({
+        id: symbol,
+        dateTime: new Date().toISOString(),
+        ...snapshot,
+      })
+        .then(() => sendResponse({ status: "saved" }))
+        .catch((error) => {
+          console.error("Failed to persist page snapshot", error);
+          sendResponse({ status: "error", error: error?.message || String(error) });
+        });
+
+      return true;
+    }
+
     return undefined;
   });
 }

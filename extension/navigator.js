@@ -34,6 +34,26 @@ function buildPendingSymbolsSet(navigatorInstance) {
   return pending;
 }
 
+async function filterSymbolsNotVisitedToday(symbols = [], navigatorInstance) {
+  const pending = buildPendingSymbolsSet(navigatorInstance);
+  const normalized = normalizeSymbols(symbols).filter((symbol) => !pending.has(symbol));
+  if (!normalized.length) return [];
+
+  const checks = await Promise.all(
+    normalized.map(async (symbol) => ({ symbol, visited: await hasVisitedSnapshotForDate(symbol) }))
+  );
+
+  return checks.filter(({ visited }) => !visited).map(({ symbol }) => symbol);
+}
+
+async function queueSymbolsForToday(symbols = [], navigatorInstance) {
+  const toQueue = await filterSymbolsNotVisitedToday(symbols, navigatorInstance);
+  if (toQueue.length) {
+    navigatorInstance.enqueueSymbols(toQueue);
+  }
+  return toQueue;
+}
+
 async function enqueueSymbolsMissingToday(navigatorInstance) {
   const missingToday = normalizeSymbols(await findSymbolsMissingToday());
   if (!missingToday.length) return 0;
@@ -137,7 +157,7 @@ const navigator = new TabNavigator({
     console.debug("Visited symbol", { symbol, url });
     const symbols = await capturePriceAndLinks({ symbol, tabId, url });
     if (Array.isArray(symbols) && symbols.length) {
-      navigator.enqueueSymbols(symbols);
+      await queueSymbolsForToday(symbols, navigator);
     }
 
     await enqueueSymbolsMissingToday(navigator);
@@ -190,8 +210,9 @@ if (chromeApi?.tabs?.onUpdated?.addListener) {
     if (isNavigatorTab && isNavigatorSymbol) return;
     if (pending.has(symbol)) return;
 
-    navigator.enqueueSymbols([symbol]);
-    enqueueSymbolsMissingToday(navigator).finally(() => navigator.start());
+    queueSymbolsForToday([symbol], navigator)
+      .then(() => enqueueSymbolsMissingToday(navigator))
+      .finally(() => navigator.start());
   });
 }
 
@@ -201,10 +222,18 @@ if (chromeApi?.runtime?.onMessage) {
 
     if (message.type === "NAVIGATE_SYMBOLS") {
       const symbols = normalizeSymbols(message.symbols || []);
-      navigator.enqueueSymbols(symbols);
-      enqueueSymbolsMissingToday(navigator).finally(() => navigator.start());
-      sendResponse({ status: "queued", pending: navigator.pendingCount });
-      return undefined;
+      queueSymbolsForToday(symbols, navigator)
+        .then(() => enqueueSymbolsMissingToday(navigator))
+        .then(() => {
+          navigator.start();
+          sendResponse({ status: "queued", pending: navigator.pendingCount });
+        })
+        .catch((error) => {
+          console.error("Failed to queue navigation symbols", error);
+          sendResponse({ status: "error", error: error?.message || String(error) });
+        });
+
+      return true;
     }
 
     if (message.type === "STOP_NAVIGATION") {

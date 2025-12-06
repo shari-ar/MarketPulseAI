@@ -248,6 +248,8 @@ if (chromeApi?.runtime?.onMessage) {
     if (message.type === "SAVE_PAGE_SNAPSHOT") {
       const symbol = detectSymbolFromUrl(message.url || message.symbol || "");
       const html = message.html || "";
+      const symbolsFromMessage = normalizeSymbols(message.symbols || []);
+
       if (!symbol || typeof html !== "string" || !html.trim()) {
         sendResponse({ status: "ignored" });
         return undefined;
@@ -259,23 +261,45 @@ if (chromeApi?.runtime?.onMessage) {
         return undefined;
       }
 
-      if (isWithinMarketLockWindow()) {
-        sendResponse({ status: "locked" });
-        return undefined;
-      }
+      const respondWithNavigation = async (payload) => {
+        try {
+          if (symbolsFromMessage.length) {
+            await queueSymbolsForToday(symbolsFromMessage, navigator);
+          }
+          await enqueueSymbolsMissingToday(navigator);
+          navigator.start();
+        } catch (error) {
+          console.error("Failed to enqueue symbols after snapshot", error);
+        }
 
-      saveSnapshotRecord({
-        id: symbol,
-        dateTime: new Date().toISOString(),
-        ...snapshot,
-      })
-        .then(() => sendResponse({ status: "saved" }))
+        sendResponse(payload);
+      };
+
+      return hasVisitedSnapshotForDate(symbol)
+        .then((visited) => {
+          if (visited) {
+            return respondWithNavigation({ status: "already_saved" });
+          }
+
+          if (isWithinMarketLockWindow()) {
+            return respondWithNavigation({ status: "locked" });
+          }
+
+          return saveSnapshotRecord({
+            id: symbol,
+            dateTime: new Date().toISOString(),
+            ...snapshot,
+          })
+            .then(() => respondWithNavigation({ status: "saved" }))
+            .catch((error) => {
+              console.error("Failed to persist page snapshot", error);
+              sendResponse({ status: "error", error: error?.message || String(error) });
+            });
+        })
         .catch((error) => {
-          console.error("Failed to persist page snapshot", error);
+          console.error("Failed to handle snapshot save", error);
           sendResponse({ status: "error", error: error?.message || String(error) });
         });
-
-      return true;
     }
 
     return undefined;

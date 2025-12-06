@@ -126,9 +126,18 @@ const chromeApi = globalThis.chrome;
 
 function queueSymbolNavigationFromPage() {
   const runtime = chromeApi?.runtime;
-  if (!runtime?.sendMessage || globalThis[NAVIGATION_BOOTSTRAP_FLAG]) return;
+  const symbols = collectSymbolsFromPage();
+  if (!runtime?.sendMessage || globalThis[NAVIGATION_BOOTSTRAP_FLAG] || !symbols.length)
+    return;
 
   globalThis[NAVIGATION_BOOTSTRAP_FLAG] = true;
+
+  runtime.sendMessage({ type: "NAVIGATE_SYMBOLS", symbols }).catch(() => {
+    globalThis[NAVIGATION_BOOTSTRAP_FLAG] = false;
+  });
+}
+
+function collectSymbolsFromPage() {
   const symbolFromUrl = detectSymbolFromUrl(globalThis.location?.href || "");
 
   const anchors = Array.from(document.querySelectorAll('a[href*="/instinfo/" i]'))
@@ -136,12 +145,7 @@ function queueSymbolNavigationFromPage() {
     .map((href) => detectSymbolFromUrl(href))
     .filter(Boolean);
 
-  const symbols = [symbolFromUrl, ...anchors].filter(Boolean);
-  if (!symbols.length) return;
-
-  runtime.sendMessage({ type: "NAVIGATE_SYMBOLS", symbols }).catch(() => {
-    globalThis[NAVIGATION_BOOTSTRAP_FLAG] = false;
-  });
+  return [symbolFromUrl, ...anchors].filter(Boolean);
 }
 
 function captureSnapshotFromPage() {
@@ -167,7 +171,8 @@ function captureSnapshotFromPage() {
     if (!html.trim()) return false;
 
     globalThis[SNAPSHOT_BOOTSTRAP_FLAG] = true;
-    runtime.sendMessage({ type: "SAVE_PAGE_SNAPSHOT", url, symbol, html }).catch(() => {
+    const symbols = collectSymbolsFromPage();
+    runtime.sendMessage({ type: "SAVE_PAGE_SNAPSHOT", url, symbol, html, symbols }).catch(() => {
       globalThis[SNAPSHOT_BOOTSTRAP_FLAG] = false;
     });
 

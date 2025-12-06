@@ -1,9 +1,6 @@
 import { TabNavigator } from "./navigation/tabNavigator.js";
 import { extractTopBoxSnapshotFromPage, extractSymbolsFromHtml } from "./parsing/price.js";
-import {
-  findSymbolsMissingToday,
-  hasVisitedSnapshotForDate,
-} from "./storage/selection.js";
+import { findSymbolsMissingToday, hasVisitedSnapshotForDate } from "./storage/selection.js";
 import { saveSnapshotRecord } from "./storage/writes.js";
 import { isWithinMarketLockWindow } from "./time.js";
 

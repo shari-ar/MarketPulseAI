@@ -154,10 +154,12 @@ function captureSnapshotFromPage() {
 
   function attemptSend() {
     const topBox = document.getElementById("TopBox");
-    const hasData = topBox && ["d02", "d03", "d04"].some((id) => {
-      const node = topBox.querySelector(`#${id}`);
-      return node && Boolean(node.textContent?.trim());
-    });
+    const hasData =
+      topBox &&
+      ["d02", "d03", "d04"].some((id) => {
+        const node = topBox.querySelector(`#${id}`);
+        return node && Boolean(node.textContent?.trim());
+      });
 
     if (!hasData) return false;
 
@@ -165,11 +167,9 @@ function captureSnapshotFromPage() {
     if (!html.trim()) return false;
 
     globalThis[SNAPSHOT_BOOTSTRAP_FLAG] = true;
-    runtime
-      .sendMessage({ type: "SAVE_PAGE_SNAPSHOT", url, symbol, html })
-      .catch(() => {
-        globalThis[SNAPSHOT_BOOTSTRAP_FLAG] = false;
-      });
+    runtime.sendMessage({ type: "SAVE_PAGE_SNAPSHOT", url, symbol, html }).catch(() => {
+      globalThis[SNAPSHOT_BOOTSTRAP_FLAG] = false;
+    });
 
     return true;
   }

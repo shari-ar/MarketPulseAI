@@ -60,6 +60,31 @@ export async function findSymbolsMissingToday(today = currentMarketDate()) {
     .map((record) => record.id);
 }
 
+export async function findLatestSnapshotForSymbol(symbol, { table } = {}) {
+  if (!symbol) return null;
+
+  const trimmed = String(symbol).trim();
+  if (!trimmed) return null;
+
+  const targetTable = table ?? db.table(SNAPSHOT_TABLE);
+  if (!table) {
+    await db.open();
+  }
+
+  const latest = await targetTable.where("id").equals(trimmed).last();
+  return latest ?? null;
+}
+
+export async function hasVisitedSnapshotForDate(
+  symbol,
+  { today = currentMarketDate(), table } = {}
+) {
+  const latest = await findLatestSnapshotForSymbol(symbol, { table });
+  if (!latest?.dateTime) return false;
+
+  return marketDateFromIso(latest.dateTime) === today;
+}
+
 export function selectTickerFromOldest(
   records = [],
   { sampleSize = 10, seed = DEFAULT_SEED } = {}

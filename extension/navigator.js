@@ -1,6 +1,9 @@
 import { TabNavigator } from "./navigation/tabNavigator.js";
 import { extractTopBoxSnapshotFromPage, extractSymbolsFromHtml } from "./parsing/price.js";
-import { findSymbolsMissingToday } from "./storage/selection.js";
+import {
+  findSymbolsMissingToday,
+  hasVisitedSnapshotForDate,
+} from "./storage/selection.js";
 import { saveSnapshotRecord } from "./storage/writes.js";
 import { isWithinMarketLockWindow } from "./time.js";
 
@@ -104,6 +107,13 @@ async function capturePriceAndLinks({ symbol, tabId, url }) {
       : [];
 
   if (parsedSnapshot) {
+    const alreadyCapturedToday = symbol ? await hasVisitedSnapshotForDate(symbol) : false;
+
+    if (alreadyCapturedToday) {
+      console.info("Skipping save; symbol already captured today", { symbol, url });
+      return linkedSymbols;
+    }
+
     if (isWithinMarketLockWindow()) {
       console.info("Write skipped during market lock window", { symbol, url });
       return linkedSymbols;

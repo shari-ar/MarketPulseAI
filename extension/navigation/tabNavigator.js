@@ -48,6 +48,7 @@ function buildSymbolUrl(symbol, baseUrl = DEFAULT_BASE_URL) {
 export class TabNavigator {
   constructor({
     tabsApi = globalThis.chrome?.tabs,
+    alarmsApi = globalThis.chrome?.alarms,
     baseUrl = DEFAULT_BASE_URL,
     delayMs = DEFAULT_DELAY_MS,
     loadTimeoutMs = DEFAULT_LOAD_TIMEOUT_MS,
@@ -56,6 +57,7 @@ export class TabNavigator {
     onProgress = () => {},
   } = {}) {
     this.tabsApi = tabsApi;
+    this.alarmsApi = alarmsApi;
     this.baseUrl = baseUrl;
     this.delayMs = delayMs;
     this.loadTimeoutMs = loadTimeoutMs;
@@ -69,9 +71,14 @@ export class TabNavigator {
     this.activeSymbol = null;
     this.lastVisitedSymbol = null;
     this._timer = null;
+    this._alarmName = `tabNavigator-${Math.random().toString(36).slice(2)}`;
+    this._alarmListener = null;
+    this._processing = false;
     this._idleResolvers = [];
     this.totalCount = 0;
     this.completedCount = 0;
+
+    this._attachAlarmListener();
   }
 
   enqueueSymbols(symbols = []) {
@@ -96,10 +103,7 @@ export class TabNavigator {
     this.lastVisitedSymbol = null;
     this.completedCount = 0;
     this.totalCount = this.queue.length;
-    if (this._timer) {
-      clearTimeout(this._timer);
-      this._timer = null;
-    }
+    this._clearSchedule();
     this._notifyIdle();
   }
 
@@ -136,7 +140,12 @@ export class TabNavigator {
   }
 
   async _processQueue() {
+    if (this._processing) return;
+    this._processing = true;
+    this._clearSchedule();
+
     if (!this.running) {
+      this._processing = false;
       this._notifyIdle();
       return;
     }
@@ -144,6 +153,7 @@ export class TabNavigator {
     const symbol = this.queue.shift();
     if (!symbol) {
       this.running = false;
+      this._processing = false;
       this._notifyIdle();
       return;
     }
@@ -169,11 +179,13 @@ export class TabNavigator {
     if (!this.running || this.queue.length === 0) {
       this.running = this.queue.length > 0;
       this.activeSymbol = null;
+      this._processing = false;
       this._notifyIdle();
       return;
     }
 
-    this._timer = setTimeout(() => this._processQueue(), this.delayMs);
+    this._processing = false;
+    this._scheduleNextTick();
   }
 
   async _visitSymbol(symbol) {
@@ -231,10 +243,52 @@ export class TabNavigator {
     });
   }
 
+  _attachAlarmListener() {
+    if (this._alarmListener || !this.alarmsApi?.onAlarm?.addListener) return;
+
+    this._alarmListener = (alarm) => {
+      if (alarm?.name !== this._alarmName) return;
+      this._processQueue();
+    };
+
+    this.alarmsApi.onAlarm.addListener(this._alarmListener);
+  }
+
+  _clearSchedule() {
+    if (this._timer) {
+      clearTimeout(this._timer);
+      this._timer = null;
+    }
+
+    if (this.alarmsApi?.clear) {
+      try {
+        this.alarmsApi.clear(this._alarmName);
+      } catch (_error) {
+        /* ignore */
+      }
+    }
+  }
+
+  _scheduleNextTick() {
+    this._clearSchedule();
+
+    if (this.alarmsApi?.create) {
+      try {
+        this.alarmsApi.create(this._alarmName, { when: Date.now() + this.delayMs });
+      } catch (_error) {
+        /* ignore */
+      }
+    }
+
+    this._timer = setTimeout(() => this._processQueue(), this.delayMs);
+  }
+
   _notifyIdle() {
     if (this.running || this.queue.length > 0) {
       return;
     }
+
+    this._clearSchedule();
 
     while (this._idleResolvers.length) {
       const resolve = this._idleResolvers.shift();

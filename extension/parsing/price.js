@@ -1,4 +1,4 @@
-const INST_INFO_LINK_REGEX = /\/InstInfo\/([^/?#"'\s]+)/i;
+const INST_INFO_LINK_REGEX = /\/InstInfo\/([^/?#"'\s]+)/gi;
 
 function parseNumberFromText(text) {
   if (typeof text !== "string") return null;

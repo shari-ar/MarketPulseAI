@@ -67,6 +67,7 @@ export class TabNavigator {
     this.running = false;
     this.tabId = null;
     this.activeSymbol = null;
+    this.lastVisitedSymbol = null;
     this._timer = null;
     this._idleResolvers = [];
     this.totalCount = 0;
@@ -92,6 +93,7 @@ export class TabNavigator {
   stop() {
     this.running = false;
     this.activeSymbol = null;
+    this.lastVisitedSymbol = null;
     this.completedCount = 0;
     this.totalCount = this.queue.length;
     if (this._timer) {
@@ -119,6 +121,7 @@ export class TabNavigator {
       pending: [...this.queue],
       tabId: this.tabId,
       activeSymbol: this.activeSymbol,
+      lastVisitedSymbol: this.lastVisitedSymbol,
     };
   }
 
@@ -160,6 +163,7 @@ export class TabNavigator {
     }
 
     this.completedCount += 1;
+    this.lastVisitedSymbol = symbol;
     this._reportProgress({ symbol, tabId: tab?.id ?? null });
 
     if (!this.running || this.queue.length === 0) {

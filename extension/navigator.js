@@ -177,7 +177,7 @@ const navigator = new TabNavigator({
 enqueueSymbolsMissingToday(navigator).then(() => navigator.start());
 
 if (chromeApi?.tabs?.onUpdated?.addListener) {
-  chromeApi.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+  chromeApi.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     const url = changeInfo?.url || tab?.url;
     const status = changeInfo?.status;
     const symbol = detectSymbolFromUrl(url);
@@ -186,6 +186,11 @@ if (chromeApi?.tabs?.onUpdated?.addListener) {
     if (status && status !== "complete") return;
 
     const pending = buildPendingSymbolsSet(navigator);
+    const isNavigatorTab = navigator.tabId !== null && navigator.tabId === tabId;
+    const isNavigatorSymbol =
+      symbol && (navigator.activeSymbol === symbol || navigator.lastVisitedSymbol === symbol);
+
+    if (isNavigatorTab && isNavigatorSymbol) return;
     if (pending.has(symbol)) return;
 
     navigator.enqueueSymbols([symbol]);

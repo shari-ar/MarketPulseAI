@@ -198,9 +198,11 @@ if (chromeApi?.tabs?.onUpdated?.addListener) {
     const url = changeInfo?.url || tab?.url;
     const status = changeInfo?.status;
     const symbol = detectSymbolFromUrl(url);
+    const hasUrlChange = Boolean(changeInfo?.url);
+    const isCompleteStatus = status === "complete" || typeof status === "undefined";
 
     if (!symbol) return;
-    if (status && status !== "complete") return;
+    if (!hasUrlChange && !isCompleteStatus) return;
 
     const pending = buildPendingSymbolsSet(navigator);
     const isNavigatorTab = navigator.tabId !== null && navigator.tabId === tabId;

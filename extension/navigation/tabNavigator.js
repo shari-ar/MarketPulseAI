@@ -66,6 +66,7 @@ export class TabNavigator {
     reuseTab = true,
     onVisit = () => {},
     onProgress = () => {},
+    onError = null,
   } = {}) {
     this.tabsApi = tabsApi;
     this.baseUrl = baseUrl;
@@ -74,6 +75,7 @@ export class TabNavigator {
     this.reuseTab = reuseTab;
     this.onVisit = onVisit;
     this.onProgress = onProgress;
+    this.onError = onError;
 
     this.queue = [];
     this.running = false;
@@ -175,7 +177,7 @@ export class TabNavigator {
         url: buildSymbolUrl(symbol, this.baseUrl),
       });
     } catch (error) {
-      console.error("tab navigation failed", error);
+      this._handleError(error, { symbol });
     }
 
     this.completedCount += 1;
@@ -295,6 +297,19 @@ export class TabNavigator {
       remaining: this.queue.length,
       total,
     });
+  }
+
+  _handleError(error, context) {
+    if (typeof this.onError === "function") {
+      try {
+        this.onError(error, context);
+        return;
+      } catch (handlerError) {
+        console.error("tab navigation error handler failed", handlerError);
+      }
+    }
+
+    console.error("tab navigation failed", error, context);
   }
 }
 

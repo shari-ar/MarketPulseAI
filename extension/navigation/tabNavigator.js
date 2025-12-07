@@ -48,9 +48,9 @@ function buildSymbolUrl(symbol, baseUrl = DEFAULT_BASE_URL) {
 function replaceSymbolInUrl(currentUrl, symbol, baseUrl = DEFAULT_BASE_URL) {
   if (typeof currentUrl === "string" && currentUrl.trim()) {
     const encoded = encodeURIComponent(symbol);
-    const hasInstInfo = /\/instInfo\/[^/?#"'\s]+/i.test(currentUrl);
+    const hasInstInfo = /\/instInfo\/[^/?#"'\s]+(?=[/?#]|$)/i.test(currentUrl);
     if (hasInstInfo) {
-      return currentUrl.replace(/(\/instInfo\/)([^/?#"'\s]+)/i, `$1${encoded}`);
+      return currentUrl.replace(/(\/instInfo\/)([^/?#"'\s]+)(?=[/?#]|$)/i, `$1${encoded}`);
     }
   }
 

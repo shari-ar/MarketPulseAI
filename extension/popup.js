@@ -10,6 +10,7 @@ import {
   MARKET_TIMEZONE,
   marketDateFromIso,
 } from "./time.js";
+import { extractInstInfoSymbol } from "./inst-info.js";
 import { detectSymbolFromUrl, pickLatestBySymbol } from "./popup-helpers.js";
 import { extractTopBoxSnapshotFromPage } from "./parsing/price.js";
 
@@ -140,8 +141,7 @@ async function extractSnapshotFromTab(tabId) {
   });
 
   const html = result?.result?.html ?? "";
-  const symbolMatch = (result?.result?.href ?? "").match(/\/instInfo\/([^/?#]+)/i);
-  const symbol = symbolMatch ? decodeURIComponent(symbolMatch[1]) : null;
+  const symbol = extractInstInfoSymbol(result?.result?.href ?? "");
   const snapshot = html ? extractTopBoxSnapshotFromPage(html) : null;
 
   return { symbol, snapshot };

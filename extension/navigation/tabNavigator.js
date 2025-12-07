@@ -45,10 +45,21 @@ function buildSymbolUrl(symbol, baseUrl = DEFAULT_BASE_URL) {
   return `${baseUrl}${encoded}`;
 }
 
+function replaceSymbolInUrl(currentUrl, symbol, baseUrl = DEFAULT_BASE_URL) {
+  if (typeof currentUrl === "string" && currentUrl.trim()) {
+    const encoded = encodeURIComponent(symbol);
+    const hasInstInfo = /\/instInfo\/[^/?#"'\s]+/i.test(currentUrl);
+    if (hasInstInfo) {
+      return currentUrl.replace(/(\/instInfo\/)([^/?#"'\s]+)/i, `$1${encoded}`);
+    }
+  }
+
+  return buildSymbolUrl(symbol, baseUrl);
+}
+
 export class TabNavigator {
   constructor({
     tabsApi = globalThis.chrome?.tabs,
-    alarmsApi = globalThis.chrome?.alarms,
     baseUrl = DEFAULT_BASE_URL,
     delayMs = DEFAULT_DELAY_MS,
     loadTimeoutMs = DEFAULT_LOAD_TIMEOUT_MS,
@@ -57,7 +68,6 @@ export class TabNavigator {
     onProgress = () => {},
   } = {}) {
     this.tabsApi = tabsApi;
-    this.alarmsApi = alarmsApi;
     this.baseUrl = baseUrl;
     this.delayMs = delayMs;
     this.loadTimeoutMs = loadTimeoutMs;
@@ -71,14 +81,10 @@ export class TabNavigator {
     this.activeSymbol = null;
     this.lastVisitedSymbol = null;
     this._timer = null;
-    this._alarmName = `tabNavigator-${Math.random().toString(36).slice(2)}`;
-    this._alarmListener = null;
     this._processing = false;
     this._idleResolvers = [];
     this.totalCount = 0;
     this.completedCount = 0;
-
-    this._attachAlarmListener();
   }
 
   enqueueSymbols(symbols = []) {
@@ -190,7 +196,7 @@ export class TabNavigator {
 
   async _visitSymbol(symbol) {
     const url = buildSymbolUrl(symbol, this.baseUrl);
-    const tab = await this._createOrReuseTab(url);
+    const tab = await this._createOrReuseTab(symbol, url);
     if (!tab?.id) {
       return tab;
     }
@@ -198,14 +204,23 @@ export class TabNavigator {
     return tab;
   }
 
-  async _createOrReuseTab(url) {
+  async _createOrReuseTab(symbol, url) {
     if (!this.tabsApi) {
       throw new Error("Tabs API not available");
     }
 
     if (this.reuseTab && this.tabId !== null) {
+      let existingTab = null;
+      try {
+        existingTab = await createTabsPromise(this.tabsApi, "get", this.tabId);
+      } catch (_error) {
+        /* reuse falls back to create below */
+      }
+
+      const nextUrl = replaceSymbolInUrl(existingTab?.url, symbol, this.baseUrl);
+
       return createTabsPromise(this.tabsApi, "update", this.tabId, {
-        url,
+        url: nextUrl,
         active: false,
       });
     }
@@ -243,43 +258,15 @@ export class TabNavigator {
     });
   }
 
-  _attachAlarmListener() {
-    if (this._alarmListener || !this.alarmsApi?.onAlarm?.addListener) return;
-
-    this._alarmListener = (alarm) => {
-      if (alarm?.name !== this._alarmName) return;
-      this._processQueue();
-    };
-
-    this.alarmsApi.onAlarm.addListener(this._alarmListener);
-  }
-
   _clearSchedule() {
     if (this._timer) {
       clearTimeout(this._timer);
       this._timer = null;
     }
-
-    if (this.alarmsApi?.clear) {
-      try {
-        this.alarmsApi.clear(this._alarmName);
-      } catch (_error) {
-        /* ignore */
-      }
-    }
   }
 
   _scheduleNextTick() {
     this._clearSchedule();
-
-    if (this.alarmsApi?.create) {
-      try {
-        this.alarmsApi.create(this._alarmName, { when: Date.now() + this.delayMs });
-      } catch (_error) {
-        /* ignore */
-      }
-    }
-
     this._timer = setTimeout(() => this._processQueue(), this.delayMs);
   }
 

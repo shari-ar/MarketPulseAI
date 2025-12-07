@@ -152,6 +152,7 @@ async function capturePriceAndLinks({ symbol, tabId, url }) {
 
 const navigator = new TabNavigator({
   tabsApi: chromeApi?.tabs,
+  delayMs: 10000,
   onVisit: async ({ symbol, url, tabId }) => {
     console.debug("Visited symbol", { symbol, url });
     const symbols = await capturePriceAndLinks({ symbol, tabId, url });
@@ -162,7 +163,7 @@ const navigator = new TabNavigator({
     await enqueueSymbolsMissingToday(navigator);
     navigator.start();
   },
-  onProgress: ({ symbol, tabId, completed, total, remaining }) => {
+  onProgress: ({ symbol, tabId, completed, total, remaining, pendingQueue }) => {
     const summary = total > 0 ? `${completed}/${total}` : `${completed}`;
     const payload = {
       type: "COLLECTION_PROGRESS",
@@ -170,6 +171,7 @@ const navigator = new TabNavigator({
       completed,
       total,
       remaining,
+      queue: pendingQueue,
       summary,
     };
 

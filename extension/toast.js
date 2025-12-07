@@ -113,13 +113,16 @@ function createToast({ title, subtitle, summary, duration = DEFAULT_DURATION_MS 
   setTimeout(() => toast.remove(), duration);
 }
 
-function renderProgressToast({ symbol, summary, remaining }) {
+function renderProgressToast({ symbol, summary, remaining, queue }) {
   const title = symbol ? `Captured ${symbol}` : "Collection batch saved";
   const subtitle = summary ? `Progress ${summary}` : undefined;
   const tail = Number.isFinite(remaining) ? `Remaining ${remaining}` : null;
+  const queueLabel = Array.isArray(queue) && queue.length ? queue.join(", ") : "None";
+  const queueDisplay = `Queue: ${queueLabel}`;
   const mergedSubtitle = tail ? `${subtitle} · ${tail}` : subtitle;
+  const detail = mergedSubtitle ? `${mergedSubtitle} · ${queueDisplay}` : queueDisplay;
 
-  createToast({ title, subtitle: mergedSubtitle, summary });
+  createToast({ title, subtitle: detail, summary: queueDisplay });
 }
 
 const chromeApi = globalThis.chrome;
@@ -195,9 +198,9 @@ if (chromeApi?.runtime?.onMessage) {
     if (!message?.type) return undefined;
 
     if (message.type === "COLLECTION_PROGRESS") {
-      const { symbol, summary, remaining } = message;
+      const { symbol, summary, remaining, queue } = message;
       console.debug("Collection progress", message);
-      renderProgressToast({ symbol, summary, remaining });
+      renderProgressToast({ symbol, summary, remaining, queue });
       return undefined;
     }
 

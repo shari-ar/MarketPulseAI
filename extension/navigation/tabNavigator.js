@@ -296,6 +296,7 @@ export class TabNavigator {
       completed: this.completedCount,
       remaining: this.queue.length,
       total,
+      pendingQueue: [...this.queue],
     });
   }
 

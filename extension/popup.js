@@ -18,6 +18,7 @@ const lockChip = document.getElementById("lock-chip");
 const lockCopy = document.getElementById("lock-copy");
 const symbolTitle = document.getElementById("symbol-title");
 const symbolHint = document.getElementById("symbol-hint");
+const readStatus = document.getElementById("read-status");
 const stockDetails = document.getElementById("stock-details");
 const storedStatus = document.getElementById("stored-status");
 const downloadStored = document.getElementById("download-stored");
@@ -174,6 +175,7 @@ async function saveScrapedSnapshot(symbol, snapshot) {
 
 function renderEmptyState() {
   symbolHint.textContent = "Open a TSETMC instrument page to capture details.";
+  readStatus.textContent = "";
   renderDetailsRows(null);
 }
 
@@ -262,6 +264,7 @@ async function downloadStoredSymbols() {
 async function hydrateActiveSymbol() {
   symbolTitle.textContent = "Detecting symbol...";
   symbolHint.textContent = "";
+  readStatus.textContent = "";
   renderDetailsRows(null);
 
   const [tab] = (await queryActiveTab()) || [];
@@ -281,17 +284,20 @@ async function hydrateActiveSymbol() {
   }
 
   symbolHint.textContent = "Reading live HTML from the active tab...";
+  readStatus.textContent = "";
   const scraped = await pollForSnapshot(tab?.id, { timeoutMs: 6000, intervalMs: 700 });
   const snapshot = scraped?.snapshot ?? null;
   const resolvedSymbol = scraped?.symbol || symbolFromUrl;
 
   if (!snapshot) {
     symbolHint.textContent = "No metrics found on this page yet.";
+    readStatus.textContent = `Finished reading for ${resolvedSymbol || symbolFromUrl}, but no metrics were found.`;
     return;
   }
 
   symbolTitle.textContent = `Symbol: ${resolvedSymbol || symbolFromUrl}`;
   renderDetailsRows(snapshot);
+  readStatus.textContent = `Finished reading information for ${resolvedSymbol || symbolFromUrl}.`;
 
   if (isWithinMarketLockWindow()) {
     symbolHint.textContent = "Captured from page (read-only during lock window).";

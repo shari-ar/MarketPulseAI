@@ -139,6 +139,41 @@ describe("TabNavigator", () => {
     );
   });
 
+  it("routes callback failures through onError without halting the queue", async () => {
+    const fakeTabs = createFakeTabsApi();
+    const { TabNavigator } = await import("../extension/navigation/tabNavigator.js");
+
+    const errors = [];
+    const visited = [];
+    const navigator = new TabNavigator({
+      tabsApi: fakeTabs,
+      delayMs: 0,
+      onVisit: ({ symbol }) => {
+        visited.push(symbol);
+        throw new ReferenceError("alert is not defined");
+      },
+      onError: (error, context) => errors.push({ error, context }),
+    });
+
+    navigator.enqueueSymbols(["AAA", "BBB"]);
+    await navigator.start();
+    await navigator.whenIdle();
+
+    assert.deepStrictEqual(visited, ["AAA", "BBB"]);
+    assert.strictEqual(errors.length, 2);
+    assert.deepStrictEqual(
+      errors.map(({ error, context }) => ({
+        name: error.name,
+        message: error.message,
+        symbol: context.symbol,
+      })),
+      [
+        { name: "ReferenceError", message: "alert is not defined", symbol: "AAA" },
+        { name: "ReferenceError", message: "alert is not defined", symbol: "BBB" },
+      ]
+    );
+  });
+
   it("wakes via alarms when the service worker would otherwise idle", async () => {
     const fakeTabs = createFakeTabsApi();
     const fakeAlarms = createFakeAlarmsApi();

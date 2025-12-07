@@ -7,6 +7,11 @@ describe("detectSymbolFromUrl", () => {
     assert.equal(detectSymbolFromUrl("https://www.tsetmc.com/InstInfo/ABC123"), "ABC123");
   });
 
+  it("extracts symbol when InstInfo path has nested routes", () => {
+    const url = "https://www.tsetmc.com/instInfo/ABC123/depth/orders?tab=details#metrics";
+    assert.equal(detectSymbolFromUrl(url), "ABC123");
+  });
+
   it("returns null when no symbol present", () => {
     assert.equal(detectSymbolFromUrl("https://www.example.com"), null);
   });

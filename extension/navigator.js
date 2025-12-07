@@ -1,4 +1,5 @@
 import { TabNavigator } from "./navigation/tabNavigator.js";
+import { extractInstInfoSymbol } from "./inst-info.js";
 import { extractTopBoxSnapshotFromPage, extractSymbolsFromHtml } from "./parsing/price.js";
 import { findSymbolsMissingToday, hasVisitedSnapshotForDate } from "./storage/selection.js";
 import { saveSnapshotRecord } from "./storage/writes.js";
@@ -21,9 +22,7 @@ function normalizeSymbols(symbols = []) {
 }
 
 function detectSymbolFromUrl(url) {
-  if (typeof url !== "string") return null;
-  const match = url.match(/\/instInfo\/([^/?#"'\s]+)/i);
-  return match ? decodeURIComponent(match[1]) : null;
+  return extractInstInfoSymbol(url);
 }
 
 function buildPendingSymbolsSet(navigatorInstance) {
@@ -76,7 +75,7 @@ async function extractTopBoxFromTab(tabId) {
       const symbols = Array.from(document.querySelectorAll('a[href*="/instinfo/" i]'))
         .map((anchor) => anchor.getAttribute("href") || anchor.href)
         .map((href) => {
-          const match = href?.match(/\/instInfo\/([^/?#"'\s]+)/i);
+          const match = href?.match(/\/instInfo\/([^/?#"'\s]+)(?=[/?#]|$)/i);
           return match ? decodeURIComponent(match[1]) : null;
         })
         .filter(Boolean);

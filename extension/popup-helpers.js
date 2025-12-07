@@ -1,7 +1,7 @@
+import { extractInstInfoSymbol } from "./inst-info.js";
+
 export function detectSymbolFromUrl(url) {
-  if (typeof url !== "string") return null;
-  const match = url.match(/\/instInfo\/([^/?#]+)/i);
-  return match ? decodeURIComponent(match[1]) : null;
+  return extractInstInfoSymbol(url);
 }
 
 export function pickLatestBySymbol(records = []) {

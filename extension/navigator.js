@@ -83,6 +83,50 @@ function dispatchErrorToast(tabId, { title, subtitle }) {
   }
 }
 
+function dispatchAnalysisToast({ title, subtitle, pillColor = "#22c55e" } = {}) {
+  if (!chromeApi?.tabs?.query || !chromeApi?.tabs?.sendMessage) return;
+
+  const targets = { url: ["https://*.tsetmc.com/*"] };
+  const sendToTabs = (tabs = []) => {
+    tabs
+      .filter((tab) => tab?.id)
+      .forEach((tab) => {
+        chromeApi.tabs.sendMessage(
+          tab.id,
+          { type: "ANALYSIS_DEBUG", title, subtitle, pillColor },
+          () => {
+            const runtimeError = chromeApi.runtime?.lastError;
+            if (runtimeError) {
+              console.debug("Analysis toast dispatch skipped", runtimeError.message);
+            }
+          }
+        );
+      });
+  };
+
+  const maybePromise = chromeApi.tabs.query(targets, sendToTabs);
+  if (maybePromise?.then) {
+    maybePromise.then(sendToTabs).catch((error) => {
+      console.debug("Analysis toast query failed", error?.message || String(error));
+    });
+  }
+}
+
+function runAnalysisWithToast(reason = "") {
+  const subtitleParts = [reason.trim()].filter(Boolean);
+  subtitleParts.push(new Date().toLocaleTimeString());
+
+  return Promise.resolve()
+    .then(() => triggerImmediateAnalysis())
+    .then((result) => {
+      dispatchAnalysisToast({
+        title: "Analysis completed",
+        subtitle: subtitleParts.join(" · "),
+      });
+      return result;
+    });
+}
+
 function buildPendingSymbolsSet(navigatorInstance) {
   const pending = new Set(normalizeSymbols(navigatorInstance?.queue || []));
   if (navigatorInstance?.activeSymbol) {
@@ -229,7 +273,7 @@ async function capturePriceAndLinks({ symbol, tabId, url }) {
       ...parsedSnapshot,
     });
     console.info("Saved TopBox snapshot", { symbol, url });
-    triggerImmediateAnalysis().catch((error) =>
+    runAnalysisWithToast("Snapshot saved").catch((error) =>
       console.warn("Immediate analysis trigger failed", error)
     );
   } catch (error) {
@@ -326,7 +370,7 @@ function startAnalysisIfQueued() {
 
   analysisRun = Promise.resolve()
     .then(() => setGlobalStatus(GLOBAL_STATUS.ANALYZING))
-    .then(() => triggerImmediateAnalysis())
+    .then(() => runAnalysisWithToast("Navigation idle"))
     .catch((error) => {
       console.warn("Immediate analysis trigger failed after queue check", error);
     })
@@ -450,7 +494,7 @@ if (chromeApi?.runtime?.onMessage) {
             ...snapshot,
           })
             .then(() =>
-              Promise.resolve(triggerImmediateAnalysis())
+              Promise.resolve(runAnalysisWithToast("Page snapshot saved"))
                 .catch((error) => console.warn("Immediate analysis trigger failed", error))
                 .then(() => respondWithNavigation({ status: "saved" }))
             )

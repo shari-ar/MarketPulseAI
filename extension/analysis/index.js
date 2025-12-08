@@ -1,6 +1,7 @@
 import { normalizePriceArrays } from "./normalize.js";
 import { ensureAnalysisModel } from "./model-loader.js";
 import { createAnalysisProgressModal } from "./progress-modal.js";
+import { rankSwingResults } from "./rank.js";
 
 function chunkArray(items, size) {
   if (!Array.isArray(items) || size <= 0) return [];
@@ -35,7 +36,7 @@ export async function analyzeWithModalProgress(
 
   if (!Array.isArray(normalized) || normalized.length === 0) {
     modal?.complete("No price data to analyze.");
-    return { predictions: [], normalized };
+    return { predictions: [], normalized, ranked: [] };
   }
 
   const batches = chunkArray(normalized, batchSize > 0 ? batchSize : 16);
@@ -66,5 +67,11 @@ export async function analyzeWithModalProgress(
 
   modal?.complete("Analysis finished.");
 
-  return { predictions, normalized };
+  const ranked = rankSwingResults({
+    probabilities: predictions,
+    normalizedInputs: normalized,
+    rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
+  });
+
+  return { predictions, normalized, ranked };
 }

@@ -6,6 +6,7 @@ import { findSymbolsMissingToday, hasVisitedSnapshotForDate } from "./storage/se
 import { saveSnapshotRecord } from "./storage/writes.js";
 import { isWithinMarketLockWindow } from "./time.js";
 import { GLOBAL_STATUS, isValidGlobalStatus } from "./status-bus.js";
+import { triggerImmediateAnalysis } from "./analysis/immediate-analyzer.js";
 
 const chromeApi = globalThis.chrome;
 
@@ -221,6 +222,9 @@ async function capturePriceAndLinks({ symbol, tabId, url }) {
       ...parsedSnapshot,
     });
     console.info("Saved TopBox snapshot", { symbol, url });
+    triggerImmediateAnalysis().catch((error) =>
+      console.warn("Immediate analysis trigger failed", error)
+    );
   } catch (error) {
     console.error("Failed to persist TopBox snapshot", error);
   }
@@ -397,7 +401,11 @@ if (chromeApi?.runtime?.onMessage) {
             dateTime: new Date().toISOString(),
             ...snapshot,
           })
-            .then(() => respondWithNavigation({ status: "saved" }))
+            .then(() =>
+              Promise.resolve(triggerImmediateAnalysis())
+                .catch((error) => console.warn("Immediate analysis trigger failed", error))
+                .then(() => respondWithNavigation({ status: "saved" }))
+            )
             .catch((error) => {
               console.error("Failed to persist page snapshot", error);
               sendResponse({ status: "error", error: error?.message || String(error) });

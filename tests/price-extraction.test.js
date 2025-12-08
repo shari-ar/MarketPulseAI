@@ -106,16 +106,23 @@ describe("TopBox extraction", () => {
     assert.strictEqual(extractTopBoxSnapshotFromPage("<html><body></body></html>"), null);
   });
 
+  it("refuses snapshots missing required fields", async () => {
+    const { extractTopBoxSnapshotFromPage } = await import("../extension/parsing/price.js");
+    const htmlMissingVolume = topBoxHtml.replace(
+      /<td id="d09">[\s\S]*?<\/td>/,
+      '<td id="d09"><div><div></div></div></td>'
+    );
+
+    const snapshot = extractTopBoxSnapshotFromPage(htmlMissingVolume);
+
+    assert.strictEqual(snapshot, null);
+  });
+
   it("uses the first number when multiple values appear in price cells", async () => {
     const { extractTopBoxSnapshotFromPage } = await import("../extension/parsing/price.js");
-    const htmlWithExtras = `
-      <div id="TopBox">
-        <table><tbody>
-          <tr><td>آخرین معامله</td><td id="d02"><div><div>26,650  750 [2.9%]</div></div></td></tr>
-          <tr><td>قیمت پایانی</td><td id="d03"><div><div>26,400  500 [1.8%]</div></div></td></tr>
-        </tbody></table>
-      </div>
-    `;
+    const htmlWithExtras = topBoxHtml
+      .replace("3,566</div></div>", "26,650  750 [2.9%]</div></div>")
+      .replace("3,549</div></div>", "26,400  500 [1.8%]</div></div>");
 
     const snapshot = extractTopBoxSnapshotFromPage(htmlWithExtras);
 
@@ -126,14 +133,9 @@ describe("TopBox extraction", () => {
 
   it("ignores trailing negative deltas in price cells", async () => {
     const { extractTopBoxSnapshotFromPage } = await import("../extension/parsing/price.js");
-    const htmlWithNegative = `
-      <div id="TopBox">
-        <table><tbody>
-          <tr><td>آخرین معامله</td><td id="d02"><div><div>11,660  (30)  [0.26%-]</div></div></td></tr>
-          <tr><td>قیمت پایانی</td><td id="d03"><div><div>11,700  (15)  [0.12%-]</div></div></td></tr>
-        </tbody></table>
-      </div>
-    `;
+    const htmlWithNegative = topBoxHtml
+      .replace("3,566</div></div>", "11,660  (30)  [0.26%-]</div></div>")
+      .replace("3,549</div></div>", "11,700  (15)  [0.12%-]</div></div>");
 
     const snapshot = extractTopBoxSnapshotFromPage(htmlWithNegative);
 

@@ -38,41 +38,44 @@ export function validateSnapshotRecord(record) {
     }
   }
 
-  const numericFields = [
-    "lastTrade",
-    "closingPrice",
-    "firstPrice",
-    "tradesCount",
-    "tradingVolume",
-    "tradingValue",
-    "marketValue",
-    "dailyLowRange",
-    "dailyHighRange",
-    "allowedLowPrice",
-    "allowedHighPrice",
-    "shareCount",
-    "baseVolume",
-    "floatingShares",
-    "averageMonthlyVolume",
-    "realBuyVolume",
-    "realSellVolume",
-    "legalBuyVolume",
-    "legalSellVolume",
-    "totalBuyVolume",
-    "totalSellVolume",
-    "realBuyCount",
-    "realSellCount",
-    "legalBuyCount",
-    "legalSellCount",
-    "totalBuyCount",
-    "totalSellCount",
-  ];
+  const numericFields = {
+    lastTrade: { optional: false },
+    closingPrice: { optional: false },
+    firstPrice: { optional: false },
+    tradesCount: { optional: false },
+    tradingVolume: { optional: false },
+    tradingValue: { optional: false },
+    marketValue: { optional: false },
+    dailyLowRange: { optional: false },
+    dailyHighRange: { optional: false },
+    allowedLowPrice: { optional: false },
+    allowedHighPrice: { optional: false },
+    shareCount: { optional: false },
+    baseVolume: { optional: false },
+    floatingShares: { optional: true },
+    averageMonthlyVolume: { optional: false },
+    realBuyVolume: { optional: false },
+    realSellVolume: { optional: false },
+    legalBuyVolume: { optional: false },
+    legalSellVolume: { optional: false },
+    totalBuyVolume: { optional: false },
+    totalSellVolume: { optional: false },
+    realBuyCount: { optional: false },
+    realSellCount: { optional: false },
+    legalBuyCount: { optional: false },
+    legalSellCount: { optional: false },
+    totalBuyCount: { optional: false },
+    totalSellCount: { optional: false },
+  };
 
-  for (const field of numericFields) {
+  for (const [field, config] of Object.entries(numericFields)) {
     const value = record[field];
-    if (value === undefined || value === null || value === "") continue;
+    if (config.optional && (value === undefined || value === null || value === "")) {
+      continue;
+    }
+
     if (!isFiniteNumber(value)) {
-      errors.push(`${field} must be a finite number when provided`);
+      errors.push(`${field} must be a finite number`);
     }
   }
 

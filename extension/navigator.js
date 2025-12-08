@@ -132,6 +132,10 @@ function updateNavigationStatus({ remaining, pendingCount }) {
       : false;
   const nextStatus = hasWork ? GLOBAL_STATUS.COLLECTING : GLOBAL_STATUS.IDLE;
   setGlobalStatus(nextStatus);
+
+  if (!hasWork) {
+    startAnalysisIfQueued();
+  }
 }
 
 async function extractTopBoxFromTab(tabId) {
@@ -306,7 +310,16 @@ function startNavigationIfQueued() {
 
 function startAnalysisIfQueued() {
   if (navigator.running || navigator.pendingCount > 0 || navigator.queue?.length > 0) {
-    return analysisRun;
+    if (!navigationIdleWatch) {
+      navigationIdleWatch = navigator
+        .whenIdle()
+        .then(() => startAnalysisIfQueued())
+        .finally(() => {
+          navigationIdleWatch = null;
+        });
+    }
+
+    return navigationIdleWatch;
   }
 
   if (analysisRun) return analysisRun;

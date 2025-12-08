@@ -3,6 +3,7 @@ import { analyzeHeadlessly } from "./index.js";
 import { SNAPSHOT_TABLE, ANALYSIS_CACHE_TABLE } from "../storage/schema.js";
 import { pickLatestBySymbol } from "../popup-helpers.js";
 import { isAnalysisFreshForSymbol } from "../storage/analysis-cache.js";
+import { setLastAnalysisStatus } from "../storage/analysis-status.js";
 
 function snapshotToPriceEntry(snapshot) {
   if (!snapshot?.id) return null;
@@ -75,7 +76,14 @@ export class ImmediateAnalyzer {
   async runOnce() {
     try {
       const priceArrays = await this.collectPendingPriceArrays();
-      if (!priceArrays.length) return null;
+      if (!priceArrays.length) {
+        await setLastAnalysisStatus({
+          state: "skipped",
+          message: "Analysis was skipped because no pending symbols needed processing.",
+          analyzedCount: 0,
+        });
+        return null;
+      }
 
       return await this.analysisRunner(priceArrays);
     } catch (error) {

@@ -105,4 +105,22 @@ describe("TopBox extraction", () => {
     const { extractTopBoxSnapshotFromPage } = await import("../extension/parsing/price.js");
     assert.strictEqual(extractTopBoxSnapshotFromPage("<html><body></body></html>"), null);
   });
+
+  it("uses the first number when multiple values appear in price cells", async () => {
+    const { extractTopBoxSnapshotFromPage } = await import("../extension/parsing/price.js");
+    const htmlWithExtras = `
+      <div id="TopBox">
+        <table><tbody>
+          <tr><td>آخرین معامله</td><td id="d02"><div><div>26,650  750 [2.9%]</div></div></td></tr>
+          <tr><td>قیمت پایانی</td><td id="d03"><div><div>26,400  500 [1.8%]</div></div></td></tr>
+        </tbody></table>
+      </div>
+    `;
+
+    const snapshot = extractTopBoxSnapshotFromPage(htmlWithExtras);
+
+    assert(snapshot);
+    assert.strictEqual(snapshot.lastTrade, 26650);
+    assert.strictEqual(snapshot.closingPrice, 26400);
+  });
 });

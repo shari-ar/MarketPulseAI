@@ -123,4 +123,22 @@ describe("TopBox extraction", () => {
     assert.strictEqual(snapshot.lastTrade, 26650);
     assert.strictEqual(snapshot.closingPrice, 26400);
   });
+
+  it("ignores trailing negative deltas in price cells", async () => {
+    const { extractTopBoxSnapshotFromPage } = await import("../extension/parsing/price.js");
+    const htmlWithNegative = `
+      <div id="TopBox">
+        <table><tbody>
+          <tr><td>آخرین معامله</td><td id="d02"><div><div>11,660  (30)  [0.26%-]</div></div></td></tr>
+          <tr><td>قیمت پایانی</td><td id="d03"><div><div>11,700  (15)  [0.12%-]</div></div></td></tr>
+        </tbody></table>
+      </div>
+    `;
+
+    const snapshot = extractTopBoxSnapshotFromPage(htmlWithNegative);
+
+    assert(snapshot);
+    assert.strictEqual(snapshot.lastTrade, 11660);
+    assert.strictEqual(snapshot.closingPrice, 11700);
+  });
 });

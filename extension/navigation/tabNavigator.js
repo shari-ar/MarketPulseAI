@@ -1,6 +1,7 @@
 const DEFAULT_DELAY_MS = 500;
 const DEFAULT_LOAD_TIMEOUT_MS = 15000;
 const DEFAULT_BASE_URL = "https://www.tsetmc.com/instInfo/";
+const DEFAULT_ALARM_NAME = "marketpulseai_tabnavigator_tick";
 
 function normalizeSymbols(symbols = []) {
   return Array.from(
@@ -60,6 +61,7 @@ function replaceSymbolInUrl(currentUrl, symbol, baseUrl = DEFAULT_BASE_URL) {
 export class TabNavigator {
   constructor({
     tabsApi = globalThis.chrome?.tabs,
+    alarmsApi = globalThis.chrome?.alarms,
     baseUrl = DEFAULT_BASE_URL,
     delayMs = DEFAULT_DELAY_MS,
     loadTimeoutMs = DEFAULT_LOAD_TIMEOUT_MS,
@@ -69,6 +71,7 @@ export class TabNavigator {
     onError = null,
   } = {}) {
     this.tabsApi = tabsApi;
+    this.alarmsApi = alarmsApi;
     this.baseUrl = baseUrl;
     this.delayMs = delayMs;
     this.loadTimeoutMs = loadTimeoutMs;
@@ -83,10 +86,20 @@ export class TabNavigator {
     this.activeSymbol = null;
     this.lastVisitedSymbol = null;
     this._timer = null;
+    this._alarmName = DEFAULT_ALARM_NAME;
+    this._onAlarm = (alarm) => {
+      if (!alarm || alarm.name !== this._alarmName) return;
+      this._clearSchedule();
+      this._processQueue();
+    };
     this._processing = false;
     this._idleResolvers = [];
     this.totalCount = 0;
     this.completedCount = 0;
+
+    if (this.alarmsApi?.onAlarm?.addListener) {
+      this.alarmsApi.onAlarm.addListener(this._onAlarm);
+    }
   }
 
   enqueueSymbols(symbols = []) {
@@ -112,6 +125,7 @@ export class TabNavigator {
     this.completedCount = 0;
     this.totalCount = this.queue.length;
     this._clearSchedule();
+    this._clearAlarm();
     this._notifyIdle();
   }
 
@@ -267,9 +281,32 @@ export class TabNavigator {
     }
   }
 
+  _clearAlarm() {
+    if (this.alarmsApi?.clear) {
+      try {
+        this.alarmsApi.clear(this._alarmName, () => {});
+      } catch (error) {
+        console.debug("Failed to clear navigation alarm", error);
+      }
+    }
+  }
+
   _scheduleNextTick() {
     this._clearSchedule();
-    this._timer = setTimeout(() => this._processQueue(), this.delayMs);
+    this._clearAlarm();
+
+    if (this.alarmsApi?.create) {
+      try {
+        this.alarmsApi.create(this._alarmName, { when: Date.now() + this.delayMs });
+      } catch (error) {
+        console.debug("Failed to schedule navigation alarm", error);
+      }
+    }
+
+    this._timer = setTimeout(() => {
+      this._clearAlarm();
+      this._processQueue();
+    }, this.delayMs);
   }
 
   _notifyIdle() {

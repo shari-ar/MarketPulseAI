@@ -83,7 +83,15 @@ function ensureToastContainer() {
   return container;
 }
 
-function createToast({ title, subtitle, summary, duration = DEFAULT_DURATION_MS }) {
+function createToast({
+  title,
+  subtitle,
+  summary,
+  duration = DEFAULT_DURATION_MS,
+  pillText = "Batch",
+  pillColor = "#0ea5e9",
+  persist = false,
+}) {
   ensureToastStyles();
   const container = ensureToastContainer();
 
@@ -92,7 +100,8 @@ function createToast({ title, subtitle, summary, duration = DEFAULT_DURATION_MS 
 
   const pill = document.createElement("span");
   pill.className = "marketpulseai-toast__pill";
-  pill.textContent = "Batch";
+  pill.textContent = pillText;
+  pill.style.background = pillColor;
 
   const heading = document.createElement("p");
   heading.className = "marketpulseai-toast__title";
@@ -110,7 +119,9 @@ function createToast({ title, subtitle, summary, duration = DEFAULT_DURATION_MS 
   toast.appendChild(detail);
 
   container.appendChild(toast);
-  setTimeout(() => toast.remove(), duration);
+  if (!persist) {
+    setTimeout(() => toast.remove(), duration);
+  }
 }
 
 function renderProgressToast({ symbol, summary, remaining }) {
@@ -120,6 +131,18 @@ function renderProgressToast({ symbol, summary, remaining }) {
   const mergedSubtitle = tail ? `${subtitle} · ${tail}` : subtitle;
 
   createToast({ title, subtitle: mergedSubtitle, summary });
+}
+
+function renderPersistentErrorToast({ title, subtitle }) {
+  createToast({
+    title: title || "Collection halted",
+    subtitle,
+    summary: subtitle,
+    pillText: "Error",
+    pillColor: "#ef4444",
+    persist: true,
+    duration: null,
+  });
 }
 
 const chromeApi = globalThis.chrome;
@@ -198,6 +221,13 @@ if (chromeApi?.runtime?.onMessage) {
       const { symbol, summary, remaining } = message;
       console.debug("Collection progress", message);
       renderProgressToast({ symbol, summary, remaining });
+      return undefined;
+    }
+
+    if (message.type === "COLLECTION_ERROR") {
+      const { title, subtitle } = message;
+      console.error("Collection error", message);
+      renderPersistentErrorToast({ title, subtitle });
       return undefined;
     }
 

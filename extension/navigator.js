@@ -129,6 +129,12 @@ function updateNavigationStatus({ remaining, pendingCount }) {
       : false;
   const nextStatus = hasWork ? GLOBAL_STATUS.COLLECTING : GLOBAL_STATUS.IDLE;
   setGlobalStatus(nextStatus);
+
+  if (!hasWork) {
+    triggerImmediateAnalysis().catch((error) =>
+      console.warn("Immediate analysis trigger failed after collection", error)
+    );
+  }
 }
 
 async function extractTopBoxFromTab(tabId) {
@@ -284,10 +290,14 @@ const navigator = new TabNavigator({
 function startNavigationIfQueued() {
   if (navigator.pendingCount > 0 || navigator.queue?.length > 0) {
     setGlobalStatus(GLOBAL_STATUS.COLLECTING);
-  } else {
-    setGlobalStatus(GLOBAL_STATUS.IDLE);
+    navigator.start();
+    return;
   }
-  navigator.start();
+
+  setGlobalStatus(GLOBAL_STATUS.IDLE);
+  triggerImmediateAnalysis().catch((error) =>
+    console.warn("Immediate analysis trigger failed after queue check", error)
+  );
 }
 
 enqueueSymbolsMissingToday(navigator).then(() => startNavigationIfQueued());

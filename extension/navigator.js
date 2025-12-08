@@ -19,6 +19,7 @@ const statusRecord = {
 };
 
 let analysisRun = null;
+let navigationIdleWatch = null;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -131,12 +132,6 @@ function updateNavigationStatus({ remaining, pendingCount }) {
       : false;
   const nextStatus = hasWork ? GLOBAL_STATUS.COLLECTING : GLOBAL_STATUS.IDLE;
   setGlobalStatus(nextStatus);
-
-  if (!hasWork) {
-    triggerImmediateAnalysis().catch((error) =>
-      console.warn("Immediate analysis trigger failed after collection", error)
-    );
-  }
 }
 
 async function extractTopBoxFromTab(tabId) {
@@ -293,7 +288,25 @@ function startNavigationIfQueued() {
   if (navigator.pendingCount > 0 || navigator.queue?.length > 0) {
     setGlobalStatus(GLOBAL_STATUS.COLLECTING);
     navigator.start();
-    return;
+
+    if (!navigationIdleWatch) {
+      navigationIdleWatch = navigator
+        .whenIdle()
+        .then(() => startAnalysisIfQueued())
+        .finally(() => {
+          navigationIdleWatch = null;
+        });
+    }
+
+    return navigationIdleWatch;
+  }
+
+  return startAnalysisIfQueued();
+}
+
+function startAnalysisIfQueued() {
+  if (navigator.running || navigator.pendingCount > 0 || navigator.queue?.length > 0) {
+    return analysisRun;
   }
 
   if (analysisRun) return analysisRun;

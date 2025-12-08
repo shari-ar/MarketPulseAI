@@ -24,13 +24,20 @@
       <section class="card">
         <div class="card__header">
           <div>
-            <p class="eyebrow">Active symbol</p>
-            <h2 id="symbol-title">Waiting for a stock page...</h2>
+            <p class="eyebrow">Analysis</p>
+            <h2>Analysis overview</h2>
           </div>
+          <button id="refresh-analysis" class="card__button">Refresh status</button>
         </div>
-        <p id="symbol-hint" class="card__message"></p>
+        <p id="analysis-status" class="card__message"></p>
         <table class="detail-table" aria-live="polite">
-          <tbody id="stock-details"></tbody>
+          <thead>
+            <tr>
+              <th scope="col">Symbol</th>
+              <th scope="col">Last analyzed</th>
+            </tr>
+          </thead>
+          <tbody id="analysis-results"></tbody>
         </table>
       </section>
 

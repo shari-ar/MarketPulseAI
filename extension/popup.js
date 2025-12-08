@@ -1,6 +1,5 @@
 import db from "./storage/db.js";
-import { SNAPSHOT_TABLE } from "./storage/schema.js";
-import { saveSnapshotRecord } from "./storage/writes.js";
+import { ANALYSIS_CACHE_TABLE, SNAPSHOT_TABLE } from "./storage/schema.js";
 import * as XLSX from "./vendor/xlsx.mjs";
 import { GLOBAL_STATUS, onStatusChange, requestGlobalStatus } from "./status-bus.js";
 import {
@@ -11,18 +10,17 @@ import {
   MARKET_TIMEZONE,
   marketDateFromIso,
 } from "./time.js";
-import { extractInstInfoSymbol } from "./inst-info.js";
-import { detectSymbolFromUrl, pickLatestBySymbol } from "./popup-helpers.js";
-import { extractTopBoxSnapshotFromPage } from "./parsing/price.js";
+import { pickLatestBySymbol } from "./popup-helpers.js";
+import { getLastAnalysisStatus } from "./storage/analysis-status.js";
 
 const lockChip = document.getElementById("lock-chip");
 const lockCopy = document.getElementById("lock-copy");
-const symbolTitle = document.getElementById("symbol-title");
-const symbolHint = document.getElementById("symbol-hint");
-const stockDetails = document.getElementById("stock-details");
 const storedStatus = document.getElementById("stored-status");
 const downloadStored = document.getElementById("download-stored");
 const statusChip = document.getElementById("status-chip");
+const analysisStatus = document.getElementById("analysis-status");
+const analysisResults = document.getElementById("analysis-results");
+const refreshAnalysis = document.getElementById("refresh-analysis");
 
 const SNAPSHOT_FIELD_CONFIG = [
   { key: "symbolName", label: "Symbol name" },
@@ -58,30 +56,11 @@ const SNAPSHOT_FIELD_CONFIG = [
   { key: "totalSellCount", label: "Total sell count" },
 ];
 
-const chromeApi = globalThis.chrome;
-
 const STATUS_LABELS = {
   [GLOBAL_STATUS.IDLE]: "Idle",
   [GLOBAL_STATUS.COLLECTING]: "Collecting",
   [GLOBAL_STATUS.ANALYZING]: "Analyzing",
 };
-
-function queryActiveTab() {
-  if (!chromeApi?.tabs?.query) return Promise.resolve([]);
-
-  return new Promise((resolve) => {
-    try {
-      const maybePromise = chromeApi.tabs.query({ active: true, currentWindow: true }, (tabs) =>
-        resolve(tabs || [])
-      );
-      if (maybePromise?.then) {
-        maybePromise.then((tabs) => resolve(tabs || [])).catch(() => resolve([]));
-      }
-    } catch (_error) {
-      resolve([]);
-    }
-  });
-}
 
 function updateLockState(now = new Date()) {
   const locked = isWithinMarketLockWindow(now);
@@ -127,87 +106,118 @@ updateLockState();
 setInterval(() => updateLockState(), 30000);
 hydrateStatusChip();
 
-function formatNumber(value) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "--";
-  return Number(value).toLocaleString("en-US");
+function formatAnalysisTimestamp(isoTimestamp) {
+  if (!isoTimestamp) return "--";
+  const date = new Date(isoTimestamp);
+  if (!Number.isFinite(date.getTime())) return "--";
+
+  const marketDate = marketDateFromIso(isoTimestamp) ?? date.toISOString().slice(0, 10);
+  const time = date.toLocaleTimeString("en-GB", { timeZone: "UTC", hour12: false });
+
+  return `${marketDate} · ${time} UTC`;
 }
 
-function renderDetailsRows(snapshot) {
-  stockDetails.innerHTML = "";
-  const fragment = document.createDocumentFragment();
+function renderAnalysisRows(entries) {
+  analysisResults.innerHTML = "";
 
-  SNAPSHOT_FIELD_CONFIG.forEach(({ key, label }) => {
+  if (!Array.isArray(entries) || entries.length === 0) {
     const tr = document.createElement("tr");
-    const labelTd = document.createElement("td");
-    labelTd.textContent = label;
-    const valueTd = document.createElement("td");
-    const value = snapshot ? snapshot[key] : null;
-    const display = typeof value === "string" ? value || "--" : formatNumber(value);
-    valueTd.textContent = display;
-    if (display === "--") valueTd.classList.add("placeholder");
-    tr.appendChild(labelTd);
-    tr.appendChild(valueTd);
+    const td = document.createElement("td");
+    td.colSpan = 2;
+    td.textContent = "No analysis results available.";
+    td.classList.add("placeholder");
+    tr.appendChild(td);
+    analysisResults.appendChild(tr);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  entries.forEach((entry) => {
+    const tr = document.createElement("tr");
+    const symbolCell = document.createElement("td");
+    symbolCell.textContent = entry.symbol;
+    const timestampCell = document.createElement("td");
+    timestampCell.textContent = formatAnalysisTimestamp(entry.lastAnalyzedAt);
+    if (!entry.lastAnalyzedAt) timestampCell.classList.add("placeholder");
+    tr.appendChild(symbolCell);
+    tr.appendChild(timestampCell);
     fragment.appendChild(tr);
   });
 
-  stockDetails.appendChild(fragment);
+  analysisResults.appendChild(fragment);
 }
 
-async function loadLatestFromDb(symbol) {
-  if (!symbol) return null;
-  await db.open();
-  const matches = await db.table(SNAPSHOT_TABLE).where("id").equals(symbol).sortBy("dateTime");
-  if (!matches.length) return null;
-  return matches[matches.length - 1];
-}
-
-async function extractSnapshotFromTab(tabId) {
-  if (!chromeApi?.scripting?.executeScript || !tabId) return null;
-
-  const [result] = await chromeApi.scripting.executeScript({
-    target: { tabId },
-    func: () => ({
-      html: document.documentElement?.outerHTML ?? "",
-      href: window.location.href,
-    }),
-    world: "MAIN",
-  });
-
-  const html = result?.result?.html ?? "";
-  const symbol = extractInstInfoSymbol(result?.result?.href ?? "");
-  const snapshot = html ? extractTopBoxSnapshotFromPage(html) : null;
-
-  return { symbol, snapshot };
-}
-
-async function pollForSnapshot(tabId, { timeoutMs = 5000, intervalMs = 600 } = {}) {
-  const start = Date.now();
-  let last = null;
-
-  while (Date.now() - start < timeoutMs) {
-    const snapshot = await extractSnapshotFromTab(tabId);
-    if (snapshot?.snapshot && snapshot.symbol) return snapshot;
-    last = snapshot;
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+async function hydrateAnalysisSection() {
+  if (analysisStatus) {
+    analysisStatus.textContent = "Loading analysis status...";
   }
 
-  return last;
-}
+  await db.open();
+  const [cachedStatuses, lastStatus] = await Promise.all([
+    db
+      .table(ANALYSIS_CACHE_TABLE)
+      .toArray()
+      .catch(() => []),
+    getLastAnalysisStatus().catch(() => null),
+  ]);
 
-async function saveScrapedSnapshot(symbol, snapshot) {
-  if (!symbol || !snapshot) return;
-  if (isWithinMarketLockWindow()) return;
+  const sorted = (Array.isArray(cachedStatuses) ? cachedStatuses : [])
+    .filter((entry) => entry?.symbol)
+    .sort((left, right) => {
+      const leftTime = new Date(left.lastAnalyzedAt || 0).getTime();
+      const rightTime = new Date(right.lastAnalyzedAt || 0).getTime();
+      return rightTime - leftTime;
+    });
 
-  await saveSnapshotRecord({
-    id: symbol,
-    dateTime: new Date().toISOString(),
-    ...snapshot,
-  });
-}
+  const normalizedStatus = lastStatus || null;
+  const state = normalizedStatus?.state || (sorted.length ? "success" : "not_run");
+  const analyzedCount = normalizedStatus?.analyzedCount ?? sorted.length;
 
-function renderEmptyState() {
-  symbolHint.textContent = "Open a TSETMC instrument page to capture details.";
-  renderDetailsRows(null);
+  if (state === "not_run") {
+    if (analysisStatus) {
+      analysisStatus.textContent =
+        normalizedStatus?.message ||
+        "Analysis not performed yet because no symbols have been analyzed.";
+    }
+    renderAnalysisRows([]);
+    return;
+  }
+
+  if (state === "skipped") {
+    if (analysisStatus) {
+      analysisStatus.textContent =
+        normalizedStatus?.message || "Analysis was skipped because no data was available.";
+    }
+    renderAnalysisRows([]);
+    return;
+  }
+
+  if (state === "error") {
+    const detail = normalizedStatus?.details ? ` Details: ${normalizedStatus.details}` : "";
+    if (analysisStatus) {
+      analysisStatus.textContent = `Analysis failed: ${
+        normalizedStatus?.message || "Unknown error."
+      }${detail ? ` (${detail})` : ""}`;
+    }
+    renderAnalysisRows(sorted);
+    return;
+  }
+
+  const mostRecentTimestamp = sorted[0]?.lastAnalyzedAt || normalizedStatus?.timestamp;
+  const timestampLabel = formatAnalysisTimestamp(mostRecentTimestamp);
+  const baseMessage =
+    normalizedStatus?.message ||
+    (analyzedCount
+      ? `Last analysis finished for ${analyzedCount} symbol${analyzedCount === 1 ? "" : "s"}.`
+      : "Analysis finished, but no cache entries were found.");
+
+  if (analysisStatus) {
+    analysisStatus.textContent = timestampLabel
+      ? `${baseMessage} Latest run: ${timestampLabel}.`
+      : baseMessage;
+  }
+
+  renderAnalysisRows(sorted.slice(0, 12));
 }
 
 async function downloadStoredSymbols() {
@@ -292,49 +302,7 @@ async function downloadStoredSymbols() {
   storedStatus.textContent = `Downloaded ${rows.length} stored symbol${rows.length === 1 ? "" : "s"}.`;
 }
 
-async function hydrateActiveSymbol() {
-  symbolTitle.textContent = "Detecting symbol...";
-  symbolHint.textContent = "";
-  renderDetailsRows(null);
-
-  const [tab] = (await queryActiveTab()) || [];
-  const symbolFromUrl = detectSymbolFromUrl(tab?.url ?? "");
-
-  if (!symbolFromUrl) {
-    symbolTitle.textContent = "No symbol detected";
-    renderEmptyState();
-    return;
-  }
-
-  symbolTitle.textContent = `Symbol: ${symbolFromUrl}`;
-  const latest = await loadLatestFromDb(symbolFromUrl);
-  if (latest) {
-    symbolHint.textContent = "Loaded the latest stored snapshot.";
-    renderDetailsRows(latest);
-  }
-
-  symbolHint.textContent = "Reading live HTML from the active tab...";
-  const scraped = await pollForSnapshot(tab?.id, { timeoutMs: 6000, intervalMs: 700 });
-  const snapshot = scraped?.snapshot ?? null;
-  const resolvedSymbol = scraped?.symbol || symbolFromUrl;
-
-  if (!snapshot) {
-    symbolHint.textContent = "No metrics found on this page yet.";
-    return;
-  }
-
-  symbolTitle.textContent = `Symbol: ${resolvedSymbol || symbolFromUrl}`;
-  renderDetailsRows(snapshot);
-
-  if (isWithinMarketLockWindow()) {
-    symbolHint.textContent = "Captured from page (read-only during lock window).";
-    return;
-  }
-
-  await saveScrapedSnapshot(resolvedSymbol, snapshot);
-  symbolHint.textContent = "Captured from page and stored in the database.";
-}
-
 downloadStored.addEventListener("click", downloadStoredSymbols);
+refreshAnalysis?.addEventListener("click", hydrateAnalysisSection);
 
-hydrateActiveSymbol();
+hydrateAnalysisSection();

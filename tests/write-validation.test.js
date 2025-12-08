@@ -79,7 +79,7 @@ describe("write validation", () => {
     const { valid, errors } = validateSnapshotRecord({
       ...baseRecord,
       dateTime: "not-a-date",
-      lastTrade: "", // allowed empty
+      lastTrade: null,
       tradesCount: "oops",
       totalBuyCount: "nan",
     });
@@ -87,8 +87,9 @@ describe("write validation", () => {
     assert.strictEqual(valid, false);
     assert.deepStrictEqual(errors, [
       "dateTime must be a valid timestamp",
-      "tradesCount must be a finite number when provided",
-      "totalBuyCount must be a finite number when provided",
+      "lastTrade must be a finite number",
+      "tradesCount must be a finite number",
+      "totalBuyCount must be a finite number",
     ]);
   });
 });

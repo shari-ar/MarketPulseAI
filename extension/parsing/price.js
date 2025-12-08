@@ -168,8 +168,13 @@ export function extractTopBoxSnapshotFromPage(html = "") {
     totalSellCount: totalCounts.sell,
   };
 
-  const hasValues = Object.values(snapshot).some((value) => value !== null && value !== undefined);
-  return hasValues ? snapshot : null;
+  const missingRequiredField = Object.entries(snapshot).some(
+    ([field, value]) => field !== "floatingShares" && (value === null || value === undefined)
+  );
+
+  if (missingRequiredField) return null;
+
+  return snapshot;
 }
 
 export function extractTopBoxSnapshotFromDom(root = globalThis.document) {
@@ -290,8 +295,13 @@ export function extractTopBoxSnapshotFromDom(root = globalThis.document) {
     totalSellCount: totalCounts.sell,
   };
 
-  const hasValues = Object.values(snapshot).some((value) => value !== null && value !== undefined);
-  return hasValues ? snapshot : null;
+  const missingRequiredField = Object.entries(snapshot).some(
+    ([field, value]) => field !== "floatingShares" && (value === null || value === undefined)
+  );
+
+  if (missingRequiredField) return null;
+
+  return snapshot;
 }
 
 export function extractSymbolsFromHtml(html = "") {

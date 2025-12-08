@@ -4,6 +4,7 @@ import { createAnalysisProgressModal } from "./progress-modal.js";
 import { rankSwingResults } from "./rank.js";
 import { cacheRankedAnalysisTimestamps } from "../storage/analysis-cache.js";
 import { GLOBAL_STATUS, sendStatusUpdate } from "../status-bus.js";
+import { setLastAnalysisStatus } from "../storage/analysis-status.js";
 
 function chunkArray(items, size) {
   if (!Array.isArray(items) || size <= 0) return [];
@@ -75,6 +76,11 @@ export async function analyzeWithModalProgress(
 
     if (!Array.isArray(normalized) || normalized.length === 0) {
       modal?.complete("No price data to analyze.");
+      await setLastAnalysisStatus({
+        state: "skipped",
+        message: "Analysis was skipped because no price data was available.",
+        analyzedCount: 0,
+      });
       return { predictions: [], normalized, ranked: [] };
     }
 
@@ -111,7 +117,21 @@ export async function analyzeWithModalProgress(
       console.warn("Failed to cache analysis timestamps", error);
     }
 
+    await setLastAnalysisStatus({
+      state: "success",
+      message: `Analysis finished for ${ranked.length} symbol${ranked.length === 1 ? "" : "s"}.`,
+      analyzedCount: ranked.length,
+    });
+
     return { predictions, normalized, ranked };
+  } catch (error) {
+    await setLastAnalysisStatus({
+      state: "error",
+      message: error?.message || "Analysis failed.",
+      details: error?.stack || String(error),
+      analyzedCount: 0,
+    });
+    throw error;
   } finally {
     await updateStatusSafely(GLOBAL_STATUS.IDLE);
   }
@@ -142,7 +162,21 @@ export async function analyzeHeadlessly(rawPriceArrays, { modelUrl, batchSize = 
       console.warn("Failed to cache analysis timestamps", error);
     }
 
+    await setLastAnalysisStatus({
+      state: "success",
+      message: `Analysis finished for ${ranked.length} symbol${ranked.length === 1 ? "" : "s"}.`,
+      analyzedCount: ranked.length,
+    });
+
     return { predictions, normalized, ranked };
+  } catch (error) {
+    await setLastAnalysisStatus({
+      state: "error",
+      message: error?.message || "Analysis failed.",
+      details: error?.stack || String(error),
+      analyzedCount: 0,
+    });
+    throw error;
   } finally {
     await updateStatusSafely(GLOBAL_STATUS.IDLE);
   }

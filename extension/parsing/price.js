@@ -2,8 +2,11 @@ const INST_INFO_LINK_REGEX = /\/instInfo\/([^/?#"'\s]+)(?=[/?#]|$)/gi;
 
 function parseNumberFromText(text) {
   if (typeof text !== "string") return null;
-  const cleaned = text.replace(/[^\d.-]/g, "").replace(/\.(?=.*\.)/g, "");
-  if (!cleaned.trim()) return null;
+  const normalized = text.replace(/\u066B/g, ".").replace(/\u066C/g, ",");
+  const match = normalized.match(/-?\d[\d,]*(?:\.\d+)?/);
+  if (!match) return null;
+  const cleaned = match[0].replace(/,/g, "").trim();
+  if (!cleaned) return null;
   const value = Number(cleaned);
   return Number.isFinite(value) ? value : null;
 }

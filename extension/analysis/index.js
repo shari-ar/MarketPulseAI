@@ -2,6 +2,7 @@ import { normalizePriceArrays } from "./normalize.js";
 import { ensureAnalysisModel } from "./model-loader.js";
 import { createAnalysisProgressModal } from "./progress-modal.js";
 import { rankSwingResults } from "./rank.js";
+import { cacheRankedAnalysisTimestamps } from "../storage/analysis-cache.js";
 
 function chunkArray(items, size) {
   if (!Array.isArray(items) || size <= 0) return [];
@@ -72,6 +73,12 @@ export async function analyzeWithModalProgress(
     normalizedInputs: normalized,
     rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
   });
+
+  try {
+    await cacheRankedAnalysisTimestamps(ranked);
+  } catch (error) {
+    console.warn("Failed to cache analysis timestamps", error);
+  }
 
   return { predictions, normalized, ranked };
 }

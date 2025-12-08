@@ -1,4 +1,5 @@
 import { TabNavigator } from "./navigation/tabNavigator.js";
+import { missingSnapshotFields, hasCompleteSnapshot } from "./navigation/snapshotFields.js";
 import { extractInstInfoSymbol } from "./inst-info.js";
 import { extractTopBoxSnapshotFromPage, extractSymbolsFromHtml } from "./parsing/price.js";
 import { findSymbolsMissingToday, hasVisitedSnapshotForDate } from "./storage/selection.js";
@@ -23,19 +24,6 @@ function normalizeSymbols(symbols = []) {
 
 function detectSymbolFromUrl(url) {
   return extractInstInfoSymbol(url);
-}
-
-function missingSnapshotFields(snapshot) {
-  if (!snapshot || typeof snapshot !== "object") return ["snapshot"];
-
-  return Object.entries(snapshot)
-    .filter(([, value]) => value === null || value === undefined)
-    .map(([key]) => key);
-}
-
-function hasCompleteSnapshot(snapshot) {
-  const missing = missingSnapshotFields(snapshot);
-  return missing.length === 0;
 }
 
 function summarizeMissingFields(missing = []) {

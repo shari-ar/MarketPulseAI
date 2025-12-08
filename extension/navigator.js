@@ -25,10 +25,27 @@ function detectSymbolFromUrl(url) {
   return extractInstInfoSymbol(url);
 }
 
+function missingSnapshotFields(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") return ["snapshot"];
+
+  return Object.entries(snapshot)
+    .filter(([, value]) => value === null || value === undefined)
+    .map(([key]) => key);
+}
+
 function hasCompleteSnapshot(snapshot) {
-  if (!snapshot || typeof snapshot !== "object") return false;
-  const values = Object.values(snapshot);
-  return values.length > 0 && values.every((value) => value !== null && value !== undefined);
+  const missing = missingSnapshotFields(snapshot);
+  return missing.length === 0;
+}
+
+function summarizeMissingFields(missing = []) {
+  if (!missing.length) return "Required fields never loaded after 10 attempts";
+
+  const preview = missing.slice(0, 6).join(", ");
+  const remaining = missing.length - 6;
+  const suffix = remaining > 0 ? `, +${remaining} more` : "";
+
+  return `Missing fields after ${MAX_CAPTURE_ATTEMPTS} attempts: ${preview}${suffix}`;
 }
 
 function dispatchErrorToast(tabId, { title, subtitle }) {
@@ -136,12 +153,13 @@ async function capturePriceAndLinks({ symbol, tabId, url }) {
   }
 
   const hasCompleteData = hasCompleteSnapshot(parsedSnapshot);
+  const missingFields = missingSnapshotFields(parsedSnapshot);
   const hasLinks = Array.isArray(linkedSymbols) && linkedSymbols.length > 0;
 
   if (!hasCompleteData) {
     dispatchErrorToast(tabId, {
       title: "Missing stock details",
-      subtitle: "Required fields never loaded after 10 attempts",
+      subtitle: summarizeMissingFields(missingFields),
     });
     throw new Error("Failed to capture complete stock information");
   }

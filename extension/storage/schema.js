@@ -1,5 +1,6 @@
 export const DB_NAME = "marketpulseai";
 export const SNAPSHOT_TABLE = "topBoxSnapshots";
+export const ANALYSIS_CACHE_TABLE = "analysisCache";
 
 export const SNAPSHOT_FIELDS = {
   id: "Symbol identifier (instrument id)",
@@ -37,6 +38,11 @@ export const SNAPSHOT_FIELDS = {
   totalSellCount: "Number: combined sell orders count",
 };
 
+export const ANALYSIS_CACHE_FIELDS = {
+  symbol: "Symbol identifier tied to stored snapshots",
+  lastAnalyzedAt: "ISO timestamp of the most recent analysis run",
+};
+
 const LEGACY_OHLC_TABLE = "ohlcRecords";
 
 export const SCHEMA_MIGRATIONS = {
@@ -61,6 +67,13 @@ export const SCHEMA_MIGRATIONS = {
   3: {
     stores: {
       [SNAPSHOT_TABLE]: "[id+dateTime], id, dateTime, status",
+      [LEGACY_OHLC_TABLE]: null,
+    },
+  },
+  4: {
+    stores: {
+      [SNAPSHOT_TABLE]: "[id+dateTime], id, dateTime, status",
+      [ANALYSIS_CACHE_TABLE]: "symbol, lastAnalyzedAt",
       [LEGACY_OHLC_TABLE]: null,
     },
   },

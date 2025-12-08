@@ -10,6 +10,7 @@ describe("Dexie schema", () => {
 
     assert.strictEqual(schema.DB_VERSION, Math.max(...versions));
     assert.strictEqual(schema.SNAPSHOT_TABLE, "topBoxSnapshots");
+    assert.strictEqual(schema.ANALYSIS_CACHE_TABLE, "analysisCache");
     assert.deepStrictEqual(Object.keys(schema.SNAPSHOT_FIELDS), [
       "id",
       "dateTime",
@@ -45,15 +46,18 @@ describe("Dexie schema", () => {
       "totalBuyCount",
       "totalSellCount",
     ]);
+
+    assert.deepStrictEqual(Object.keys(schema.ANALYSIS_CACHE_FIELDS), ["symbol", "lastAnalyzedAt"]);
   });
 
   it("configures sequential migrations", async () => {
     const schema = await import("../extension/storage/schema.js");
 
     const versions = Object.keys(schema.SCHEMA_MIGRATIONS).map(Number);
-    assert.deepStrictEqual(versions, [1, 2, 3]);
+    assert.deepStrictEqual(versions, [1, 2, 3, 4]);
 
-    const latest = schema.SCHEMA_MIGRATIONS[3];
+    const latest = schema.SCHEMA_MIGRATIONS[4];
     assert.ok(latest.stores[schema.SNAPSHOT_TABLE].includes("dateTime"));
+    assert.ok(latest.stores[schema.ANALYSIS_CACHE_TABLE].includes("lastAnalyzedAt"));
   });
 });

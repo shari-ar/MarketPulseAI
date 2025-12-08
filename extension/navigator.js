@@ -18,6 +18,8 @@ const statusRecord = {
   updatedAt: new Date().toISOString(),
 };
 
+let analysisRun = null;
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -294,10 +296,20 @@ function startNavigationIfQueued() {
     return;
   }
 
-  setGlobalStatus(GLOBAL_STATUS.IDLE);
-  triggerImmediateAnalysis().catch((error) =>
-    console.warn("Immediate analysis trigger failed after queue check", error)
-  );
+  if (analysisRun) return analysisRun;
+
+  analysisRun = Promise.resolve()
+    .then(() => setGlobalStatus(GLOBAL_STATUS.ANALYZING))
+    .then(() => triggerImmediateAnalysis())
+    .catch((error) => {
+      console.warn("Immediate analysis trigger failed after queue check", error);
+    })
+    .finally(() => {
+      analysisRun = null;
+      setGlobalStatus(GLOBAL_STATUS.IDLE);
+    });
+
+  return analysisRun;
 }
 
 enqueueSymbolsMissingToday(navigator).then(() => startNavigationIfQueued());

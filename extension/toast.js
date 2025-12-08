@@ -67,6 +67,8 @@ function ensureToastStyles() {
       font-size: 12px;
       margin: 0;
       opacity: 0.85;
+      white-space: pre-line;
+      word-break: break-word;
     }
   `;
 

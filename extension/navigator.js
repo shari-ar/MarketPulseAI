@@ -39,13 +39,12 @@ function hasCompleteSnapshot(snapshot) {
 }
 
 function summarizeMissingFields(missing = []) {
-  if (!missing.length) return "Required fields never loaded after 10 attempts";
+  if (!missing.length) return `Required fields never loaded after ${MAX_CAPTURE_ATTEMPTS} attempts`;
 
-  const preview = missing.slice(0, 6).join(", ");
-  const remaining = missing.length - 6;
-  const suffix = remaining > 0 ? `, +${remaining} more` : "";
+  const summary = `Missing fields after ${MAX_CAPTURE_ATTEMPTS} attempts`;
+  const detailedList = missing.join(", ");
 
-  return `Missing fields after ${MAX_CAPTURE_ATTEMPTS} attempts: ${preview}${suffix}`;
+  return `${summary}:\n${detailedList}`;
 }
 
 function dispatchErrorToast(tabId, { title, subtitle }) {

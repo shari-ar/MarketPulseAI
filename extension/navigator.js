@@ -5,11 +5,17 @@ import { extractTopBoxSnapshotFromPage, extractSymbolsFromHtml } from "./parsing
 import { findSymbolsMissingToday, hasVisitedSnapshotForDate } from "./storage/selection.js";
 import { saveSnapshotRecord } from "./storage/writes.js";
 import { isWithinMarketLockWindow } from "./time.js";
+import { GLOBAL_STATUS, isValidGlobalStatus } from "./status-bus.js";
 
 const chromeApi = globalThis.chrome;
 
 const MAX_CAPTURE_ATTEMPTS = 10;
 const CAPTURE_RETRY_DELAY_MS = 1000;
+
+const statusRecord = {
+  value: GLOBAL_STATUS.IDLE,
+  updatedAt: new Date().toISOString(),
+};
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -24,6 +30,33 @@ function normalizeSymbols(symbols = []) {
 
 function detectSymbolFromUrl(url) {
   return extractInstInfoSymbol(url);
+}
+
+function broadcastStatusChange(status) {
+  if (!chromeApi?.runtime?.sendMessage) return;
+
+  try {
+    chromeApi.runtime.sendMessage({ type: "GLOBAL_STATUS_CHANGE", status });
+  } catch (error) {
+    console.debug("Failed to broadcast status change", error);
+  }
+}
+
+function setGlobalStatus(status, { source = "navigation" } = {}) {
+  if (!isValidGlobalStatus(status)) return statusRecord;
+
+  if (statusRecord.value === status) return statusRecord;
+
+  statusRecord.value = status;
+  statusRecord.updatedAt = new Date().toISOString();
+  statusRecord.source = source;
+
+  broadcastStatusChange({ ...statusRecord });
+  return statusRecord;
+}
+
+function getGlobalStatus() {
+  return { ...statusRecord };
 }
 
 function summarizeMissingFields(missing = []) {
@@ -85,6 +118,16 @@ async function enqueueSymbolsMissingToday(navigatorInstance) {
   }
 
   return toQueue.length;
+}
+
+function updateNavigationStatus({ remaining, pendingCount }) {
+  const hasWork = Number.isFinite(remaining)
+    ? remaining > 0
+    : Number.isFinite(pendingCount)
+      ? pendingCount > 0
+      : false;
+  const nextStatus = hasWork ? GLOBAL_STATUS.COLLECTING : GLOBAL_STATUS.IDLE;
+  setGlobalStatus(nextStatus);
 }
 
 async function extractTopBoxFromTab(tabId) {
@@ -196,10 +239,11 @@ const navigator = new TabNavigator({
       }
 
       await enqueueSymbolsMissingToday(navigator);
-      navigator.start();
+      startNavigationIfQueued();
     } catch (error) {
       console.error("Navigation halted due to capture failure", error);
       navigator.stop();
+      setGlobalStatus(GLOBAL_STATUS.IDLE);
       throw error;
     }
   },
@@ -213,6 +257,8 @@ const navigator = new TabNavigator({
       remaining,
       summary,
     };
+
+    updateNavigationStatus({ remaining, pendingCount: navigator.pendingCount });
 
     console.info(`MarketPulseAI collection progress ${summary}`, {
       symbol,
@@ -231,7 +277,16 @@ const navigator = new TabNavigator({
   },
 });
 
-enqueueSymbolsMissingToday(navigator).then(() => navigator.start());
+function startNavigationIfQueued() {
+  if (navigator.pendingCount > 0 || navigator.queue?.length > 0) {
+    setGlobalStatus(GLOBAL_STATUS.COLLECTING);
+  } else {
+    setGlobalStatus(GLOBAL_STATUS.IDLE);
+  }
+  navigator.start();
+}
+
+enqueueSymbolsMissingToday(navigator).then(() => startNavigationIfQueued());
 
 if (chromeApi?.tabs?.onUpdated?.addListener) {
   chromeApi.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -254,7 +309,7 @@ if (chromeApi?.tabs?.onUpdated?.addListener) {
 
     queueSymbolsForToday([symbol], navigator)
       .then(() => enqueueSymbolsMissingToday(navigator))
-      .finally(() => navigator.start());
+      .finally(() => startNavigationIfQueued());
   });
 }
 
@@ -267,7 +322,7 @@ if (chromeApi?.runtime?.onMessage) {
       queueSymbolsForToday(symbols, navigator)
         .then(() => enqueueSymbolsMissingToday(navigator))
         .then(() => {
-          navigator.start();
+          startNavigationIfQueued();
           sendResponse({ status: "queued", pending: navigator.pendingCount });
         })
         .catch((error) => {
@@ -280,11 +335,21 @@ if (chromeApi?.runtime?.onMessage) {
 
     if (message.type === "STOP_NAVIGATION") {
       navigator.stop();
+      setGlobalStatus(GLOBAL_STATUS.IDLE);
       sendResponse({ status: "stopped" });
     }
 
     if (message.type === "NAVIGATION_STATE") {
       sendResponse(navigator.state());
+    }
+
+    if (message.type === "GLOBAL_STATUS") {
+      sendResponse(getGlobalStatus());
+    }
+
+    if (message.type === "SET_GLOBAL_STATUS") {
+      const updated = setGlobalStatus(message.status, { source: message.source });
+      sendResponse(updated);
     }
 
     if (message.type === "SAVE_PAGE_SNAPSHOT") {
@@ -309,7 +374,7 @@ if (chromeApi?.runtime?.onMessage) {
             await queueSymbolsForToday(symbolsFromMessage, navigator);
           }
           await enqueueSymbolsMissingToday(navigator);
-          navigator.start();
+          startNavigationIfQueued();
         } catch (error) {
           console.error("Failed to enqueue symbols after snapshot", error);
         }

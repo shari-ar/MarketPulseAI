@@ -29,6 +29,18 @@ body {
   gap: 10px;
 }
 
+.panel__eyebrow {
+  margin: 4px 0 0;
+}
+
+.chip-stack {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 h1 {
   margin: 0;
   font-size: 21px;
@@ -45,6 +57,36 @@ h2 {
   letter-spacing: 0.08em;
   font-size: 12px;
   color: #94a3b8;
+}
+
+.status-chip {
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  font-size: 12px;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+}
+
+.status-chip--idle {
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #e2e8f0;
+}
+
+.status-chip--collecting {
+  background: rgba(250, 204, 21, 0.2);
+  border-color: rgba(250, 204, 21, 0.55);
+  color: #fef08a;
+}
+
+.status-chip--analyzing {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: rgba(56, 189, 248, 0.55);
+  color: #bae6fd;
 }
 
 .lock-chip {

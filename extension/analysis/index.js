@@ -3,6 +3,7 @@ import { ensureAnalysisModel } from "./model-loader.js";
 import { createAnalysisProgressModal } from "./progress-modal.js";
 import { rankSwingResults } from "./rank.js";
 import { cacheRankedAnalysisTimestamps } from "../storage/analysis-cache.js";
+import { GLOBAL_STATUS, sendStatusUpdate } from "../status-bus.js";
 
 function chunkArray(items, size) {
   if (!Array.isArray(items) || size <= 0) return [];
@@ -11,6 +12,10 @@ function chunkArray(items, size) {
     chunks.push(items.slice(index, index + size));
   }
   return chunks;
+}
+
+function updateStatusSafely(status) {
+  return sendStatusUpdate(status, { source: "analysis" });
 }
 
 export async function startAnalysis(rawPriceArrays, { modelUrl } = {}) {
@@ -33,52 +38,58 @@ export async function analyzeWithModalProgress(
     subtitle: subtitle || "Loading model...",
   });
 
-  const { model, tf, normalized } = await startAnalysis(rawPriceArrays, { modelUrl });
-
-  if (!Array.isArray(normalized) || normalized.length === 0) {
-    modal?.complete("No price data to analyze.");
-    return { predictions: [], normalized, ranked: [] };
-  }
-
-  const batches = chunkArray(normalized, batchSize > 0 ? batchSize : 16);
-  const totalBatches = batches.length || 1;
-  const predictions = [];
-
-  modal?.setProgress({ completed: 0, total: totalBatches, label: "Preparing inference..." });
-
-  batches.forEach((batch, index) => {
-    const batchPredictions = tf.tidy(() => {
-      const input = tf.tensor2d(
-        batch.map(({ open, high, low, close }) => [open, high, low, close])
-      );
-      const prediction = model.predict(input);
-      const outputTensor = Array.isArray(prediction) ? prediction[0] : prediction;
-      const values = outputTensor?.dataSync ? Array.from(outputTensor.dataSync()) : [];
-      return values;
-    });
-
-    predictions.push(...batchPredictions);
-
-    modal?.setProgress({
-      completed: index + 1,
-      total: totalBatches,
-      label: `Batch ${index + 1} of ${totalBatches} complete`,
-    });
-  });
-
-  modal?.complete("Analysis finished.");
-
-  const ranked = rankSwingResults({
-    probabilities: predictions,
-    normalizedInputs: normalized,
-    rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
-  });
+  await updateStatusSafely(GLOBAL_STATUS.ANALYZING);
 
   try {
-    await cacheRankedAnalysisTimestamps(ranked);
-  } catch (error) {
-    console.warn("Failed to cache analysis timestamps", error);
-  }
+    const { model, tf, normalized } = await startAnalysis(rawPriceArrays, { modelUrl });
 
-  return { predictions, normalized, ranked };
+    if (!Array.isArray(normalized) || normalized.length === 0) {
+      modal?.complete("No price data to analyze.");
+      return { predictions: [], normalized, ranked: [] };
+    }
+
+    const batches = chunkArray(normalized, batchSize > 0 ? batchSize : 16);
+    const totalBatches = batches.length || 1;
+    const predictions = [];
+
+    modal?.setProgress({ completed: 0, total: totalBatches, label: "Preparing inference..." });
+
+    batches.forEach((batch, index) => {
+      const batchPredictions = tf.tidy(() => {
+        const input = tf.tensor2d(
+          batch.map(({ open, high, low, close }) => [open, high, low, close])
+        );
+        const prediction = model.predict(input);
+        const outputTensor = Array.isArray(prediction) ? prediction[0] : prediction;
+        const values = outputTensor?.dataSync ? Array.from(outputTensor.dataSync()) : [];
+        return values;
+      });
+
+      predictions.push(...batchPredictions);
+
+      modal?.setProgress({
+        completed: index + 1,
+        total: totalBatches,
+        label: `Batch ${index + 1} of ${totalBatches} complete`,
+      });
+    });
+
+    modal?.complete("Analysis finished.");
+
+    const ranked = rankSwingResults({
+      probabilities: predictions,
+      normalizedInputs: normalized,
+      rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
+    });
+
+    try {
+      await cacheRankedAnalysisTimestamps(ranked);
+    } catch (error) {
+      console.warn("Failed to cache analysis timestamps", error);
+    }
+
+    return { predictions, normalized, ranked };
+  } finally {
+    await updateStatusSafely(GLOBAL_STATUS.IDLE);
+  }
 }

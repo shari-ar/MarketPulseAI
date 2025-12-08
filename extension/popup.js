@@ -2,6 +2,7 @@ import db from "./storage/db.js";
 import { SNAPSHOT_TABLE } from "./storage/schema.js";
 import { saveSnapshotRecord } from "./storage/writes.js";
 import * as XLSX from "./vendor/xlsx.mjs";
+import { GLOBAL_STATUS, onStatusChange, requestGlobalStatus } from "./status-bus.js";
 import {
   formatMarketClock,
   isWithinMarketLockWindow,
@@ -21,6 +22,7 @@ const symbolHint = document.getElementById("symbol-hint");
 const stockDetails = document.getElementById("stock-details");
 const storedStatus = document.getElementById("stored-status");
 const downloadStored = document.getElementById("download-stored");
+const statusChip = document.getElementById("status-chip");
 
 const SNAPSHOT_FIELD_CONFIG = [
   { key: "symbolName", label: "Symbol name" },
@@ -58,6 +60,12 @@ const SNAPSHOT_FIELD_CONFIG = [
 
 const chromeApi = globalThis.chrome;
 
+const STATUS_LABELS = {
+  [GLOBAL_STATUS.IDLE]: "Idle",
+  [GLOBAL_STATUS.COLLECTING]: "Collecting",
+  [GLOBAL_STATUS.ANALYZING]: "Analyzing",
+};
+
 function queryActiveTab() {
   if (!chromeApi?.tabs?.query) return Promise.resolve([]);
 
@@ -91,8 +99,33 @@ function updateLockState(now = new Date()) {
   return locked;
 }
 
+function renderStatusChip(status = GLOBAL_STATUS.IDLE) {
+  if (!statusChip) return;
+
+  const normalized = STATUS_LABELS[status] ? status : GLOBAL_STATUS.IDLE;
+  const label = STATUS_LABELS[normalized];
+
+  statusChip.textContent = label;
+  statusChip.setAttribute("aria-label", `Extension status: ${label}`);
+  statusChip.classList.remove(
+    "status-chip--idle",
+    "status-chip--collecting",
+    "status-chip--analyzing"
+  );
+  statusChip.classList.add(`status-chip--${normalized}`);
+}
+
+async function hydrateStatusChip() {
+  renderStatusChip(GLOBAL_STATUS.IDLE);
+  const status = await requestGlobalStatus();
+  renderStatusChip(status?.value);
+}
+
+onStatusChange((nextStatus) => renderStatusChip(nextStatus));
+
 updateLockState();
 setInterval(() => updateLockState(), 30000);
+hydrateStatusChip();
 
 function formatNumber(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "--";

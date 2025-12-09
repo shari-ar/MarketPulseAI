@@ -233,6 +233,18 @@ if (chromeApi?.runtime?.onMessage) {
       return undefined;
     }
 
+    if (message.type === "ANALYSIS_DEBUG") {
+      const { title, subtitle, pillColor } = message;
+      console.debug("Immediate analysis complete", message);
+      createToast({
+        title: title || "Analysis completed",
+        subtitle: subtitle || "Immediate analysis finished",
+        pillText: "Analysis",
+        pillColor: pillColor || "#22c55e",
+      });
+      return undefined;
+    }
+
     return undefined;
   });
 }

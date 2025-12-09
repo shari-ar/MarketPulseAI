@@ -111,16 +111,22 @@ export async function analyzeWithModalProgress(
       rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
     });
 
+    let cacheUpdated = true;
+    let cacheErrorDetails = null;
     try {
       await cacheRankedAnalysisTimestamps(ranked);
     } catch (error) {
-      console.warn("Failed to cache analysis timestamps", error);
+      cacheUpdated = false;
+      cacheErrorDetails = error?.message || String(error);
     }
 
     await setLastAnalysisStatus({
-      state: "success",
-      message: `Analysis finished for ${ranked.length} symbol${ranked.length === 1 ? "" : "s"}.`,
+      state: cacheUpdated ? "success" : "warning",
+      message: cacheUpdated
+        ? `Analysis finished for ${ranked.length} symbol${ranked.length === 1 ? "" : "s"}.`
+        : "Analysis finished but cache update failed.",
       analyzedCount: ranked.length,
+      details: cacheErrorDetails,
     });
 
     return { predictions, normalized, ranked };
@@ -156,16 +162,22 @@ export async function analyzeHeadlessly(rawPriceArrays, { modelUrl, batchSize = 
       rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
     });
 
+    let cacheUpdated = true;
+    let cacheErrorDetails = null;
     try {
       await cacheRankedAnalysisTimestamps(ranked);
     } catch (error) {
-      console.warn("Failed to cache analysis timestamps", error);
+      cacheUpdated = false;
+      cacheErrorDetails = error?.message || String(error);
     }
 
     await setLastAnalysisStatus({
-      state: "success",
-      message: `Analysis finished for ${ranked.length} symbol${ranked.length === 1 ? "" : "s"}.`,
+      state: cacheUpdated ? "success" : "warning",
+      message: cacheUpdated
+        ? `Analysis finished for ${ranked.length} symbol${ranked.length === 1 ? "" : "s"}.`
+        : "Analysis finished but cache update failed.",
       analyzedCount: ranked.length,
+      details: cacheErrorDetails,
     });
 
     return { predictions, normalized, ranked };

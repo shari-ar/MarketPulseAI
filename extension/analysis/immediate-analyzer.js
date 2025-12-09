@@ -87,7 +87,12 @@ export class ImmediateAnalyzer {
 
       return await this.analysisRunner(priceArrays);
     } catch (error) {
-      console.error("Immediate analysis failed", error);
+      await setLastAnalysisStatus({
+        state: "error",
+        message: error?.message || "Immediate analysis failed.",
+        details: error?.stack || String(error),
+        analyzedCount: 0,
+      });
       return null;
     }
   }

@@ -1,6 +1,6 @@
 const TOAST_STYLE_ID = "marketpulseai-toast-style";
 const TOAST_CONTAINER_ID = "marketpulseai-toast-container";
-const DEFAULT_DURATION_MS = 4500;
+const DEFAULT_DURATION_MS = 10000;
 const NAVIGATION_BOOTSTRAP_FLAG = "__marketpulseai_navigation_bootstrap__";
 const SNAPSHOT_BOOTSTRAP_FLAG = "__marketpulseai_snapshot_bootstrap__";
 
@@ -39,7 +39,7 @@ function ensureToastStyles() {
       max-width: 360px;
       pointer-events: auto;
       display: grid;
-      grid-template-columns: auto 1fr;
+      grid-template-columns: auto 1fr auto;
       column-gap: 10px;
       row-gap: 2px;
       align-items: center;
@@ -70,6 +70,27 @@ function ensureToastStyles() {
       white-space: pre-line;
       word-break: break-word;
     }
+
+    .marketpulseai-toast__close {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: #d1d5db;
+      font-size: 16px;
+      padding: 4px;
+      margin-left: 6px;
+      cursor: pointer;
+      border-radius: 6px;
+      line-height: 1;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .marketpulseai-toast__close:hover,
+    .marketpulseai-toast__close:focus-visible {
+      background: rgba(255, 255, 255, 0.08);
+      color: #f9fafa;
+      outline: none;
+    }
   `;
 
   document.head.appendChild(style);
@@ -93,6 +114,7 @@ function createToast({
   pillText = "Batch",
   pillColor = "#0ea5e9",
   persist = false,
+  closable = false,
 }) {
   ensureToastStyles();
   const container = ensureToastContainer();
@@ -120,6 +142,15 @@ function createToast({
   toast.appendChild(spacer);
   toast.appendChild(detail);
 
+  if (closable) {
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "marketpulseai-toast__close";
+    closeButton.textContent = "×";
+    closeButton.addEventListener("click", () => toast.remove());
+    toast.appendChild(closeButton);
+  }
+
   container.appendChild(toast);
   if (!persist) {
     setTimeout(() => toast.remove(), duration);
@@ -144,6 +175,7 @@ function renderPersistentErrorToast({ title, subtitle }) {
     pillColor: "#ef4444",
     persist: true,
     duration: null,
+    closable: true,
   });
 }
 
@@ -221,21 +253,18 @@ if (chromeApi?.runtime?.onMessage) {
 
     if (message.type === "COLLECTION_PROGRESS") {
       const { symbol, summary, remaining } = message;
-      console.debug("Collection progress", message);
       renderProgressToast({ symbol, summary, remaining });
       return undefined;
     }
 
     if (message.type === "COLLECTION_ERROR") {
       const { title, subtitle } = message;
-      console.error("Collection error", message);
       renderPersistentErrorToast({ title, subtitle });
       return undefined;
     }
 
     if (message.type === "ANALYSIS_DEBUG") {
       const { title, subtitle, pillColor } = message;
-      console.debug("Immediate analysis complete", message);
       createToast({
         title: title || "Analysis completed",
         subtitle: subtitle || "Immediate analysis finished",

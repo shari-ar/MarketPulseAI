@@ -42,7 +42,7 @@ function broadcastStatusChange(status) {
   try {
     chromeApi.runtime.sendMessage({ type: "GLOBAL_STATUS_CHANGE", status });
   } catch (error) {
-    console.debug("Failed to broadcast status change", error);
+    return;
   }
 }
 
@@ -73,13 +73,32 @@ function summarizeMissingFields(missing = []) {
 }
 
 function dispatchErrorToast(tabId, { title, subtitle }) {
-  if (tabId && chromeApi?.tabs?.sendMessage) {
-    chromeApi.tabs.sendMessage(tabId, { type: "COLLECTION_ERROR", title, subtitle }, () => {
+  if (!chromeApi?.tabs?.sendMessage) return;
+
+  const payload = { type: "COLLECTION_ERROR", title, subtitle };
+  const sendToTab = (targetId) => {
+    chromeApi.tabs.sendMessage(targetId, payload, () => {
       const runtimeError = chromeApi.runtime?.lastError;
       if (runtimeError) {
-        console.debug("Error toast dispatch skipped", runtimeError.message);
+        return;
       }
     });
+  };
+
+  if (tabId) {
+    sendToTab(tabId);
+    return;
+  }
+
+  if (!chromeApi?.tabs?.query) return;
+
+  const sendToTargets = (tabs = []) => {
+    tabs.filter((tab) => tab?.id).forEach((tab) => sendToTab(tab.id));
+  };
+
+  const maybePromise = chromeApi.tabs.query({ url: ["https://*.tsetmc.com/*"] }, sendToTargets);
+  if (maybePromise?.then) {
+    maybePromise.then(sendToTargets).catch(() => {});
   }
 }
 
@@ -97,7 +116,7 @@ function dispatchAnalysisToast({ title, subtitle, pillColor = "#22c55e" } = {}) 
           () => {
             const runtimeError = chromeApi.runtime?.lastError;
             if (runtimeError) {
-              console.debug("Analysis toast dispatch skipped", runtimeError.message);
+              return;
             }
           }
         );
@@ -106,9 +125,7 @@ function dispatchAnalysisToast({ title, subtitle, pillColor = "#22c55e" } = {}) 
 
   const maybePromise = chromeApi.tabs.query(targets, sendToTabs);
   if (maybePromise?.then) {
-    maybePromise.then(sendToTabs).catch((error) => {
-      console.debug("Analysis toast query failed", error?.message || String(error));
-    });
+    maybePromise.then(sendToTabs).catch(() => {});
   }
 }
 
@@ -207,7 +224,7 @@ async function extractTopBoxFromTab(tabId) {
   return result?.result ?? null;
 }
 
-async function capturePriceAndLinks({ symbol, tabId, url }) {
+async function capturePriceAndLinks({ symbol, tabId }) {
   let attempt = 0;
   let parsedSnapshot = null;
   let linkedSymbols = [];
@@ -257,12 +274,10 @@ async function capturePriceAndLinks({ symbol, tabId, url }) {
   const alreadyCapturedToday = symbol ? await hasVisitedSnapshotForDate(symbol) : false;
 
   if (alreadyCapturedToday) {
-    console.info("Skipping save; symbol already captured today", { symbol, url });
     return linkedSymbols;
   }
 
   if (isWithinMarketLockWindow()) {
-    console.info("Write skipped during market lock window", { symbol, url });
     return linkedSymbols;
   }
 
@@ -272,12 +287,12 @@ async function capturePriceAndLinks({ symbol, tabId, url }) {
       dateTime: new Date().toISOString(),
       ...parsedSnapshot,
     });
-    console.info("Saved TopBox snapshot", { symbol, url });
-    runAnalysisWithToast("Snapshot saved").catch((error) =>
-      console.warn("Immediate analysis trigger failed", error)
-    );
+    runAnalysisWithToast("Snapshot saved").catch(() => {});
   } catch (error) {
-    console.error("Failed to persist TopBox snapshot", error);
+    dispatchErrorToast(tabId, {
+      title: "Snapshot save failed",
+      subtitle: error?.message || "Could not store the latest snapshot.",
+    });
   }
 
   return linkedSymbols;
@@ -285,10 +300,23 @@ async function capturePriceAndLinks({ symbol, tabId, url }) {
 
 const navigator = new TabNavigator({
   tabsApi: chromeApi?.tabs,
-  onVisit: async ({ symbol, url, tabId }) => {
-    console.debug("Visited symbol", { symbol, url });
+  onError: (error, context = {}) => {
+    const subtitleParts = [context?.stage, context?.symbol]
+      .filter(Boolean)
+      .map((part) => String(part));
+
+    if (error?.message) {
+      subtitleParts.push(error.message);
+    }
+
+    dispatchErrorToast(context?.tabId || null, {
+      title: "Navigation error",
+      subtitle: subtitleParts.filter(Boolean).join(" · ") || "Navigation failed.",
+    });
+  },
+  onVisit: async ({ symbol, tabId }) => {
     try {
-      const symbols = await capturePriceAndLinks({ symbol, tabId, url });
+      const symbols = await capturePriceAndLinks({ symbol, tabId });
       if (Array.isArray(symbols) && symbols.length) {
         await queueSymbolsForToday(symbols, navigator);
       }
@@ -296,7 +324,10 @@ const navigator = new TabNavigator({
       await enqueueSymbolsMissingToday(navigator);
       startNavigationIfQueued();
     } catch (error) {
-      console.error("Navigation halted due to capture failure", error);
+      dispatchErrorToast(tabId, {
+        title: "Navigation halted",
+        subtitle: error?.message || "Capture failed on the current symbol.",
+      });
       navigator.stop();
       setGlobalStatus(GLOBAL_STATUS.IDLE);
       throw error;
@@ -315,17 +346,11 @@ const navigator = new TabNavigator({
 
     updateNavigationStatus({ remaining, pendingCount: navigator.pendingCount });
 
-    console.info(`MarketPulseAI collection progress ${summary}`, {
-      symbol,
-      remaining,
-      total,
-    });
-
     if (tabId && chromeApi?.tabs?.sendMessage) {
       chromeApi.tabs.sendMessage(tabId, payload, () => {
         const runtimeError = chromeApi.runtime?.lastError;
         if (runtimeError) {
-          console.debug("Toast dispatch skipped", runtimeError.message);
+          return;
         }
       });
     }
@@ -372,7 +397,10 @@ function startAnalysisIfQueued() {
     .then(() => setGlobalStatus(GLOBAL_STATUS.ANALYZING))
     .then(() => runAnalysisWithToast("Navigation idle"))
     .catch((error) => {
-      console.warn("Immediate analysis trigger failed after queue check", error);
+      dispatchErrorToast(null, {
+        title: "Analysis failed",
+        subtitle: error?.message || "Unable to run analysis after navigation.",
+      });
     })
     .finally(() => {
       analysisRun = null;
@@ -412,6 +440,7 @@ if (chromeApi?.tabs?.onUpdated?.addListener) {
 if (chromeApi?.runtime?.onMessage) {
   chromeApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message?.type) return undefined;
+    const senderTabId = _sender?.tab?.id || null;
 
     if (message.type === "NAVIGATE_SYMBOLS") {
       const symbols = normalizeSymbols(message.symbols || []);
@@ -422,7 +451,10 @@ if (chromeApi?.runtime?.onMessage) {
           sendResponse({ status: "queued", pending: navigator.pendingCount });
         })
         .catch((error) => {
-          console.error("Failed to queue navigation symbols", error);
+          dispatchErrorToast(senderTabId, {
+            title: "Queue failed",
+            subtitle: error?.message || "Unable to queue navigation symbols.",
+          });
           sendResponse({ status: "error", error: error?.message || String(error) });
         });
 
@@ -472,7 +504,10 @@ if (chromeApi?.runtime?.onMessage) {
           await enqueueSymbolsMissingToday(navigator);
           startNavigationIfQueued();
         } catch (error) {
-          console.error("Failed to enqueue symbols after snapshot", error);
+          dispatchErrorToast(senderTabId, {
+            title: "Queue failed",
+            subtitle: error?.message || "Unable to queue symbols after snapshot.",
+          });
         }
 
         sendResponse(payload);
@@ -495,16 +530,22 @@ if (chromeApi?.runtime?.onMessage) {
           })
             .then(() =>
               Promise.resolve(runAnalysisWithToast("Page snapshot saved"))
-                .catch((error) => console.warn("Immediate analysis trigger failed", error))
+                .catch(() => {})
                 .then(() => respondWithNavigation({ status: "saved" }))
             )
             .catch((error) => {
-              console.error("Failed to persist page snapshot", error);
+              dispatchErrorToast(senderTabId, {
+                title: "Snapshot save failed",
+                subtitle: error?.message || "Could not store the latest snapshot.",
+              });
               sendResponse({ status: "error", error: error?.message || String(error) });
             });
         })
         .catch((error) => {
-          console.error("Failed to handle snapshot save", error);
+          dispatchErrorToast(senderTabId, {
+            title: "Snapshot handling failed",
+            subtitle: error?.message || "Unable to complete snapshot save.",
+          });
           sendResponse({ status: "error", error: error?.message || String(error) });
         });
     }

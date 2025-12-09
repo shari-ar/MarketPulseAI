@@ -191,7 +191,7 @@ export class TabNavigator {
         url: buildSymbolUrl(symbol, this.baseUrl),
       });
     } catch (error) {
-      this._handleError(error, { symbol });
+      this._handleError(error, { symbol, tabId: tab?.id ?? null });
     }
 
     this.completedCount += 1;
@@ -286,7 +286,7 @@ export class TabNavigator {
       try {
         this.alarmsApi.clear(this._alarmName, () => {});
       } catch (error) {
-        console.debug("Failed to clear navigation alarm", error);
+        this._handleError(error, { stage: "clear_alarm" });
       }
     }
   }
@@ -299,7 +299,7 @@ export class TabNavigator {
       try {
         this.alarmsApi.create(this._alarmName, { when: Date.now() + this.delayMs });
       } catch (error) {
-        console.debug("Failed to schedule navigation alarm", error);
+        this._handleError(error, { stage: "schedule_alarm" });
       }
     }
 
@@ -340,13 +340,11 @@ export class TabNavigator {
     if (typeof this.onError === "function") {
       try {
         this.onError(error, context);
-        return;
-      } catch (handlerError) {
-        console.error("tab navigation error handler failed", handlerError);
+      } catch (_handlerError) {
+        // Secondary handler errors are ignored to avoid infinite loops.
       }
+      return;
     }
-
-    console.error("tab navigation failed", error, context);
   }
 }
 

@@ -15,7 +15,7 @@ function resetWorker(error) {
     try {
       workerInstance.terminate();
     } catch (terminateError) {
-      console.debug("Failed to terminate analysis worker", terminateError);
+      // Worker teardown is best-effort and will be retried on next use.
     }
   }
 
@@ -59,7 +59,6 @@ function ensureWorker() {
   };
 
   workerInstance.onerror = (event) => {
-    console.error("Analysis worker encountered an error", event);
     resetWorker(event?.error || new Error(event?.message || "Worker error"));
   };
 

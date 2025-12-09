@@ -1,0 +1,25 @@
+site_name: MarketPulseAI
+site_description: Privacy-first, on-device market analysis and export extension.
+theme:
+  name: material
+nav:
+  - Home: index.md
+  - Overview:
+      - Architecture: architecture.md
+      - Extension Structure: extension-structure.md
+      - User Workflow: user-workflow.md
+  - Data Operations:
+      - Data Collection: data-collection.md
+      - Storage Model: storage.md
+      - Scheduling & Timing: scheduling.md
+  - Analysis:
+      - Analysis & Ranking: analysis.md
+      - Exports: exports.md
+  - Developer Guide:
+      - Development Setup: dev-setup.md
+      - Testing: testing.md
+      - Configuration: configuration.md
+      - Logging & Diagnostics: diagnostics.md
+  - Roadmap: roadmap.md
+plugins:
+  - search

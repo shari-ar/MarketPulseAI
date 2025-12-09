@@ -1,38 +1,34 @@
 # MarketPulseAI
 
-MarketPulseAI is a browser extension tailored for the [Iranian Stock Market](https://www.tsetmc.com/) that automatically gathers daily OHLC data after market close and runs on-device volatility analysis using TensorFlow.js. Dexie.js manages IndexedDB persistence while SheetJS powers one-click Excel exports, letting you review historical forecasts offline.
+MarketPulseAI is a privacy-first browser extension for the Iranian Stock Market that quietly collects daily OHLC data after the closing bell and runs local volatility analysis. Everything—scraping, storage, inference, and export—happens on-device so traders can review signals even when offline.
 
-## Core Behaviors
-- **Post-close collection**: Workflow only starts once the [Iranian Stock Market](https://www.tsetmc.com/) closes at 13:00 Iran Standard Time (UTC+03:30). If tabs are open earlier, the extension stays read-only until the session ends.
-- **Oldest-first refresh**: Locates symbols with the stalest daily records in IndexedDB, then visits each symbol page sequentially to capture fresh OHLC entries.
-- **Complete cycle**: Continues visiting symbols until every ticker has a new daily record stored locally.
-- **Strict data storage**: No writes occur before 13:00; all captured OHLC values are persisted in IndexedDB via Dexie.js.
+## What It Does
+- **Close-aware harvesting:** Waits until market close (13:00 IRST, UTC+03:30) to start gathering fresh daily data from symbol pages.
+- **IndexedDB durability:** Persists OHLC history with Dexie.js, refreshing symbols with the stalest records first.
+- **On-device forecasts:** Uses TensorFlow.js to calculate swing probabilities from stored history—no external APIs.
+- **Actionable outputs:** Presents a sorted results table and enables one-click Excel exports via SheetJS.
 
-## Analysis Mode
-- **User-triggered modal**: When analysis is activated, a modal appears showing real-time progress that reaches 100% when calculations finish.
-- **Local-only computation**: All math runs on-device with TensorFlow.js, using only previously stored IndexedDB data—no external calls.
-- **Results view**: Outputs a table sorted by descending swing probability, with symbol, probability, and analysis date.
-- **Excel export**: Users can export the same dataset to a structured Excel file via SheetJS for downstream analysis.
+## How It Works (High Level)
+1. Detect market close and unlock write operations.
+2. Identify symbols with the oldest stored records.
+3. Navigate to each symbol page, scrape daily OHLC entries, and persist them locally.
+4. Run TensorFlow.js analysis on demand, updating a progress modal until completion.
+5. Render ranked results and generate an Excel file that mirrors the on-screen data.
 
-## Data Flow
-1. **Wait for close** → Detect 13:00 cutoff and block writes until then.
-2. **Select symbols** → Query IndexedDB for oldest records per symbol.
-3. **Navigate & fetch** → Visit symbol pages and scrape daily OHLC values.
-4. **Persist** → Store entries in IndexedDB using Dexie.js schema.
-5. **Analyze** → On demand, load data into TensorFlow.js, run probability model, update modal progress.
-6. **Report** → Render sorted results table and offer Excel export of the dataset.
+## Why It Matters
+- **Offline ready:** Analysis and history stay usable without network access once data is cached.
+- **Predictable scheduling:** Data collection only runs when the market is closed, protecting intraday browsing.
+- **Consistent exports:** Download the exact dataset shown in the UI for downstream review.
 
 ## Tech Stack
-- **Dexie.js** for IndexedDB schemas, migrations, and efficient queries.
-- **TensorFlow.js** for on-device probability estimation of intraday swings.
-- **SheetJS** for generating Excel exports matching on-screen results.
+- **Dexie.js** for IndexedDB schemas and migrations.
+- **TensorFlow.js** for local probability modeling.
+- **SheetJS** for Excel export parity with the UI table.
 
-## UI Notes
-- Modal progress must clearly reflect computation status, reaching 100% upon completion.
-- Collection and analysis must handle symbols sequentially without blocking the UI thread.
-- All features operate from stored data; the extension stays functional offline once records exist.
+## Contributing
+1. Install dependencies: `npm install`.
+2. Run checks: `npm test`.
+3. Submit concise PRs focused on either data collection, analysis, or export flows.
 
-## Development Tips
-- Model inputs: normalize OHLC arrays before feeding TensorFlow.js.
-- Data validation: ensure each daily record contains open, high, low, close, and timestamp fields before writes.
-- Export fidelity: align Excel column ordering with the on-screen table (Symbol | Swing | Analysis Date).
+## License
+This project is licensed under the MIT License.

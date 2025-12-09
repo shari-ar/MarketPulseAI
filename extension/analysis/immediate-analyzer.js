@@ -1,9 +1,9 @@
 import db from "../storage/db.js";
-import { analyzeHeadlessly } from "./index.js";
 import { SNAPSHOT_TABLE, ANALYSIS_CACHE_TABLE } from "../storage/schema.js";
 import { pickLatestBySymbol } from "../popup-helpers.js";
 import { isAnalysisFreshForSymbol } from "../storage/analysis-cache.js";
 import { setLastAnalysisStatus } from "../storage/analysis-status.js";
+import { runAnalysisInWorker } from "./worker-client.js";
 
 function snapshotToPriceEntry(snapshot) {
   if (!snapshot?.id) return null;
@@ -34,7 +34,7 @@ export class ImmediateAnalyzer {
     dbInstance = db,
     snapshotTableName = SNAPSHOT_TABLE,
     analysisCacheTableName = ANALYSIS_CACHE_TABLE,
-    analysisRunner = analyzeHeadlessly,
+    analysisRunner = runAnalysisInWorker,
   } = {}) {
     this.db = dbInstance;
     this.snapshotTableName = snapshotTableName;
@@ -45,7 +45,7 @@ export class ImmediateAnalyzer {
   }
 
   setAnalysisRunner(runner) {
-    this.analysisRunner = typeof runner === "function" ? runner : analyzeHeadlessly;
+    this.analysisRunner = typeof runner === "function" ? runner : runAnalysisInWorker;
   }
 
   async collectPendingPriceArrays() {

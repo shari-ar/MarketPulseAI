@@ -8,7 +8,7 @@
 
 ## Trigger Conditions
 
-- **Complete scan:** Run analysis automatically once every stock symbol has been scraped successfully.
+- **Complete scan:** Run analysis automatically once all stock symbols has been scraped successfully.
 - **7:00 pre-open safety net:** If the crawl is incomplete or has errors by 07:00 (market-opening rush), force analysis with whatever data is available so the table is ready when trading starts.
 
 ## Ranking Logic

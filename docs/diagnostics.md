@@ -1,10 +1,5 @@
 # Logging & Diagnostics
 
-## Observability
-
-- **Console logs:** Background scripts and the popup surface status messages for navigation, parsing, and analysis progress.
-- **IndexedDB inspection:** Use browser DevTools to inspect `marketpulseai` and validate snapshot contents.
-
 ## Troubleshooting
 
 - **No data after close:** Confirm system time matches IRST offset and that symbol pages are reachable.

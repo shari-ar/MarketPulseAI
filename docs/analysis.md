@@ -15,6 +15,7 @@
 
 - **Score calculation:** Each symbol receives a swing probability that drives table ordering.
 - **Result hydration:** The popup merges scores with cached snapshots so users see both model output and supporting metrics.
+- **Top-five clarity:** The extension page highlights the five symbols with the highest expected swing, matching the count shown in settings so users know why five appear by default.
 - **Progress feedback:** A modal reports progress and completion, preventing duplicate runs while the worker executes.
 
 ## Output Integrity

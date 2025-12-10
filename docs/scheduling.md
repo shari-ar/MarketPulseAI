@@ -3,7 +3,7 @@
 ## Market Close Awareness
 
 - **Collection window:** Scraping starts after 13:00 IRST (UTC+03:30) and can run until 07:00 the next day, keeping the daily cycle inside a single 24-hour window.
-- **Unlock logic:** Write operations remain paused until the market is closed, preventing intraday interference.
+- **Safe window:** Writes occur only during the post-close collection window to prevent intraday interference.
 
 ## Refresh Strategy
 

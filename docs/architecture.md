@@ -15,7 +15,7 @@
 
 ## Data Flow Summary
 
-1. Detect market close and unlock write operations.
+1. Detect market close and begin collection.
 2. Select symbols with the stalest snapshots.
 3. Scrape OHLC/top-box fields, writing snapshots into IndexedDB.
 4. Run TensorFlow.js analysis against stored history.

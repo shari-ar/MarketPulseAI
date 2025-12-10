@@ -8,7 +8,6 @@
 ## Refresh Strategy
 
 - **Daily cadence:** Each stock symbol is scraped and saved exactly once per 24-hour cycle within the 13:00–07:00 collection window.
-- **Staleness-first:** Symbols with the oldest snapshots are refreshed first to smooth out coverage.
 - **Retry handling:** Navigation scripts wait for critical selectors and re-queue symbols if pages fail to load completely.
 - **Analysis deadline:** If a full crawl finishes, analysis runs immediately; otherwise, analysis is forced at 07:00 even with partial data so the pre-market view is ready.
 

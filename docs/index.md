@@ -2,6 +2,8 @@
 
 Welcome to the reference hub for MarketPulseAI, a privacy-first browser extension that collects and analyzes Iranian stock market data entirely on-device. Use this landing page to understand the product goals, the moving parts behind the extension, and where to dive deeper across the documentation set.
 
+> Default values only: Any numbers or named values mentioned across these docs (times, thresholds, schema names, etc.) ship as the suggested defaults, but every one of them can be overridden through the extension's settings UI.
+
 ## Product Foundations
 
 - **Offline by design:** All scraping, storage, TensorFlow.js analysis, and exports run locally—no remote services involved.

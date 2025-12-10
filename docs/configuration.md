@@ -5,6 +5,8 @@
 - **Market close time:** Defaulted to 13:00 IRST (UTC+03:30) for scheduling checks.
 - **Storage names:** Database `marketpulseai` with tables `topBoxSnapshots` and `analysisCache`.
 
+All of these values are presented as defaults; users can update them in the extension settings to match their preferred schedule or naming scheme.
+
 ## Environment
 
 - **Offline-first:** No external APIs are required; ensure TensorFlow.js and SheetJS bundles ship with the extension.

@@ -2,9 +2,9 @@
 
 ## Database
 
-- **Engine:** IndexedDB via Dexie.js for structured, versioned access.
+- **Engine:** IndexedDB via Dexie.js for structured access.
 - **Database name:** `marketpulseai`.
-- **Versioning:** Schema versions tracked in `SCHEMA_MIGRATIONS`; the highest version defines the active schema.
+- **Versioning:** Single fixed schema; migrations are not tracked or applied.
 
 ## Tables
 
@@ -13,6 +13,4 @@
 
 ## Migrations
 
-- Legacy OHLC tables are retired as of migration 3, replaced by top-box snapshots.
-- Migration 2 backfills `collectedAt` timestamps for older OHLC records when present.
-- New tables are added incrementally to avoid data loss and keep analysis cache synchronized.
+- Not used. The database stays on one schema version, so upgrades rely on fresh installs rather than data migrations.

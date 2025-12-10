@@ -4,6 +4,7 @@
 
 - **Collection window:** Scraping starts after 13:00 IRST (UTC+03:30) and can run until 07:00 the next day, keeping the daily cycle inside a single 24-hour window.
 - **Safe window:** Writes occur only during the post-close collection window to prevent intraday interference.
+- **Daily purge:** The cycle begins with pruning data older than the configured retention window (default seven days) before any new writes occur.
 
 ## Refresh Strategy
 

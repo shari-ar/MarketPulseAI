@@ -5,6 +5,7 @@
 - **Engine:** IndexedDB via Dexie.js for structured access.
 - **Database name:** `marketpulseai`.
 - **Versioning:** Single fixed schema; migrations are not tracked or applied.
+- **Retention:** Only the most recent N days of snapshots are kept (default **7**); older records are purged daily before new data is collected.
 
 ## Tables
 

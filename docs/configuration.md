@@ -13,8 +13,3 @@ All of these values are presented as defaults; users can update them in the exte
 
 - **Offline-first:** No external APIs are required; ensure TensorFlow.js and SheetJS bundles ship with the extension.
 - **Permissions:** Manifest requests only the scopes needed to navigate symbol pages and store data locally.
-
-## Customization Ideas
-
-- Adjust refresh cadence or symbol selection strategy in navigation scripts.
-- Extend snapshot fields if new top-box metrics become relevant.

@@ -18,5 +18,5 @@
 
 ## Local Development Tips
 
-- Observe automatic analysis after a full crawl or at 07:00 even if crawling is incomplete.
+- Observe automatic analysis after a full crawl or at the 07:00 hard stop even if crawling is incomplete.
 - Keep DevTools open to monitor network requests (should remain idle) and IndexedDB writes.

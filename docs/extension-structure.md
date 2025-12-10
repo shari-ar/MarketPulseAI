@@ -17,4 +17,4 @@ extension/
 - **`manifest.json`** wires background and popup scripts for the browser.
 - **`navigator.js`** coordinates page movement and triggers parsing.
 - **`analysis/index.js`** orchestrates worker-based scoring and progress reporting.
-- **`popup.js` & `popup.html`** display rankings, trigger analysis, and handle exports.
+- **`popup.js` & `popup.html`** display rankings and handle exports.

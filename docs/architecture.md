@@ -9,7 +9,7 @@
 ## Core Components
 
 - **Navigation & scraping:** `navigation/` and `parsing/` coordinate page traversal and DOM extraction for symbol pages.
-- **Storage layer:** Dexie-backed IndexedDB schema defined in `storage/schema.js` with migrations to keep snapshots and analysis cache consistent.
+- **Storage layer:** Dexie-backed IndexedDB schema defined in `storage/schema.js` that stays on a single fixed version (no migrations); consistency comes from fresh installs and daily retention pruning.
 - **Analysis workers:** `analysis/` hosts TensorFlow.js scoring, ranking, and progress modal coordination, offloading heavy work to a dedicated worker.
 - **UI & exports:** Popup UI renders sorted insights and triggers Excel exports via SheetJS, mirroring the on-screen table.
 

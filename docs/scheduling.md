@@ -9,8 +9,9 @@
 
 - **Staleness-first:** Symbols with the oldest snapshots are refreshed first to smooth out coverage.
 - **Retry handling:** Navigation scripts wait for critical selectors and re-queue symbols if pages fail to load completely.
+- **Analysis deadline:** If a full crawl finishes, analysis runs immediately; otherwise, analysis is forced at 07:00 even with partial data so the pre-market view is ready.
 
 ## User Impact
 
 - **Silent operation:** Collection runs in the background without disrupting normal browsing.
-- **Manual override:** Users can trigger analysis and exports anytime after data is refreshed.
+- **Analysis cadence:** Analysis only runs automatically after a full crawl or at 07:00 if crawling is incomplete; exports remain manual.

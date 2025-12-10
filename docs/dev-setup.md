@@ -18,5 +18,6 @@
 
 ## Local Development Tips
 
-- Use the popup to trigger analysis after navigating to sample symbol pages.
+- Observe automatic analysis after a full crawl or at 07:00 even if crawling is incomplete; use DevTools to watch the worker lo
+  g and progress modal.
 - Keep DevTools open to monitor network requests (should remain idle) and IndexedDB writes.

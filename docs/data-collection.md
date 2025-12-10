@@ -2,7 +2,8 @@
 
 ## Triggers
 
-- **Time gate:** Collection routines start after market close (13:00 IRST) to avoid intraday interference.
+- **Time gate:** Collection routines start after market close (13:00 IRST) and may continue until 07:00 the next day, staying within a single daily window.
+- **Daily guarantee:** Each symbol is scraped and persisted once per 24 hours; re-reads are suppressed until the next cycle.
 - **Staleness-aware ordering:** Symbols with the oldest snapshots are prioritized for refresh to keep history balanced.
 
 ## Scraping Approach

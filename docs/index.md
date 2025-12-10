@@ -17,7 +17,7 @@ This guide is for developers and testers working on the extension codebase. It a
 
 | Workflow              | Purpose                                                                       | Where to start                                          |
 | --------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Daily data collection | Prioritize symbols with the oldest snapshots and refresh post-close.          | [Data Collection](data-collection.md)                   |
+| Daily data collection | Scrape each symbol once per post-close window.                                | [Data Collection](data-collection.md)                   |
 | Local analysis        | Run TensorFlow.js scoring and ranking in a dedicated worker with UI progress. | [Analysis](analysis.md) & [Diagnostics](diagnostics.md) |
 | Export to Excel       | Generate table-perfect `.xlsx` files matching the popup view.                 | [Exports](exports.md)                                   |
 | Developer setup       | Install dependencies, run the extension locally, and validate changes.        | [Developer Setup](dev-setup.md) & [Testing](testing.md) |
@@ -34,7 +34,6 @@ For a deeper breakdown of runtime boundaries and sequence, see [Architecture](ar
 ## Scheduling & Safeguards
 
 - **Time gating:** Scraping begins after market close (13:00 IRST / UTC+03:30) to avoid partial intraday data.
-- **Staleness ordering:** Symbols with the oldest data are fetched first to keep historical coverage balanced.
 - **Validation:** DOM inputs are sanitized before persistence to prevent malformed records in IndexedDB.
 - **Responsive UI:** Analysis progress is surfaced through a modal while workers handle heavy TensorFlow.js tasks.
 

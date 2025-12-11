@@ -1,52 +1,52 @@
 # Architecture
 
-## Runtime Model
+## Runtime Overview
 
-- **Browser extension surfaces:** Background scripts orchestrate scraping and status events, while the popup renders analysis results and exports.
-- **Data boundary:** All scraping, storage, and TensorFlow.js inference stay local to the browser; no remote APIs are used.
-- **Scheduling:** Collection is gated until market close (13:00 IRST, UTC+03:30) to avoid intraday disruption.
-- **Daily loop:** The cycle runs from 13:00–07:00, pruning stale data at 13:00, scraping within the window, and forcing analysis at 07:00 even if crawling was partial.
-- **Offline-first bundle:** TensorFlow.js and SheetJS ship with the extension, and the manifest only requests the permissions needed for navigation and storage.
+- **Extension surfaces:** Background scripts handle orchestration, scraping, and event signaling; the popup renders analysis results and exports.
+- **Local boundary:** Scraping, storage, and TensorFlow.js inference run entirely in the browser with no remote APIs.
+- **Schedule:** Data collection runs after market close at 13:00 IRST (UTC+03:30) and pauses by 07:00.
+- **Daily cadence:** At 13:00 pruning removes stale data; scraping runs within the collection window, and analysis is forced at 07:00 if crawling did not fully complete.
+- **Offline bundle:** TensorFlow.js and SheetJS ship with the extension, and the manifest requests only navigation and storage permissions.
 
 ## Core Components
 
-- **Navigation & scraping:** `navigation/` and `parsing/` coordinate page traversal and DOM extraction for symbol pages.
-- **Storage layer:** Dexie-backed IndexedDB schema defined in `storage/schema.js` that stays on a single fixed version (no migrations); consistency comes from fresh installs and daily retention pruning.
-- **Analysis workers:** `analysis/` hosts TensorFlow.js scoring, ranking, and progress modal coordination, offloading heavy work to a dedicated worker.
-- **UI & exports:** Popup UI renders sorted insights and triggers Excel exports via SheetJS, mirroring the on-screen table.
-- **Entry points:** `manifest.json` wires background and popup scripts, `navigator.js` drives page movement, `analysis/index.js` orchestrates worker scoring, and `popup.*` renders rankings/exports.
+- **Navigation and scraping:** `navigation/` and `parsing/` coordinate page traversal and DOM extraction for symbol pages.
+- **Storage:** Dexie-backed IndexedDB schema in `storage/schema.js` remains on a single version; consistency relies on clean installs and daily pruning.
+- **Analysis workers:** `analysis/` handles TensorFlow.js scoring, ranking, and progress modal updates in a dedicated worker.
+- **UI and exports:** The popup renders ordered insights and triggers Excel exports through SheetJS, mirroring the visible table.
+- **Entry points:** `manifest.json` wires background and popup scripts; `navigator.js` drives page movement; `analysis/index.js` orchestrates worker scoring; `popup.*` renders rankings and exports.
 
-## Storage & Configuration
+## Storage and Configuration
 
-- **Database contract:** IndexedDB via Dexie named `marketpulseai` with tables `topBoxSnapshots` (`[id+dateTime]` composite key) and `analysisCache` (`symbol`, `lastAnalyzedAt`).
-- **Versioning:** Single fixed schema; upgrades rely on reinstalling rather than migrations.
-- **Retention policy:** Keep the last 7 days by default, purging older rows at the start of each daily window.
-- **Defaults surfaced in settings:** Market close at 13:00 IRST, retention days (7), and a top-5 swing list size all appear as editable defaults.
+- **Database contract:** IndexedDB via Dexie named `marketpulseai` with tables `topBoxSnapshots` (composite key `[id+dateTime]`) and `analysisCache` (`symbol`, `lastAnalyzedAt`).
+- **Versioning:** Fixed schema with reinstall-based upgrades instead of migrations.
+- **Retention:** Keep seven days of history by default; older rows are purged when the daily window opens.
+- **User defaults:** Settings expose market close (13:00 IRST), retention days (7), and top-5 swing list size as editable defaults.
 
 ## Data Collection Flow
 
-1. **Prune & gate:** At 13:00 IRST, delete snapshots older than the retention window, then allow crawling only inside the 13:00–07:00 window.
-2. **Select targets:** Choose symbols with the stalest snapshots; each is scraped once per 24-hour cycle.
-3. **Navigate & parse:** Background helpers move through symbol pages, waiting for required selectors before extracting top-box metrics and validating inputs.
-4. **Persist:** Write sanitized records into `topBoxSnapshots` and update `analysisCache` timestamps when analysis completes.
-5. **Retry & cutoff:** Failed pages are re-queued; if crawling is still incomplete at 07:00, stop collection and proceed to analysis with available data.
+1. **Prune and gate:** At 13:00 IRST, delete snapshots older than the retention window and allow crawling only within 13:00–07:00.
+2. **Select targets:** Choose symbols with the stalest snapshots so each symbol is scraped once per 24-hour cycle.
+3. **Navigate and parse:** Background helpers move through symbol pages, wait for required selectors, extract top-box metrics, and validate inputs.
+4. **Persist:** Write sanitized records to `topBoxSnapshots` and update `analysisCache` when analysis completes.
+5. **Retry and cutoff:** Re-queue failed pages; if crawling remains incomplete at 07:00, stop collection and proceed to analysis with available data.
 
 ## Data Flow Summary
 
 1. Detect market close and begin collection.
 2. Select symbols with the stalest snapshots.
-3. Scrape OHLC/top-box fields, writing snapshots into IndexedDB.
+3. Scrape OHLC/top-box fields into IndexedDB.
 4. Run TensorFlow.js analysis against stored history.
-5. Present ranked results and let the user export the current table to Excel.
+5. Present ranked results and export the current table to Excel.
 
-## Analysis & Ranking
+## Analysis and Ranking
 
-- **Local workflow:** Analysis worker loads TensorFlow.js assets locally, normalizes inputs, and batches inference requests to stay responsive.
-- **Trigger rules:** Run automatically after a successful full crawl or force-run at the 07:00 cutoff with partial data so the table is ready by market open.
-- **Ranking & hydration:** Scores drive ordering; popup hydrates results with cached snapshots and highlights the top 5 symbols by default.
-- **Progress & integrity:** A modal blocks duplicate runs while reporting status; invalid/missing fields are rejected and `analysisCache` timestamps prevent redundant computation.
+- **Local execution:** Analysis worker loads TensorFlow.js assets locally, normalizes inputs, and batches inference to stay responsive.
+- **Triggers:** Run after a successful full crawl or at the 07:00 cutoff with partial data so the table is ready by market open.
+- **Ranking and hydration:** Scores determine ordering; the popup hydrates rows from cached snapshots and highlights the top five symbols by default.
+- **Progress and integrity:** A modal blocks duplicate runs and reports status; invalid or missing fields are rejected, and `analysisCache` timestamps prevent redundant computation.
 
 ## Diagnostics
 
-- **Logging hooks:** Worker logs surface model loading issues or malformed records; clearing `analysisCache` can unblock stalled runs.
-- **Data freshness checks:** If no data appears after close, verify system time matches IRST and that symbol pages are reachable; exports rely on the latest analyzed table to match downloads.
+- **Logging:** Worker logs surface model-loading or record-format issues; clearing `analysisCache` can unblock stalled runs.
+- **Freshness checks:** If no data appears after close, verify system time matches IRST and symbol pages are reachable; exports mirror the latest analyzed table.

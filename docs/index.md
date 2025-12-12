@@ -47,6 +47,7 @@ More detail lives in [Scheduling](scheduling.md) and [Diagnostics](diagnostics.m
 - **Configuration:** Environment and runtime toggles are documented in [Configuration](configuration.md).
 - **Storage:** IndexedDB schema, table keys, and migrations are covered in [Storage](storage.md).
 - **Roadmap:** Planned milestones and future enhancements live in [Roadmap](roadmap.md).
+- **Tooling plan:** Full-stack tool choices and quality gates live in [Full-Stack Tool Plan](tooling-plan.md).
 
 ## Contributing & Verification
 

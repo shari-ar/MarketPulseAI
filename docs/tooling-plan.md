@@ -10,14 +10,15 @@ This plan outlines the end-to-end tooling and platform choices that keep MarketP
 
 ## Stack Blueprint
 
-| Layer             | Tooling & Rationale                                                         | Default Commands                |
-| ----------------- | --------------------------------------------------------------------------- | ------------------------------- |
-| Extension shell   | Chromium MV3 background + service workers; popup built with vanilla JS/DOM. | `npm run build`                 |
-| Data & storage    | Dexie over IndexedDB with composite keys for symbol/time lookups.           | N/A                             |
-| Analysis          | TensorFlow.js worker to keep the popup responsive during scoring.           | N/A                             |
-| Exports           | SheetJS (xlsx) mirroring the popup table for fidelity in Excel output.      | N/A                             |
-| Quality gates     | ESLint + Prettier + Node test runner (stable on Node 18+).                  | `npm run lint` / `npm run test` |
-| Release packaging | `scripts/build-extension.js` to assemble MV3 artifacts for upload.          | `npm run build`                 |
+| Layer                   | Tooling & Rationale                                                           | Default Commands                |
+| ----------------------- | ----------------------------------------------------------------------------- | ------------------------------- |
+| Extension shell         | Chromium MV3 background + service workers; popup built with vanilla JS/DOM.   | `npm run build`                 |
+| Bundling & minification | esbuild (2024) bundles, tree-shakes, and minifies MV3 assets with sourcemaps. | `npm run build`                 |
+| Data & storage          | Dexie over IndexedDB with composite keys for symbol/time lookups.             | N/A                             |
+| Analysis                | TensorFlow.js worker to keep the popup responsive during scoring.             | N/A                             |
+| Exports                 | SheetJS (xlsx) mirroring the popup table for fidelity in Excel output.        | N/A                             |
+| Quality gates           | ESLint + Prettier + Node test runner (stable on Node 18+).                    | `npm run lint` / `npm run test` |
+| Release packaging       | `scripts/build-extension.js` to assemble MV3 artifacts for upload.            | `npm run build`                 |
 
 ## Local Development
 

@@ -3,6 +3,7 @@
 ## Market Close Awareness
 
 - **Collection window:** Scraping starts after 13:00 IRST (UTC+03:30) and runs only within the post-close window, with a hard stop at the 07:00 deadline the next day to keep the daily cycle inside a single 24-hour window.
+- **Configurable close:** The market-close time is pulled from user settings rather than hardcoded at 13:00, so schedules adapt automatically to custom trading hours.
 - **Safe window:** Writes occur only during the post-close collection window to prevent intraday interference.
 - **Daily purge:** The cycle begins with pruning data older than the configured retention window (default seven days) before any new writes occur.
 

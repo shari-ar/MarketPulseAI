@@ -26,7 +26,7 @@
 ## Data Collection Flow
 
 1. **Prune and gate:** At 13:00 IRST, delete snapshots older than the retention window and allow crawling only within 13:00–07:00.
-2. **Select targets:** Choose symbols with the stalest snapshots so each symbol is scraped once per 24-hour cycle.
+2. **Select targets:** Queue symbols missing a snapshot for the current market date so each one is captured once per day.
 3. **Navigate and parse:** Background helpers move through symbol pages, wait for required selectors, extract top-box metrics, and validate inputs.
 4. **Persist:** Write sanitized records to `topBoxSnapshots` and update `analysisCache` when analysis completes.
 5. **Retry and cutoff:** Re-queue failed pages; if crawling remains incomplete at 07:00, stop collection and proceed to analysis with available data.
@@ -34,7 +34,7 @@
 ## Data Flow Summary
 
 1. Detect market close and begin collection.
-2. Select symbols with the stalest snapshots.
+2. Enqueue any symbols missing a snapshot for the current market date.
 3. Scrape OHLC/top-box fields into IndexedDB.
 4. Run TensorFlow.js analysis against stored history.
 5. Present ranked results and export the current table to Excel.

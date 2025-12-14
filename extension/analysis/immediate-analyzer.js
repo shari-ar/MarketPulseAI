@@ -8,10 +8,10 @@ import { runAnalysisInWorker } from "./worker-client.js";
 function snapshotToPriceEntry(snapshot) {
   if (!snapshot?.id) return null;
 
-  const open = snapshot.firstPrice ?? snapshot.closingPrice ?? snapshot.lastTrade;
-  const high = snapshot.dailyHighRange ?? snapshot.allowedHighPrice ?? snapshot.closingPrice;
-  const low = snapshot.dailyLowRange ?? snapshot.allowedLowPrice ?? snapshot.closingPrice;
-  const close = snapshot.closingPrice ?? snapshot.lastTrade ?? snapshot.firstPrice;
+  const open = snapshot.open ?? snapshot.primeCost ?? snapshot.close;
+  const high = snapshot.high ?? snapshot.allowedHigh ?? snapshot.primeCost;
+  const low = snapshot.low ?? snapshot.allowedLow ?? snapshot.primeCost;
+  const close = snapshot.primeCost ?? snapshot.close ?? snapshot.open;
 
   if (
     [open, high, low, close].some((value) => typeof value !== "number" || !Number.isFinite(value))

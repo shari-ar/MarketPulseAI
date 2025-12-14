@@ -22,37 +22,40 @@ function buildPayload(record) {
     symbolName: normalizeText(record.symbolName),
     symbolAbbreviation: normalizeText(record.symbolAbbreviation),
     predictedSwingPercent: normalizeNumeric(record.predictedSwingPercent),
-    lastTrade: normalizeNumeric(record.lastTrade),
-    closingPrice: normalizeNumeric(record.closingPrice),
-    firstPrice: normalizeNumeric(record.firstPrice),
+    close: normalizeNumeric(record.close),
+    primeCost: normalizeNumeric(record.primeCost),
+    open: normalizeNumeric(record.open),
     tradesCount: normalizeNumeric(record.tradesCount),
     tradingVolume: normalizeNumeric(record.tradingVolume),
     tradingValue: normalizeNumeric(record.tradingValue),
     marketValue: normalizeNumeric(record.marketValue),
-    lastPriceTime: normalizeText(record.lastPriceTime),
+    closeTime: normalizeText(record.closeTime),
     status: normalizeText(record.status),
-    dailyLowRange: normalizeNumeric(record.dailyLowRange),
-    dailyHighRange: normalizeNumeric(record.dailyHighRange),
-    allowedLowPrice: normalizeNumeric(record.allowedLowPrice),
-    allowedHighPrice: normalizeNumeric(record.allowedHighPrice),
+    low: normalizeNumeric(record.low),
+    high: normalizeNumeric(record.high),
+    allowedLow: normalizeNumeric(record.allowedLow),
+    allowedHigh: normalizeNumeric(record.allowedHigh),
     shareCount: normalizeNumeric(record.shareCount),
     baseVolume: normalizeNumeric(record.baseVolume),
     floatingShares: normalizeNumeric(record.floatingShares),
     averageMonthlyVolume: normalizeNumeric(record.averageMonthlyVolume),
-    realBuyVolume: normalizeNumeric(record.realBuyVolume),
-    realSellVolume: normalizeNumeric(record.realSellVolume),
-    legalBuyVolume: normalizeNumeric(record.legalBuyVolume),
-    legalSellVolume: normalizeNumeric(record.legalSellVolume),
-    realBuyCount: normalizeNumeric(record.realBuyCount),
-    realSellCount: normalizeNumeric(record.realSellCount),
-    legalBuyCount: normalizeNumeric(record.legalBuyCount),
-    legalSellCount: normalizeNumeric(record.legalSellCount),
+    naturalBuyVolume: normalizeNumeric(record.naturalBuyVolume),
+    naturalSellVolume: normalizeNumeric(record.naturalSellVolume),
+    juridicalBuyVolume: normalizeNumeric(record.juridicalBuyVolume),
+    juridicalSellVolume: normalizeNumeric(record.juridicalSellVolume),
+    naturalBuyCount: normalizeNumeric(record.naturalBuyCount),
+    naturalSellCount: normalizeNumeric(record.naturalSellCount),
+    juridicalBuyCount: normalizeNumeric(record.juridicalBuyCount),
+    juridicalSellCount: normalizeNumeric(record.juridicalSellCount),
     totalBuyCount: normalizeNumeric(record.totalBuyCount),
     totalSellCount: normalizeNumeric(record.totalSellCount),
   };
 
-  const computedTotalBuyVolume = sumNumbers(payload.realBuyVolume, payload.legalBuyVolume);
-  const computedTotalSellVolume = sumNumbers(payload.realSellVolume, payload.legalSellVolume);
+  const computedTotalBuyVolume = sumNumbers(payload.naturalBuyVolume, payload.juridicalBuyVolume);
+  const computedTotalSellVolume = sumNumbers(
+    payload.naturalSellVolume,
+    payload.juridicalSellVolume
+  );
 
   payload.totalBuyVolume = normalizeNumeric(record.totalBuyVolume) ?? computedTotalBuyVolume;
   payload.totalSellVolume = normalizeNumeric(record.totalSellVolume) ?? computedTotalSellVolume;

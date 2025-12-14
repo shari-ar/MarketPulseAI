@@ -23,33 +23,33 @@
 | `symbolName`            | Full symbol name from the header.              |
 | `symbolAbbreviation`    | Ticker abbreviation from the header.           |
 | `predictedSwingPercent` | Model-predicted swing percentage for tomorrow. |
-| `lastTrade`             | Last trade price.                              |
-| `closingPrice`          | Previous closing price.                        |
-| `firstPrice`            | First price of the trading session.            |
+| `close`                 | Last trade price.                              |
+| `primeCost`             | Previous closing price.                        |
+| `open`                  | First price of the trading session.            |
 | `tradesCount`           | Number of trades.                              |
 | `tradingVolume`         | Volume traded.                                 |
 | `tradingValue`          | Value traded.                                  |
 | `marketValue`           | Market capitalization.                         |
-| `lastPriceTime`         | Timestamp for the latest price shown on page.  |
+| `closeTime`             | Timestamp for the latest price shown on page.  |
 | `status`                | Trading status.                                |
-| `dailyLowRange`         | Low end of the daily price range.              |
-| `dailyHighRange`        | High end of the daily price range.             |
-| `allowedLowPrice`       | Lower bound of the allowed price range.        |
-| `allowedHighPrice`      | Upper bound of the allowed price range.        |
+| `low`                   | Low end of the daily price range.              |
+| `high`                  | High end of the daily price range.             |
+| `allowedLow`            | Lower bound of the allowed price range.        |
+| `allowedHigh`           | Upper bound of the allowed price range.        |
 | `shareCount`            | Outstanding shares.                            |
 | `baseVolume`            | Base volume.                                   |
 | `floatingShares`        | Floating shares percentage.                    |
 | `averageMonthlyVolume`  | Average traded volume over the past month.     |
-| `realBuyVolume`         | Individual investors' buy volume.              |
-| `realSellVolume`        | Individual investors' sell volume.             |
-| `legalBuyVolume`        | Institutional buy volume.                      |
-| `legalSellVolume`       | Institutional sell volume.                     |
+| `naturalBuyVolume`      | Individual investors' buy volume.              |
+| `naturalSellVolume`     | Individual investors' sell volume.             |
+| `juridicalBuyVolume`    | Institutional buy volume.                      |
+| `juridicalSellVolume`   | Institutional sell volume.                     |
 | `totalBuyVolume`        | Combined buy volume.                           |
 | `totalSellVolume`       | Combined sell volume.                          |
-| `realBuyCount`          | Count of individual buy orders.                |
-| `realSellCount`         | Count of individual sell orders.               |
-| `legalBuyCount`         | Count of institutional buy orders.             |
-| `legalSellCount`        | Count of institutional sell orders.            |
+| `naturalBuyCount`       | Count of individual buy orders.                |
+| `naturalSellCount`      | Count of individual sell orders.               |
+| `juridicalBuyCount`     | Count of institutional buy orders.             |
+| `juridicalSellCount`    | Count of institutional sell orders.            |
 | `totalBuyCount`         | Combined buy orders count.                     |
 | `totalSellCount`        | Combined sell orders count.                    |
 

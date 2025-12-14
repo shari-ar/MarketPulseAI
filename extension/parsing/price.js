@@ -103,67 +103,67 @@ function extractSymbolHeader(html) {
 export function extractTopBoxSnapshotFromPage(html = "") {
   if (typeof html !== "string" || !html.trim()) return null;
 
-  const lastTrade = parseNumberById(html, "d02");
-  const closingPrice = parseNumberById(html, "d03");
-  const firstPrice = parseNumberById(html, "d04");
+  const close = parseNumberById(html, "d02");
+  const primeCost = parseNumberById(html, "d03");
+  const open = parseNumberById(html, "d04");
   const tradesCount = parseNumberById(html, "d08");
   const tradingVolume = parseNumberById(html, "d09");
   const tradingValue = parseNumberById(html, "d10");
   const marketValue = parseNumberById(html, "d11");
-  const lastPriceTime = coerceText(extractTextById(html, "d00"));
+  const closeTime = coerceText(extractTextById(html, "d00"));
   const status = coerceText(extractTextById(html, "d01"));
 
   const dayRange = extractRangePair(html, "بازه روز");
-  const { low: dailyLowRange, high: dailyHighRange } = dayRange;
-  const allowedHighPrice = parseNumberById(html, "PRange1");
-  const allowedLowPrice = parseNumberById(html, "PRange2");
+  const { low, high } = dayRange;
+  const allowedHigh = parseNumberById(html, "PRange1");
+  const allowedLow = parseNumberById(html, "PRange2");
 
   const shareCount = extractLabeledRowNumber(html, "تعداد سهام");
   const baseVolume = extractLabeledRowNumber(html, "حجم مبنا");
   const floatingShares = extractLabeledRowNumber(html, "سهام شناور");
   const averageMonthlyVolume = extractLabeledRowNumber(html, "میانگین حجم ماه");
 
-  const realBuyVolume = parseNumberById(html, "e0");
-  const legalBuyVolume = parseNumberById(html, "e1");
-  const realSellVolume = parseNumberById(html, "e3");
-  const legalSellVolume = parseNumberById(html, "e4");
+  const naturalBuyVolume = parseNumberById(html, "e0");
+  const juridicalBuyVolume = parseNumberById(html, "e1");
+  const naturalSellVolume = parseNumberById(html, "e3");
+  const juridicalSellVolume = parseNumberById(html, "e4");
 
-  const totalBuyVolume = sumNumbers([realBuyVolume, legalBuyVolume]);
-  const totalSellVolume = sumNumbers([realSellVolume, legalSellVolume]);
+  const totalBuyVolume = sumNumbers([naturalBuyVolume, juridicalBuyVolume]);
+  const totalSellVolume = sumNumbers([naturalSellVolume, juridicalSellVolume]);
 
   const totalCounts = extractCountRow(html, "مجموع");
-  const realCounts = extractCountRow(html, "حقیقی");
-  const legalCounts = extractCountRow(html, "حقوقی");
+  const naturalCounts = extractCountRow(html, "حقیقی");
+  const juridicalCounts = extractCountRow(html, "حقوقی");
 
   const snapshot = {
     ...extractSymbolHeader(html),
-    lastTrade,
-    closingPrice,
-    firstPrice,
+    close,
+    primeCost,
+    open,
     tradesCount,
     tradingVolume,
     tradingValue,
     marketValue,
-    lastPriceTime,
+    closeTime,
     status,
-    dailyLowRange,
-    dailyHighRange,
-    allowedLowPrice,
-    allowedHighPrice,
+    low,
+    high,
+    allowedLow,
+    allowedHigh,
     shareCount,
     baseVolume,
     floatingShares,
     averageMonthlyVolume,
-    realBuyVolume,
-    realSellVolume,
-    legalBuyVolume,
-    legalSellVolume,
+    naturalBuyVolume,
+    naturalSellVolume,
+    juridicalBuyVolume,
+    juridicalSellVolume,
     totalBuyVolume: Number.isFinite(totalBuyVolume) ? totalBuyVolume : null,
     totalSellVolume: Number.isFinite(totalSellVolume) ? totalSellVolume : null,
-    realBuyCount: realCounts.buy,
-    realSellCount: realCounts.sell,
-    legalBuyCount: legalCounts.buy,
-    legalSellCount: legalCounts.sell,
+    naturalBuyCount: naturalCounts.buy,
+    naturalSellCount: naturalCounts.sell,
+    juridicalBuyCount: juridicalCounts.buy,
+    juridicalSellCount: juridicalCounts.sell,
     totalBuyCount: totalCounts.buy,
     totalSellCount: totalCounts.sell,
   };
@@ -226,22 +226,22 @@ export function extractTopBoxSnapshotFromDom(root = globalThis.document) {
   const rangeLabel = Array.from(container.querySelectorAll("td")).find((cell) =>
     cell.textContent?.includes("بازه روز")
   );
-  let dailyLowRange = null;
-  let dailyHighRange = null;
+  let low = null;
+  let high = null;
   if (rangeLabel?.parentElement) {
     const numbers = Array.from(rangeLabel.parentElement.querySelectorAll("div"))
       .map((node) => parseNumberFromText(node.textContent))
       .filter((num) => num !== null);
     if (numbers.length >= 2) {
-      dailyLowRange = Math.min(...numbers);
-      dailyHighRange = Math.max(...numbers);
+      low = Math.min(...numbers);
+      high = Math.max(...numbers);
     } else if (numbers.length === 1) {
-      dailyLowRange = dailyHighRange = numbers[0];
+      low = high = numbers[0];
     }
   }
 
-  const realCounts = extractCountsRow("حقیقی");
-  const legalCounts = extractCountsRow("حقوقی");
+  const naturalCounts = extractCountsRow("حقیقی");
+  const juridicalCounts = extractCountsRow("حقوقی");
   const totalCounts = extractCountsRow("مجموع");
 
   const header =
@@ -253,44 +253,44 @@ export function extractTopBoxSnapshotFromDom(root = globalThis.document) {
         .slice(0, 2)
     : [];
 
-  const realBuyVolume = textFromId("e0");
-  const legalBuyVolume = textFromId("e1");
-  const realSellVolume = textFromId("e3");
-  const legalSellVolume = textFromId("e4");
+  const naturalBuyVolume = textFromId("e0");
+  const juridicalBuyVolume = textFromId("e1");
+  const naturalSellVolume = textFromId("e3");
+  const juridicalSellVolume = textFromId("e4");
 
-  const totalBuyVolume = sumNumbers([realBuyVolume, legalBuyVolume]);
-  const totalSellVolume = sumNumbers([realSellVolume, legalSellVolume]);
+  const totalBuyVolume = sumNumbers([naturalBuyVolume, juridicalBuyVolume]);
+  const totalSellVolume = sumNumbers([naturalSellVolume, juridicalSellVolume]);
 
   const snapshot = {
     symbolName: symbolName || null,
     symbolAbbreviation: symbolAbbreviation || null,
-    lastTrade: textFromId("d02"),
-    closingPrice: textFromId("d03"),
-    firstPrice: textFromId("d04"),
+    close: textFromId("d02"),
+    primeCost: textFromId("d03"),
+    open: textFromId("d04"),
     tradesCount: textFromId("d08"),
     tradingVolume: textFromId("d09"),
     tradingValue: textFromId("d10"),
     marketValue: textFromId("d11"),
-    lastPriceTime: rawTextById("d00"),
+    closeTime: rawTextById("d00"),
     status: rawTextById("d01"),
-    dailyLowRange,
-    dailyHighRange,
-    allowedLowPrice: textFromId("PRange2"),
-    allowedHighPrice: textFromId("PRange1"),
+    low,
+    high,
+    allowedLow: textFromId("PRange2"),
+    allowedHigh: textFromId("PRange1"),
     shareCount: labeledValue("تعداد سهام"),
     baseVolume: labeledValue("حجم مبنا"),
     floatingShares: labeledValue("سهام شناور"),
     averageMonthlyVolume: labeledValue("میانگین حجم ماه"),
-    realBuyVolume,
-    realSellVolume,
-    legalBuyVolume,
-    legalSellVolume,
+    naturalBuyVolume,
+    naturalSellVolume,
+    juridicalBuyVolume,
+    juridicalSellVolume,
     totalBuyVolume: Number.isFinite(totalBuyVolume) ? totalBuyVolume : null,
     totalSellVolume: Number.isFinite(totalSellVolume) ? totalSellVolume : null,
-    realBuyCount: realCounts.buy,
-    realSellCount: realCounts.sell,
-    legalBuyCount: legalCounts.buy,
-    legalSellCount: legalCounts.sell,
+    naturalBuyCount: naturalCounts.buy,
+    naturalSellCount: naturalCounts.sell,
+    juridicalBuyCount: juridicalCounts.buy,
+    juridicalSellCount: juridicalCounts.sell,
     totalBuyCount: totalCounts.buy,
     totalSellCount: totalCounts.sell,
   };

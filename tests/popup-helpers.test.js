@@ -20,15 +20,15 @@ describe("detectSymbolFromUrl", () => {
 describe("pickLatestBySymbol", () => {
   it("keeps the newest record per symbol by dateTime", () => {
     const records = [
-      { id: "AAA", dateTime: "2024-08-01T10:00:00Z", closingPrice: 1 },
-      { id: "AAA", dateTime: "2024-08-01T11:00:00Z", closingPrice: 2 },
-      { id: "BBB", dateTime: "2024-08-01T09:00:00Z", closingPrice: 3 },
+      { id: "AAA", dateTime: "2024-08-01T10:00:00Z", primeCost: 1 },
+      { id: "AAA", dateTime: "2024-08-01T11:00:00Z", primeCost: 2 },
+      { id: "BBB", dateTime: "2024-08-01T09:00:00Z", primeCost: 3 },
     ];
 
     const latest = pickLatestBySymbol(records);
     assert.equal(latest.length, 2);
     const aaa = latest.find((r) => r.id === "AAA");
-    assert.equal(aaa.closingPrice, 2);
+    assert.equal(aaa.primeCost, 2);
   });
 
   it("ignores entries without a symbol", () => {

@@ -6,11 +6,6 @@
 - **Normalization:** Input records are normalized before inference to stabilize probability outputs.
 - **Batching:** Worker clients send batched requests to keep the UI responsive during long-running analysis.
 
-## Where the Analysis Runs
-
-- **Worker location:** `/extension/analysis/` holds the TensorFlow.js worker entry point (`index.js`) plus helpers for normalization, ranking, modal progress, and worker messaging.
-- **Popup hooks:** The popup triggers analysis through the worker client so scoring stays off the UI thread while progress updates flow back to the modal.
-
 ## Trigger Conditions
 
 - **Complete scan:** Run analysis automatically once all stock symbols has been scraped successfully.

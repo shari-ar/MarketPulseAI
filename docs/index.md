@@ -20,6 +20,7 @@ This guide is for developers and testers working on the extension codebase. It a
 | Workflow              | Purpose                                                                       | Where to start                                          |
 | --------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------- |
 | Daily data collection | Scrape each symbol once per post-close window.                                | [Data Collection](data-collection.md)                   |
+| Swing forecasting     | Build and run seven-day TCN-based swing predictions for ranking.              | [Swing Forecasting](forecasting.md)                     |
 | Local analysis        | Run TensorFlow.js scoring and ranking in a dedicated worker with UI progress. | [Analysis](analysis.md) & [Diagnostics](diagnostics.md) |
 | Export to Excel       | Generate table-perfect `.xlsx` files matching the popup view.                 | [Exports](exports.md)                                   |
 | Developer setup       | Install dependencies, run the extension locally, and validate changes.        | [Developer Setup](dev-setup.md) & [Testing](testing.md) |

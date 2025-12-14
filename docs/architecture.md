@@ -13,6 +13,7 @@
 - **Navigation and scraping:** `navigation/` and `parsing/` coordinate page traversal and DOM extraction for symbol pages.
 - **Storage:** Dexie-backed IndexedDB schema in `storage/schema.js` remains on a single version; consistency relies on clean installs and daily pruning.
 - **Analysis workers:** `analysis/` handles TensorFlow.js scoring, ranking, and progress modal updates in a dedicated worker.
+- **Model assets:** A seven-day Temporal Convolutional Network (TCN) model, converted to TensorFlow.js, forecasts `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` for each symbol.
 - **UI and exports:** The popup renders ordered insights and triggers Excel exports through SheetJS, mirroring the visible table.
 - **Entry points:** `manifest.json` wires background and popup scripts; `navigator.js` drives page movement; `analysis/index.js` orchestrates worker scoring; `popup.*` renders rankings and exports.
 

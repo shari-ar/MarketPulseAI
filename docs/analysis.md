@@ -5,7 +5,9 @@ This document describes how MarketPulse AI executes model-driven analysis in the
 ## TensorFlow.js Workflow
 
 - **Model assets:** The analysis worker loads TensorFlow.js assets from local extension storage to avoid external network calls.
-- **Input preparation:** Incoming stock records are normalized before inference to stabilize probability outputs.
+- **Feature window:** Each forecast consumes the last seven trading days per symbol, rebuilt from `topBoxSnapshots` (sorted by `dateTime`) before scoring.
+- **Target definition:** The model outputs the next-day swing percent `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` and writes the value to `predictedSwingPercent`.
+- **Input preparation:** Incoming stock records are normalized using stored scalers to stabilize regression outputs.
 - **Request batching:** Worker clients send batched inference requests so the popup remains responsive during longer runs.
 
 ## Trigger Conditions
@@ -29,6 +31,10 @@ This document describes how MarketPulse AI executes model-driven analysis in the
 
 - **Cache timestamps:** `analysisCache` records the last analysis time to skip unchanged records.
 - **Input validation:** Invalid or incomplete fields are rejected before inference to keep rankings trustworthy.
+
+## Forecasting Details
+
+See [Swing Forecasting Methodology](forecasting.md) for the full feature list, model choice (TCN), training regimen, and the `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` target used by the analysis worker.
 
 ## Diagnostics
 

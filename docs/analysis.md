@@ -6,6 +6,11 @@
 - **Normalization:** Input records are normalized before inference to stabilize probability outputs.
 - **Batching:** Worker clients send batched requests to keep the UI responsive during long-running analysis.
 
+## Where the Analysis Runs
+
+- **Worker location:** `/extension/analysis/` holds the TensorFlow.js worker entry point (`index.js`) plus helpers for normalization, ranking, modal progress, and worker messaging.
+- **Popup hooks:** The popup triggers analysis through the worker client so scoring stays off the UI thread while progress updates flow back to the modal.
+
 ## Trigger Conditions
 
 - **Complete scan:** Run analysis automatically once all stock symbols has been scraped successfully.
@@ -27,3 +32,9 @@
 
 - **Cached timestamps:** `analysisCache` tracks the last analyzed time to skip unchanged records.
 - **Validation:** Invalid or missing fields are rejected before inference to keep rankings trustworthy.
+
+## Diagnostics Playbook
+
+- **Watch the worker logs:** Use DevTools console while running the extension to catch model-loading or malformed-record errors from `analysis/index.js`.
+- **Unstick stalled runs:** Clear the `analysisCache` Dexie table (IndexedDB `marketpulseai` database) so freshness checks don’t block new scoring after failures.
+- **Verify data freshness:** If post-close analysis shows nothing new, confirm the machine clock matches IRST and re-run the worker to refresh cached timestamps and exports.

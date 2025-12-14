@@ -20,6 +20,9 @@ Engineered features add stability and capture short-term momentum:
 - Day-over-day returns for `close` and `primeCost`.
 - Intraday range ratios such as `(high - low) / primeCost` and `(close - open) / primeCost`.
 - Liquidity ratios such as `tradingVolume / averageMonthlyVolume` and `totalBuyVolume / totalSellVolume`.
+- Ratios of natural-to-juridical participation for every flow metric, e.g., `naturalBuyVolume / juridicalBuyVolume`, `naturalSellVolume / juridicalSellVolume`, and their count analogs (`naturalBuyCount / juridicalBuyCount`, `naturalSellCount / juridicalSellCount`).
+- Cross-ratios across all volume-related fields—including `tradingVolume`, `tradingValue`, `totalBuyVolume`, `totalSellVolume`, `naturalBuyVolume`, `naturalSellVolume`, `juridicalBuyVolume`, `juridicalSellVolume`, `baseVolume`, and `averageMonthlyVolume`—pairwise normalized as `x_i / x_j` to capture dominance among sources.
+- Cross-ratios across all count-related fields—including `tradesCount`, `totalBuyCount`, `totalSellCount`, `naturalBuyCount`, `naturalSellCount`, `juridicalBuyCount`, and `juridicalSellCount`—computed pairwise as `x_i / x_j` to reveal shifts in trade initiation mix.
 - Z-scored versions of the above within each seven-day window to normalize scale differences across symbols.
 
 ## Model Choice

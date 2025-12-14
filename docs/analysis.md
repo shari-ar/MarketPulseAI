@@ -1,35 +1,37 @@
-# Analysis & Ranking
+# Analysis & Ranking Overview
+
+This document describes how MarketPulse AI executes model-driven analysis in the browser extension and how results are stored, ranked, and exported.
 
 ## TensorFlow.js Workflow
 
-- **Model loading:** TensorFlow.js assets are pulled locally by the analysis worker to avoid network dependencies.
-- **Normalization:** Input records are normalized before inference to stabilize probability outputs.
-- **Batching:** Worker clients send batched requests to keep the UI responsive during long-running analysis.
+- **Model assets:** The analysis worker loads TensorFlow.js assets from local extension storage to avoid external network calls.
+- **Input preparation:** Incoming stock records are normalized before inference to stabilize probability outputs.
+- **Request batching:** Worker clients send batched inference requests so the popup remains responsive during longer runs.
 
 ## Trigger Conditions
 
-- **Complete scan:** Run analysis automatically once all stock symbols has been scraped successfully.
-- **07:00 cutoff safety net:** If the crawl is incomplete or has errors by the 07:00 hard stop (market-opening rush), force analysis with whatever data is available so the table is ready when trading starts.
+- **Full crawl completion:** Analysis runs automatically after all stock symbols finish scraping successfully.
+- **07:00 safety cutoff:** If scraping is unfinished or errored by 07:00 (market-open rush), analysis proceeds with available data so results are ready for users.
 
 ## Ranking Logic
 
-- **Score calculation:** Each symbol receives a swing probability that drives table ordering.
-- **Result hydration:** The popup merges scores with cached snapshots so users see both model output and supporting metrics.
-- **Top-five clarity:** The extension page highlights the five symbols with the highest expected swing, matching the count shown in settings so users know why five appear by default.
-- **Progress feedback:** A modal reports progress and completion, preventing duplicate runs while the worker executes.
+- **Score computation:** Each symbol receives a swing probability that determines table ordering.
+- **Result enrichment:** The popup combines scores with cached snapshots so users see both model output and supporting metrics.
+- **Top-five emphasis:** The extension page highlights the five symbols with the highest expected swing, matching the default settings count.
+- **Progress reporting:** A modal tracks analysis progress and completion, preventing duplicate runs while the worker executes.
 
-## Result Persistence & Export
+## Result Persistence and Export
 
-- **Per-snapshot storage:** Each `[id+dateTime]` entry in `topBoxSnapshots` captures the model's next-day swing as `predictedSwingPercent` (for example, `3.5` means a 3.5% swing forecast for the following session).
-- **Excel handoff:** After ranking, the popup can export the displayed table (including `predictedSwingPercent`) to Excel for offline review.
+- **Snapshot storage:** Each `[id + dateTime]` entry in `topBoxSnapshots` stores the model's next-day swing as `predictedSwingPercent` (for example, `3.5` equals a forecasted 3.5% swing for the next session).
+- **Excel export:** After ranking, the popup can export the displayed table—including `predictedSwingPercent`—to Excel for offline review.
 
 ## Output Integrity
 
-- **Cached timestamps:** `analysisCache` tracks the last analyzed time to skip unchanged records.
-- **Validation:** Invalid or missing fields are rejected before inference to keep rankings trustworthy.
+- **Cache timestamps:** `analysisCache` records the last analysis time to skip unchanged records.
+- **Input validation:** Invalid or incomplete fields are rejected before inference to keep rankings trustworthy.
 
-## Diagnostics Playbook
+## Diagnostics
 
-- **Watch the worker logs:** Use DevTools console while running the extension to catch model-loading or malformed-record errors from `analysis/index.js`.
-- **Unstick stalled runs:** Clear the `analysisCache` Dexie table (IndexedDB `marketpulseai` database) so freshness checks don’t block new scoring after failures.
-- **Verify data freshness:** If post-close analysis shows nothing new, confirm the machine clock matches IRST and re-run the worker to refresh cached timestamps and exports.
+- **Monitor worker logs:** Use the DevTools console during extension runs to capture model-loading issues or malformed-record errors from `analysis/index.js`.
+- **Recover stalled runs:** Clear the `analysisCache` table (IndexedDB `marketpulseai` database) if freshness checks prevent new scoring after failures.
+- **Validate data freshness:** If post-close analysis shows no updates, confirm the machine clock matches IRST and rerun the worker to refresh cached timestamps and exports.

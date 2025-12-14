@@ -31,18 +31,18 @@ describe("ImmediateAnalyzer", () => {
     const snapshots = [
       {
         id: "AAA",
-        firstPrice: 9,
-        dailyHighRange: 10,
-        dailyLowRange: 8,
-        closingPrice: 9.5,
+        open: 9,
+        high: 10,
+        low: 8,
+        primeCost: 9.5,
         dateTime: "2024-01-02T00:00:00Z",
       },
       {
         id: "AAA",
-        firstPrice: 7,
-        dailyHighRange: 9,
-        dailyLowRange: 6,
-        closingPrice: 7.5,
+        open: 7,
+        high: 9,
+        low: 6,
+        primeCost: 7.5,
         dateTime: "2024-01-01T00:00:00Z",
       },
     ];
@@ -85,10 +85,10 @@ describe("ImmediateAnalyzer", () => {
         snapshots: [
           {
             id: "AAA",
-            firstPrice: 9,
-            dailyHighRange: 10,
-            dailyLowRange: 8,
-            closingPrice: 9.5,
+            open: 9,
+            high: 10,
+            low: 8,
+            primeCost: 9.5,
             dateTime: "2024-01-02T00:00:00Z",
           },
         ],
@@ -116,10 +116,10 @@ describe("ImmediateAnalyzer", () => {
         snapshots: [
           {
             id: "AAA",
-            firstPrice: 9,
-            dailyHighRange: 10,
-            dailyLowRange: 8,
-            closingPrice: 9.5,
+            open: 9,
+            high: 10,
+            low: 8,
+            primeCost: 9.5,
             dateTime: "2024-01-02T00:00:00Z",
           },
         ],

@@ -8,8 +8,8 @@ describe("snapshot field validation helpers", () => {
     );
 
     const snapshot = {
-      lastTrade: 1200,
-      closingPrice: 1180,
+      close: 1200,
+      primeCost: 1180,
       floatingShares: null,
       predictedSwingPercent: undefined,
     };
@@ -24,12 +24,12 @@ describe("snapshot field validation helpers", () => {
     );
 
     const snapshot = {
-      lastTrade: 1200,
-      closingPrice: undefined,
+      close: 1200,
+      primeCost: undefined,
       floatingShares: undefined,
     };
 
-    assert.deepStrictEqual(missingSnapshotFields(snapshot), ["closingPrice"]);
+    assert.deepStrictEqual(missingSnapshotFields(snapshot), ["primeCost"]);
     assert.strictEqual(hasCompleteSnapshot(snapshot), false);
   });
 });

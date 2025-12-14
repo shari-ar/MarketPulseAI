@@ -69,33 +69,33 @@ describe("TopBox extraction", () => {
     assert.deepStrictEqual(snapshot, {
       symbolName: "بانک ملت",
       symbolAbbreviation: "وبملت",
-      lastTrade: 3566,
-      closingPrice: 3549,
-      firstPrice: 3507,
+      close: 3566,
+      primeCost: 3549,
+      open: 3507,
       tradesCount: 1421,
       tradingVolume: 7799903,
       tradingValue: 27679973416,
       marketValue: 35490000000000,
-      lastPriceTime: "10:58:16",
+      closeTime: "10:58:16",
       status: "مجاز",
-      dailyLowRange: 3507,
-      dailyHighRange: 3595,
-      allowedLowPrice: 3464,
-      allowedHighPrice: 3678,
+      low: 3507,
+      high: 3595,
+      allowedLow: 3464,
+      allowedHigh: 3678,
       shareCount: 10000000000,
       baseVolume: 4096123,
       floatingShares: null,
       averageMonthlyVolume: 26163963,
-      realBuyVolume: 4608459,
-      realSellVolume: 4849394,
-      legalBuyVolume: 3191444,
-      legalSellVolume: 2950509,
+      naturalBuyVolume: 4608459,
+      naturalSellVolume: 4849394,
+      juridicalBuyVolume: 3191444,
+      juridicalSellVolume: 2950509,
       totalBuyVolume: 7799903,
       totalSellVolume: 7799903,
-      realBuyCount: 98,
-      realSellCount: 1114,
-      legalBuyCount: 5,
-      legalSellCount: 2,
+      naturalBuyCount: 98,
+      naturalSellCount: 1114,
+      juridicalBuyCount: 5,
+      juridicalSellCount: 2,
       totalBuyCount: 103,
       totalSellCount: 1116,
     });
@@ -127,8 +127,8 @@ describe("TopBox extraction", () => {
     const snapshot = extractTopBoxSnapshotFromPage(htmlWithExtras);
 
     assert(snapshot);
-    assert.strictEqual(snapshot.lastTrade, 26650);
-    assert.strictEqual(snapshot.closingPrice, 26400);
+    assert.strictEqual(snapshot.close, 26650);
+    assert.strictEqual(snapshot.primeCost, 26400);
   });
 
   it("ignores trailing negative deltas in price cells", async () => {
@@ -140,7 +140,7 @@ describe("TopBox extraction", () => {
     const snapshot = extractTopBoxSnapshotFromPage(htmlWithNegative);
 
     assert(snapshot);
-    assert.strictEqual(snapshot.lastTrade, 11660);
-    assert.strictEqual(snapshot.closingPrice, 11700);
+    assert.strictEqual(snapshot.close, 11660);
+    assert.strictEqual(snapshot.primeCost, 11700);
   });
 });

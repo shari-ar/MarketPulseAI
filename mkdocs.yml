@@ -15,6 +15,7 @@ nav:
   - Analysis:
       - Analysis & Ranking: analysis.md
       - Exports: exports.md
+      - Forecasting: forecasting.md
   - Developer Guide:
       - Development Setup: dev-setup.md
       - Testing: testing.md

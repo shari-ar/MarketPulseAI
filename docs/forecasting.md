@@ -2,7 +2,7 @@
 
 ## Objective
 
-- **Forecasted metric:** Tomorrow's swing percent, defined as `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost`.
+- **Forecasted metrics:** Tomorrow's swing percent, defined as `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost`, plus a calibrated swing probability used for ranking confidence.
 - **Target horizon:** One trading day ahead; predictions are attached to each symbol's most recent snapshot.
 - **Window length:** Seven most recent trading days per symbol are required for a valid forecast.
 
@@ -27,9 +27,9 @@ Engineered features add stability and capture short-term momentum:
 
 ## Model Choice
 
-- **Architecture:** Temporal Convolutional Network (TCN) with residual 1D convolution blocks over the seven-day sequences, followed by a dense regression head. This architecture excels at short, fixed-length sequences and preserves temporal ordering without recurrence overhead.
+- **Architecture:** Temporal Convolutional Network (TCN) with residual 1D convolution blocks over the seven-day sequences, followed by dual heads: a dense regression head for swing percent and a sigmoid head for swing probability. This architecture excels at short, fixed-length sequences and preserves temporal ordering without recurrence overhead.
 - **Why TCN:** Strong performance on noisy financial series, low inference latency in TensorFlow.js, and straightforward conversion from Python/Keras training artifacts to the browser bundle.
-- **Output:** A single scalar representing the predicted swing percent for the next trading day.
+- **Output:** Two values written to the latest snapshot: the predicted swing percent for the next trading day and the probability that the move will occur.
 
 ## Training Pipeline
 
@@ -44,11 +44,11 @@ Engineered features add stability and capture short-term momentum:
 
 1. **Eligibility check:** Require at least seven recent snapshots after retention pruning; otherwise skip forecasting for that symbol.
 2. **Window assembly:** Pull the last seven `topBoxSnapshots` rows, order by `dateTime`, and rebuild engineered features using the stored scalers.
-3. **TensorFlow.js scoring:** Load the TCN assets in the analysis worker, run a single forward pass, and write the resulting value to `predictedSwingPercent` on the most recent row.
-4. **Ranking:** The popup orders symbols by `predictedSwingPercent`, highlights the top five by default, and propagates the score into exports.
+3. **TensorFlow.js scoring:** Load the TCN assets in the analysis worker, run a single forward pass, and write the resulting values to `predictedSwingPercent` and `predictedSwingProbability` on the most recent row.
+4. **Ranking:** The popup orders symbols by `predictedSwingProbability` (with `predictedSwingPercent` shown alongside for magnitude), highlights the top five by default, and propagates both scores into exports.
 
 ## Operational Guardrails
 
 - **Data freshness:** Retention sweeps must keep at least seven consecutive days for each symbol to avoid dropped forecasts.
-- **Fallbacks:** If the model assets fail to load, skip inference and keep `predictedSwingPercent` null to avoid stale scores.
+- **Fallbacks:** If the model assets fail to load, skip inference and keep `predictedSwingPercent` and `predictedSwingProbability` null to avoid stale scores.
 - **Monitoring:** Log TensorFlow.js load times and inference durations in the worker console to detect regressions before release.

@@ -6,7 +6,7 @@ This document describes how MarketPulse AI executes model-driven analysis in the
 
 - **Model assets:** The analysis worker loads TensorFlow.js assets from local extension storage to avoid external network calls.
 - **Feature window:** Each forecast consumes the last seven trading days per symbol, rebuilt from `topBoxSnapshots` (sorted by `dateTime`) before scoring.
-- **Target definition:** The model outputs the next-day swing percent `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` and writes the value to `predictedSwingPercent`.
+- **Target definition:** The model outputs the next-day swing percent `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` as `predictedSwingPercent` **and** a calibrated swing probability as `predictedSwingProbability`.
 - **Input preparation:** Incoming stock records are normalized using stored scalers to stabilize regression outputs.
 - **Request batching:** Worker clients send batched inference requests so the popup remains responsive during longer runs.
 
@@ -17,15 +17,15 @@ This document describes how MarketPulse AI executes model-driven analysis in the
 
 ## Ranking Logic
 
-- **Score computation:** Each symbol receives a swing probability that determines table ordering.
+- **Score computation:** Each symbol receives a swing probability that determines table ordering, while the paired swing percent value provides the magnitude context.
 - **Result enrichment:** The popup combines scores with cached snapshots so users see both model output and supporting metrics.
 - **Top-five emphasis:** The extension page highlights the five symbols with the highest expected swing, matching the default settings count.
 - **Progress reporting:** A modal tracks analysis progress and completion, preventing duplicate runs while the worker executes.
 
 ## Result Persistence and Export
 
-- **Snapshot storage:** Each `[id + dateTime]` entry in `topBoxSnapshots` stores the model's next-day swing as `predictedSwingPercent` (for example, `3.5` equals a forecasted 3.5% swing for the next session).
-- **Excel export:** After ranking, the popup can export the displayed table—including `predictedSwingPercent`—to Excel for offline review.
+- **Snapshot storage:** Each `[id + dateTime]` entry in `topBoxSnapshots` stores both the model's next-day swing percent (`predictedSwingPercent`, e.g., `3.5` for a +3.5% move) and the associated swing probability (`predictedSwingProbability`, e.g., `0.62` for a 62% likelihood of the move materializing).
+- **Excel export:** After ranking, the popup can export the displayed table—including `predictedSwingPercent` **and** `predictedSwingProbability`—to Excel for offline review.
 
 ## Output Integrity
 

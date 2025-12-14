@@ -16,42 +16,43 @@
 - **Purpose:** Stores per-symbol market snapshots pulled from the top box scrape.
 - **Columns:**
 
-| Field                   | Description                                    |
-| ----------------------- | ---------------------------------------------- |
-| `id`                    | Symbol identifier (instrument id).             |
-| `dateTime`              | ISO timestamp when the snapshot was captured.  |
-| `symbolName`            | Full symbol name from the header.              |
-| `symbolAbbreviation`    | Ticker abbreviation from the header.           |
-| `predictedSwingPercent` | Model-predicted swing percentage for tomorrow. |
-| `close`                 | Last trade price.                              |
-| `primeCost`             | Previous closing price.                        |
-| `open`                  | First price of the trading session.            |
-| `tradesCount`           | Number of trades.                              |
-| `tradingVolume`         | Volume traded.                                 |
-| `tradingValue`          | Value traded.                                  |
-| `marketValue`           | Market capitalization.                         |
-| `closeTime`             | Timestamp for the latest price shown on page.  |
-| `status`                | Trading status.                                |
-| `low`                   | Low end of the daily price range.              |
-| `high`                  | High end of the daily price range.             |
-| `allowedLow`            | Lower bound of the allowed price range.        |
-| `allowedHigh`           | Upper bound of the allowed price range.        |
-| `shareCount`            | Outstanding shares.                            |
-| `baseVolume`            | Base volume.                                   |
-| `floatingShares`        | Floating shares percentage.                    |
-| `averageMonthlyVolume`  | Average traded volume over the past month.     |
-| `naturalBuyVolume`      | Individual investors' buy volume.              |
-| `naturalSellVolume`     | Individual investors' sell volume.             |
-| `juridicalBuyVolume`    | Institutional buy volume.                      |
-| `juridicalSellVolume`   | Institutional sell volume.                     |
-| `totalBuyVolume`        | Combined buy volume.                           |
-| `totalSellVolume`       | Combined sell volume.                          |
-| `naturalBuyCount`       | Count of individual buy orders.                |
-| `naturalSellCount`      | Count of individual sell orders.               |
-| `juridicalBuyCount`     | Count of institutional buy orders.             |
-| `juridicalSellCount`    | Count of institutional sell orders.            |
-| `totalBuyCount`         | Combined buy orders count.                     |
-| `totalSellCount`        | Combined sell orders count.                    |
+| Field                       | Description                                                        |
+| --------------------------- | ------------------------------------------------------------------ |
+| `id`                        | Symbol identifier (instrument id).                                 |
+| `dateTime`                  | ISO timestamp when the snapshot was captured.                      |
+| `symbolName`                | Full symbol name from the header.                                  |
+| `symbolAbbreviation`        | Ticker abbreviation from the header.                               |
+| `predictedSwingPercent`     | Model-predicted swing percentage for tomorrow.                     |
+| `predictedSwingProbability` | Calibrated probability (0–1) that the forecasted swing will occur. |
+| `close`                     | Last trade price.                                                  |
+| `primeCost`                 | Previous closing price.                                            |
+| `open`                      | First price of the trading session.                                |
+| `tradesCount`               | Number of trades.                                                  |
+| `tradingVolume`             | Volume traded.                                                     |
+| `tradingValue`              | Value traded.                                                      |
+| `marketValue`               | Market capitalization.                                             |
+| `closeTime`                 | Timestamp for the latest price shown on page.                      |
+| `status`                    | Trading status.                                                    |
+| `low`                       | Low end of the daily price range.                                  |
+| `high`                      | High end of the daily price range.                                 |
+| `allowedLow`                | Lower bound of the allowed price range.                            |
+| `allowedHigh`               | Upper bound of the allowed price range.                            |
+| `shareCount`                | Outstanding shares.                                                |
+| `baseVolume`                | Base volume.                                                       |
+| `floatingShares`            | Floating shares percentage.                                        |
+| `averageMonthlyVolume`      | Average traded volume over the past month.                         |
+| `naturalBuyVolume`          | Individual investors' buy volume.                                  |
+| `naturalSellVolume`         | Individual investors' sell volume.                                 |
+| `juridicalBuyVolume`        | Institutional buy volume.                                          |
+| `juridicalSellVolume`       | Institutional sell volume.                                         |
+| `totalBuyVolume`            | Combined buy volume.                                               |
+| `totalSellVolume`           | Combined sell volume.                                              |
+| `naturalBuyCount`           | Count of individual buy orders.                                    |
+| `naturalSellCount`          | Count of individual sell orders.                                   |
+| `juridicalBuyCount`         | Count of institutional buy orders.                                 |
+| `juridicalSellCount`        | Count of institutional sell orders.                                |
+| `totalBuyCount`             | Combined buy orders count.                                         |
+| `totalSellCount`            | Combined sell orders count.                                        |
 
 ### `analysisCache`
 

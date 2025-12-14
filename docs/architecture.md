@@ -13,7 +13,7 @@
 - **Navigation and scraping:** `navigation/` and `parsing/` coordinate page traversal and DOM extraction for symbol pages.
 - **Storage:** Dexie-backed IndexedDB schema in `storage/schema.js` remains on a single version; consistency relies on clean installs and daily pruning.
 - **Analysis workers:** `analysis/` handles TensorFlow.js scoring, ranking, and progress modal updates in a dedicated worker.
-- **Model assets:** A seven-day Temporal Convolutional Network (TCN) model, converted to TensorFlow.js, forecasts `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` for each symbol.
+- **Model assets:** A seven-day Temporal Convolutional Network (TCN) model, converted to TensorFlow.js, forecasts `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` and the accompanying swing probability for each symbol.
 - **UI and exports:** The popup renders ordered insights and triggers Excel exports through SheetJS, mirroring the visible table.
 - **Entry points:** `manifest.json` wires background and popup scripts; `navigator.js` drives page movement; `analysis/index.js` orchestrates worker scoring; `popup.*` renders rankings and exports.
 
@@ -44,7 +44,7 @@
 
 - **Local execution:** Analysis worker loads TensorFlow.js assets locally, normalizes inputs, and batches inference to stay responsive.
 - **Triggers:** Run after a successful full crawl or at the 07:00 cutoff with partial data so the table is ready by market open.
-- **Ranking and hydration:** Scores determine ordering; the popup hydrates rows from cached snapshots and highlights the top five symbols by default.
+- **Ranking and hydration:** Scores determine ordering; the popup hydrates rows from cached snapshots and highlights the top five symbols by default. Ordering uses `predictedSwingProbability`, with `predictedSwingPercent` shown alongside to indicate expected move size.
 - **Progress and integrity:** A modal blocks duplicate runs and reports status; invalid or missing fields are rejected, and `analysisCache` timestamps prevent redundant computation.
 
 ## Diagnostics

@@ -7,6 +7,7 @@ export const SNAPSHOT_FIELDS = {
   dateTime: "ISO timestamp when the snapshot was captured",
   symbolName: "Full symbol name from header",
   symbolAbbreviation: "Ticker abbreviation from header",
+  predictedSwingPercent: "Number: model-predicted swing percentage for the next session",
   lastTrade: "Number: last trade price",
   closingPrice: "Number: closing price",
   firstPrice: "Number: first price of the session",

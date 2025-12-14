@@ -18,6 +18,11 @@
 - **Top-five clarity:** The extension page highlights the five symbols with the highest expected swing, matching the count shown in settings so users know why five appear by default.
 - **Progress feedback:** A modal reports progress and completion, preventing duplicate runs while the worker executes.
 
+## Result Persistence & Export
+
+- **Per-snapshot storage:** Each `[id+dateTime]` entry in `topBoxSnapshots` captures the model's next-day swing as `predictedSwingPercent` (for example, `3.5` means a 3.5% swing forecast for the following session).
+- **Excel handoff:** After ranking, the popup can export the displayed table (including `predictedSwingPercent`) to Excel for offline review.
+
 ## Output Integrity
 
 - **Cached timestamps:** `analysisCache` tracks the last analyzed time to skip unchanged records.

@@ -25,6 +25,7 @@ const refreshAnalysis = document.getElementById("refresh-analysis");
 const SNAPSHOT_FIELD_CONFIG = [
   { key: "symbolName", label: "Symbol name" },
   { key: "symbolAbbreviation", label: "Abbreviation" },
+  { key: "predictedSwingPercent", label: "Predicted swing (%)" },
   { key: "lastTrade", label: "Last trade" },
   { key: "closingPrice", label: "Closing price" },
   { key: "firstPrice", label: "First price" },

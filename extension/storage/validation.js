@@ -42,6 +42,7 @@ export function validateSnapshotRecord(record) {
     lastTrade: { optional: false },
     closingPrice: { optional: false },
     firstPrice: { optional: false },
+    predictedSwingPercent: { optional: true },
     tradesCount: { optional: false },
     tradingVolume: { optional: false },
     tradingValue: { optional: false },

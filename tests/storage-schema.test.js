@@ -16,6 +16,7 @@ describe("Dexie schema", () => {
       "dateTime",
       "symbolName",
       "symbolAbbreviation",
+      "predictedSwingPercent",
       "lastTrade",
       "closingPrice",
       "firstPrice",

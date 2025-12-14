@@ -21,6 +21,7 @@ function buildPayload(record) {
     dateTime: normalizedDateTime,
     symbolName: normalizeText(record.symbolName),
     symbolAbbreviation: normalizeText(record.symbolAbbreviation),
+    predictedSwingPercent: normalizeNumeric(record.predictedSwingPercent),
     lastTrade: normalizeNumeric(record.lastTrade),
     closingPrice: normalizeNumeric(record.closingPrice),
     firstPrice: normalizeNumeric(record.firstPrice),

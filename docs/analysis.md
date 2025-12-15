@@ -17,7 +17,7 @@ This document describes how MarketPulse AI executes model-driven analysis in the
 
 ## Ranking Logic
 
-- **Score computation:** Each symbol receives a swing probability that determines table ordering, while the paired swing percent value provides the magnitude context.
+- **Score computation:** Sort by `predictedSwingProbability` in descending order, using `predictedSwingPercent` (descending) as the deterministic tie-breaker; the swing probability drives confidence while the percent conveys move size.
 - **Result enrichment:** The popup combines scores with cached snapshots so users see both model output and supporting metrics.
 - **Top-five emphasis:** The extension page highlights the five symbols with the highest expected swing, matching the default settings count.
 - **Progress reporting:** A modal tracks analysis progress and completion, preventing duplicate runs while the worker executes.

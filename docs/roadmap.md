@@ -13,14 +13,14 @@ Short, shippable steps grouped by category. Each task should land with visible r
 
 ## Data Collection & Storage
 
-| Step | Task                                                               | Outcome                                                   |
-| ---- | ------------------------------------------------------------------ | --------------------------------------------------------- |
-| 1    | Stub IndexedDB schema in Dexie (single version)                    | Stable shape for OHLC records without migration overhead. |
-| 2    | Implement "wait until 13:00" guard with a visible banner           | Extension shows locked state before market close.         |
-| 3    | Build oldest-first ticker selector using Dexie queries             | Deterministic crawl order and reproducible runs.          |
-| 4    | Implement tab navigator that visits symbol pages sequentially      | Guaranteed per-symbol capture without UI freezes.         |
-| 5    | Add write validation (open/high/low/close/timestamp) before saving | Clean, trusted records only.                              |
-| 6    | Log collection progress to console + in-page toast                 | Dev insight and user-visible feedback per batch.          |
+| Step | Task                                                               | Outcome                                                                          |
+| ---- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| 1    | Stub IndexedDB schema in Dexie (single version)                    | Stable shape for OHLC records without migration overhead.                        |
+| 2    | Implement "wait until 13:00" guard with a visible banner           | Extension shows locked state before market close.                                |
+| 3    | Build oldest-first ticker selector using Dexie queries             | Deterministic crawl order and reproducible runs.                                 |
+| 4    | Implement tab navigator that visits symbol pages sequentially      | Guaranteed per-symbol capture without UI freezes.                                |
+| 5    | Add write validation (open/high/low/close/timestamp) before saving | Clean, trusted records only.                                                     |
+| 6    | Log collection progress to IndexedDB + in-page toast               | Durable diagnostics without console noise, plus user-visible feedback per batch. |
 
 ## Analysis & Modeling
 
@@ -53,13 +53,13 @@ Short, shippable steps grouped by category. Each task should land with visible r
 
 ## Quality, Performance & Observability
 
-| Step | Task                                                             | Outcome                                      |
-| ---- | ---------------------------------------------------------------- | -------------------------------------------- |
-| 1    | Add unit tests for Dexie queries and validators                  | Regression coverage for data flow.           |
-| 2    | Profile TensorFlow.js inference with sample dataset              | Baseline latency numbers to improve later.   |
-| 3    | Add lightweight logging abstraction (console + optional storage) | Consistent, toggleable logs for debugging.   |
-| 4    | Implement feature-flag toggles for analysis and export           | Safe rollout of risky changes.               |
-| 5    | Add error boundary UI around modal                               | Graceful failures without breaking the page. |
+| Step | Task                                                                    | Outcome                                                                 |
+| ---- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1    | Add unit tests for Dexie queries and validators                         | Regression coverage for data flow.                                      |
+| 2    | Profile TensorFlow.js inference with sample dataset                     | Baseline latency numbers to improve later.                              |
+| 3    | Add structured logging abstraction (IndexedDB-only, per-type retention) | Consistent, toggleable logs with durable storage and scheduled pruning. |
+| 4    | Implement feature-flag toggles for analysis and export                  | Safe rollout of risky changes.                                          |
+| 5    | Add error boundary UI around modal                                      | Graceful failures without breaking the page.                            |
 
 ## Release & Distribution
 

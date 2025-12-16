@@ -26,7 +26,7 @@ This plan outlines the end-to-end tooling and platform choices that keep MarketP
 - **Iteration loop:**
   1. `npm install`
   2. `npm run lint:test:build` to validate code + artifacts.
-  3. Load unpacked extension and monitor background/popup consoles for IndexedDB activity.
+  3. Load unpacked extension and verify IndexedDB log writes via the in-app log viewer (no console logging).
 - **Data realism:** Use real post-close pages when possible; fall back to saved HTML fixtures to validate parsers offline.
 
 ## Automation & CI
@@ -44,7 +44,7 @@ This plan outlines the end-to-end tooling and platform choices that keep MarketP
   - Node test runner for parsers, schedulers, and worker orchestration.
   - Snapshot-based tests for popup table rendering to protect export fidelity.
 - **Runtime diagnostics:**
-  - Background logs scoped by symbol + timestamp; keep noise low and prefer structured messages.
+  - Background logs are structured, written to IndexedDB (never the console), and pruned at the 13:00 daily kickoff according to per-type retention windows configured in settings.
   - IndexedDB sanity check: verify `topBoxSnapshots` writes per symbol per session before analysis runs.
 
 ## Observability for Analysis

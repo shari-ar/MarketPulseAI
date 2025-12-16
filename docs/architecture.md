@@ -5,7 +5,7 @@
 - **Extension surfaces:** Background scripts handle orchestration, scraping, and event signaling; the popup renders analysis results and handles exports/imports.
 - **Local boundary:** Scraping, storage, and TensorFlow.js inference run entirely in the browser with no remote APIs.
 - **Schedule:** Data collection runs after market close at 13:00 IRST (UTC+03:30) and pauses by 07:00, while a strict blackout keeps all automation idle during market-open hours (09:00–13:00 IRST).
-- **Daily cadence:** At 13:00 pruning removes stale data; scraping runs within the collection window, and analysis is forced at 07:00 if crawling did not fully complete.
+- **Daily cadence:** At 13:00 pruning removes stale data and clears expired logs by type before scheduling kicks off; scraping runs within the collection window, and analysis is forced at 07:00 if crawling did not fully complete.
 - **Offline bundle:** TensorFlow.js and SheetJS ship with the extension, and the manifest requests only navigation and storage permissions.
 
 ## Core Components
@@ -49,5 +49,5 @@
 
 ## Diagnostics
 
-- **Logging:** Worker logs surface model-loading or record-format issues; clearing `analysisCache` can unblock stalled runs.
+- **Logging:** Logs write to IndexedDB (never the console) with per-type retention; worker entries capture model-loading or record-format issues, and the daily 13:00 cleanup trims log tables according to their configured windows.
 - **Freshness checks:** If no data appears after close, verify system time matches IRST and symbol pages are reachable; exports mirror the latest analyzed table and imports append only missing rows.

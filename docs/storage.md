@@ -66,6 +66,21 @@
 | `symbol`         | Symbol identifier tied to stored snapshots.    |
 | `lastAnalyzedAt` | ISO timestamp of the most recent analysis run. |
 
+### `logs`
+
+- **Primary key:** Auto-incremented `id` per entry.
+- **Purpose:** Persists structured diagnostics instead of console output, enabling retention policies by severity.
+- **Columns:**
+
+| Field       | Description                                                  |
+| ----------- | ------------------------------------------------------------ |
+| `type`      | Log level (e.g., `error`, `warning`, `info`, `debug`).       |
+| `message`   | Human-readable text describing the event.                    |
+| `context`   | JSON-serializable payload for symbol ids, stack traces, etc. |
+| `createdAt` | ISO timestamp of when the entry was recorded.                |
+| `expiresAt` | ISO timestamp derived from the per-type retention window.    |
+| `source`    | Component emitting the log (e.g., `navigation`, `analysis`). |
+
 ## Migrations
 
 - Not used. Schema updates ship through extension updates; stale data is cleared by reinstalling or by the retention sweep.

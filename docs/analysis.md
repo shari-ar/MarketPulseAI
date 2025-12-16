@@ -38,6 +38,6 @@ See [Swing Forecasting Methodology](forecasting.md) for the full feature list, m
 
 ## Diagnostics
 
-- **Monitor worker logs:** Use the DevTools console during extension runs to capture model-loading issues or malformed-record errors from `analysis/index.js`.
+- **Monitor worker logs:** Review IndexedDB-backed log entries for model-loading issues or malformed-record errors from `analysis/index.js`; logs are stored by type with the retention windows set in settings.
 - **Recover stalled runs:** Clear the `analysisCache` table (IndexedDB `marketpulseai` database) if freshness checks prevent new scoring after failures.
 - **Validate data freshness:** If post-close analysis shows no updates, confirm the machine clock matches IRST and rerun the worker to refresh cached timestamps and exports/imports.

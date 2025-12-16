@@ -4,7 +4,7 @@
 
 - **Extension surfaces:** Background scripts handle orchestration, scraping, and event signaling; the popup renders analysis results and exports.
 - **Local boundary:** Scraping, storage, and TensorFlow.js inference run entirely in the browser with no remote APIs.
-- **Schedule:** Data collection runs after market close at 13:00 IRST (UTC+03:30) and pauses by 07:00.
+- **Schedule:** Data collection runs after market close at 13:00 IRST (UTC+03:30) and pauses by 07:00, while a strict blackout keeps all automation idle during market-open hours (09:00–13:00 IRST).
 - **Daily cadence:** At 13:00 pruning removes stale data; scraping runs within the collection window, and analysis is forced at 07:00 if crawling did not fully complete.
 - **Offline bundle:** TensorFlow.js and SheetJS ship with the extension, and the manifest requests only navigation and storage permissions.
 
@@ -22,11 +22,11 @@
 - **Database contract:** IndexedDB via Dexie named `marketpulseai` with tables `topBoxSnapshots` (composite key `[id+dateTime]`) and `analysisCache` (`symbol`, `lastAnalyzedAt`).
 - **Versioning:** Fixed schema with reinstall-based upgrades instead of migrations.
 - **Retention:** Keep seven days of history by default; older rows are purged when the daily window opens.
-- **User defaults:** Settings expose market close (13:00 IRST), retention days (7), and top-5 swing list size as editable defaults.
+- **User defaults:** Settings expose market close (13:00 IRST), market-open blackout window (09:00–13:00 IRST), retention days (7), and top-5 swing list size as editable defaults.
 
 ## Data Collection Flow
 
-1. **Prune and gate:** At 13:00 IRST, delete snapshots older than the retention window and allow crawling only within 13:00–07:00.
+1. **Prune and gate:** Enforce a full blackout from 09:00–13:00 IRST with no navigation, writes, or analysis; at 13:00 IRST delete snapshots older than the retention window and allow crawling only within 13:00–07:00.
 2. **Select targets:** Queue symbols missing a snapshot for the current market date so each one is captured once per day.
 3. **Navigate and parse:** Background helpers move through symbol pages, wait for required selectors, extract top-box metrics, and validate inputs.
 4. **Persist:** Write sanitized records to `topBoxSnapshots` and update `analysisCache` when analysis completes.

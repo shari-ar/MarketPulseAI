@@ -7,7 +7,7 @@ Welcome to the reference hub for MarketPulseAI, a privacy-first browser extensio
 ## Product Foundations
 
 - **Offline by design:** All scraping, storage, TensorFlow.js analysis, and exports run locally—no remote services involved.
-- **Post-close collection:** Data gathering is time-gated to market close (13:00 IRST / UTC+03:30) to avoid intraday disruption.
+- **Post-close collection:** Data gathering is time-gated to market close (13:00 IRST / UTC+03:30) to avoid intraday disruption and remains completely idle while the market is open (09:00–13:00 IRST) with no navigation, scraping, storage, or analysis activity.
 - **Repeatable insights:** IndexedDB snapshots feed TensorFlow.js scoring so users can reliably track swings and rankings over time.
 - **Exact exports:** SheetJS mirrors the popup table into Excel, keeping what you see aligned with what you download.
 
@@ -36,7 +36,7 @@ For a deeper breakdown of runtime boundaries and sequence, see [Architecture](ar
 
 ## Scheduling & Safeguards
 
-- **Time gating:** Scraping begins after market close (13:00 IRST / UTC+03:30) to avoid partial intraday data.
+- **Time gating:** Scraping begins after market close (13:00 IRST / UTC+03:30) to avoid partial intraday data, and all extension tasks are paused during market-open hours (09:00–13:00 IRST).
 - **Validation:** DOM inputs are sanitized before persistence to prevent malformed records in IndexedDB.
 - **Responsive UI:** Analysis progress is surfaced through a modal while workers handle heavy TensorFlow.js tasks.
 

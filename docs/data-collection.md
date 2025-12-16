@@ -2,7 +2,7 @@
 
 ## Triggers
 
-- **Time gate:** Collection routines start after market close (13:00 IRST) and run only until the 07:00 deadline the next day, staying within a single daily window and stopping even if a crawl was still in-flight.
+- **Time gate:** Collection routines stay completely idle during market-open hours (09:00–13:00 IRST) with no navigation, scraping, writes, or analysis, then start after market close (13:00 IRST) and run only until the 07:00 deadline the next day, staying within a single daily window and stopping even if a crawl was still in-flight.
 - **Pre-flight cleanup:** At the start of each day (13:00 IRST), records older than the retention window are pruned before scraping begins.
 - **Daily guarantee:** Each symbol is scraped and persisted once per 24 hours; re-reads are suppressed until the next cycle.
 

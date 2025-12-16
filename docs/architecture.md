@@ -49,5 +49,5 @@
 
 ## Diagnostics
 
-- **Logging:** Logs write to IndexedDB (never the console) with per-type retention; worker entries capture model-loading or record-format issues, and the daily 13:00 cleanup trims log tables according to their configured windows.
+- **Logging:** Logs write to IndexedDB with per-type retention; worker entries capture model-loading or record-format issues, and the daily 13:00 cleanup trims log tables according to their configured windows.
 - **Freshness checks:** If no data appears after close, verify system time matches IRST and symbol pages are reachable; exports mirror the latest analyzed table and imports append only missing rows.

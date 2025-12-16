@@ -22,7 +22,7 @@
 - **Database contract:** IndexedDB via Dexie named `marketpulseai` with tables `topBoxSnapshots` (composite key `[id+dateTime]`) and `analysisCache` (`symbol`, `lastAnalyzedAt`).
 - **Versioning:** Fixed schema with reinstall-based upgrades instead of migrations.
 - **Retention:** Keep seven days of history by default; older rows are purged when the daily window opens.
-- **User defaults:** Settings expose market close (13:00 IRST), market-open blackout window (09:00–13:00 IRST), retention days (7), and top-5 swing list size as editable defaults.
+- **User defaults:** Settings expose editable defaults for the market-open blackout window (09:00–13:00 IRST), retention days (7), top swing list size (5), etc.
 
 ## Data Collection Flow
 

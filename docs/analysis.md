@@ -25,7 +25,7 @@ This document describes how MarketPulse AI executes model-driven analysis in the
 ## Result Persistence and Export
 
 - **Snapshot storage:** Each `[id + dateTime]` entry in `topBoxSnapshots` stores both the model's next-day swing percent (`predictedSwingPercent`, e.g., `3.5` for a +3.5% move) and the associated swing probability (`predictedSwingProbability`, e.g., `0.62` for a 62% likelihood of the move materializing).
-- **Excel export/import:** After ranking, the popup can export the displayed table—including `predictedSwingPercent` **and** `predictedSwingProbability`—to Excel for offline review, and it can import the same schema to add only missing records back into IndexedDB.
+- **Excel export/import:** After ranking, the popup can export the database main table—including `predictedSwingPercent` **and** `predictedSwingProbability`—to Excel for offline review, and it can import the same schema to add only missing records back into IndexedDB.
 
 ## Output Integrity
 

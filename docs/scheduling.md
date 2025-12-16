@@ -6,7 +6,7 @@
 - **Configurable close:** The market-close time is pulled from user settings rather than hardcoded at 13:00, so schedules adapt automatically to custom trading hours.
 - **Open-market blackout:** During market-open hours (default 09:00–13:00 IRST), the extension does nothing—no navigation, scraping, storage, or analysis—enforcing a read-only posture until the close event unlocks work.
 - **Safe window:** Writes occur only during the post-close collection window to prevent intraday interference, and the blackout is configurable through the same settings that expose close time.
-- **Daily purge:** The cycle begins with pruning data older than the configured retention window (default seven days) before any new writes occur.
+- **Daily purge:** The cycle begins with pruning data older than the configured retention window (default seven days) before any new writes occur. The same 13:00 kickoff also deletes expired logs by type (e.g., errors after 30 days, warnings after 7, info after 3) using the intervals configured in settings.
 
 ## Refresh Strategy
 

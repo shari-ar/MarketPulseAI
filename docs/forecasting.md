@@ -64,6 +64,6 @@ Engineered features add stability and capture short-term momentum:
 
 - **Data freshness:** Retention sweeps must keep at least seven consecutive days for each symbol to avoid dropped forecasts.
 - **Fallbacks:** If the model assets fail to load, skip inference and keep `predictedSwingPercent` and `predictedSwingProbability` null to avoid stale scores.
-- **Monitoring:** Log TensorFlow.js load times and inference durations in the worker console to detect regressions before release.
+- **Monitoring:** Persist TensorFlow.js load times and inference durations to the IndexedDB log tables (by type) to detect regressions before release; the daily 13:00 cleanup trims entries using the configured retention windows.
 - **Retraining cadence:** Refresh the model weekly using the most recent six months of data, with a hard freeze on data up to T-1 trading day for the run. Publish metrics and calibration plots with each refresh.
 - **Artifact versioning:** Version artifacts as `swing-tcn-<yyyy-mm-dd>-v<N>`; store the TF.js folder, scaler metadata, and calibration params in the extension assets directory under `analysis/models/`. Keep the latest two versions for rollback and update the extension manifest to point to the active tag.

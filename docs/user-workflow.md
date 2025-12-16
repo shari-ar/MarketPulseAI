@@ -5,4 +5,4 @@
 3. **Browse symbol pages**; the extension scrapes each symbol once per 24 hours, refreshing the stalest records first.
 4. **Let analysis fire** automatically after a full crawl or precisely at the 07:00 cutoff if scraping is still underway; the popup progress modal reports status without manual requests.
 5. **Review ranked results** sorted by `predictedSwingProbability` (desc), breaking ties by `predictedSwingPercent` (desc); the extension page calls out the top 5 swing symbols explicitly, with that count mirrored in settings.
-6. **Export to Excel** for the exact dataset shown in the UI table via a one-click SheetJS download.
+6. **Export or import Excel** from the popup: the Export and Import buttons sit together, using the same schema. Imports append only new `[id + dateTime]` rows and ignore records already in IndexedDB.

@@ -1,6 +1,6 @@
 # Analysis & Ranking Overview
 
-This document describes how MarketPulse AI executes model-driven analysis in the browser extension and how results are stored, ranked, and exported.
+This document describes how MarketPulse AI executes model-driven analysis in the browser extension and how results are stored, ranked, and exported/imported.
 
 ## TensorFlow.js Workflow
 
@@ -25,7 +25,7 @@ This document describes how MarketPulse AI executes model-driven analysis in the
 ## Result Persistence and Export
 
 - **Snapshot storage:** Each `[id + dateTime]` entry in `topBoxSnapshots` stores both the model's next-day swing percent (`predictedSwingPercent`, e.g., `3.5` for a +3.5% move) and the associated swing probability (`predictedSwingProbability`, e.g., `0.62` for a 62% likelihood of the move materializing).
-- **Excel export:** After ranking, the popup can export the displayed table—including `predictedSwingPercent` **and** `predictedSwingProbability`—to Excel for offline review.
+- **Excel export/import:** After ranking, the popup can export the displayed table—including `predictedSwingPercent` **and** `predictedSwingProbability`—to Excel for offline review, and it can import the same schema to add only missing records back into IndexedDB.
 
 ## Output Integrity
 
@@ -40,4 +40,4 @@ See [Swing Forecasting Methodology](forecasting.md) for the full feature list, m
 
 - **Monitor worker logs:** Use the DevTools console during extension runs to capture model-loading issues or malformed-record errors from `analysis/index.js`.
 - **Recover stalled runs:** Clear the `analysisCache` table (IndexedDB `marketpulseai` database) if freshness checks prevent new scoring after failures.
-- **Validate data freshness:** If post-close analysis shows no updates, confirm the machine clock matches IRST and rerun the worker to refresh cached timestamps and exports.
+- **Validate data freshness:** If post-close analysis shows no updates, confirm the machine clock matches IRST and rerun the worker to refresh cached timestamps and exports/imports.

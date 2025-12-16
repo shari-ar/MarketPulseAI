@@ -6,10 +6,10 @@ Welcome to the reference hub for MarketPulseAI, a privacy-first browser extensio
 
 ## Product Foundations
 
-- **Offline by design:** All scraping, storage, TensorFlow.js analysis, and exports run locally—no remote services involved.
+- **Offline by design:** All scraping, storage, TensorFlow.js analysis, and exports/imports run locally—no remote services involved.
 - **Post-close collection:** Data gathering is time-gated to market close (13:00 IRST / UTC+03:30) to avoid intraday disruption and remains completely idle while the market is open (09:00–13:00 IRST) with no navigation, scraping, storage, or analysis activity.
 - **Repeatable insights:** IndexedDB snapshots feed TensorFlow.js scoring so users can reliably track swings and rankings over time.
-- **Exact exports:** SheetJS mirrors the popup table into Excel, keeping what you see aligned with what you download.
+- **Exact exports/imports:** SheetJS mirrors the popup table into Excel and ingests the same schema, keeping what you see aligned with what you download or add back.
 
 ## Audience & Expectations
 
@@ -17,20 +17,20 @@ This guide is for developers and testers working on the extension codebase. It a
 
 ## Core Workflows at a Glance
 
-| Workflow              | Purpose                                                                       | Where to start                                          |
-| --------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Daily data collection | Scrape each symbol once per post-close window.                                | [Data Collection](data-collection.md)                   |
-| Swing forecasting     | Build and run seven-day TCN-based swing predictions for ranking.              | [Swing Forecasting](forecasting.md)                     |
-| Local analysis        | Run TensorFlow.js scoring and ranking in a dedicated worker with UI progress. | [Analysis](analysis.md) & [Diagnostics](diagnostics.md) |
-| Export to Excel       | Generate table-perfect `.xlsx` files matching the popup view.                 | [Exports](exports.md)                                   |
-| Developer setup       | Install dependencies, run the extension locally, and validate changes.        | [Developer Setup](dev-setup.md) & [Testing](testing.md) |
+| Workflow              | Purpose                                                                                 | Where to start                                          |
+| --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Daily data collection | Scrape each symbol once per post-close window.                                          | [Data Collection](data-collection.md)                   |
+| Swing forecasting     | Build and run seven-day TCN-based swing predictions for ranking.                        | [Swing Forecasting](forecasting.md)                     |
+| Local analysis        | Run TensorFlow.js scoring and ranking in a dedicated worker with UI progress.           | [Analysis](analysis.md) & [Diagnostics](diagnostics.md) |
+| Export/Import Excel   | Round-trip `.xlsx` files that mirror the popup table; imports add only missing records. | [Exports & Imports](exports.md)                         |
+| Developer setup       | Install dependencies, run the extension locally, and validate changes.                  | [Developer Setup](dev-setup.md) & [Testing](testing.md) |
 
 ## Architecture Overview
 
-- **Surfaces:** Background scripts orchestrate scraping and scheduling; the popup renders ranked insights and triggers exports.
+- **Surfaces:** Background scripts orchestrate scraping and scheduling; the popup renders ranked insights and triggers exports/imports.
 - **Data pipeline:** Navigation helpers load symbol pages, parsers normalize top-box fields, and Dexie schemas persist snapshots with composite keys for quick lookups.
 - **Analysis layer:** TensorFlow.js runs inside a worker to keep the UI responsive while scoring and ranking symbols.
-- **Storage & exports:** IndexedDB holds historical snapshots and analysis cache; SheetJS transforms the current table into Excel with matching columns.
+- **Storage, exports, and imports:** IndexedDB holds historical snapshots and analysis cache; SheetJS transforms the current table into Excel and reads the same schema back without server calls.
 
 For a deeper breakdown of runtime boundaries and sequence, see [Architecture](architecture.md).
 
@@ -54,6 +54,6 @@ More detail lives in [Scheduling](scheduling.md) and [Diagnostics](diagnostics.m
 
 - **Set up locally:** Follow [Developer Setup](dev-setup.md) to install dependencies and run the extension in a Chromium browser.
 - **Run checks:** Use [Testing](testing.md) for guidance on Jest tests, linting expectations, and manual verification steps.
-- **Validate outputs:** After scraping, confirm `topBoxSnapshots` entries exist in IndexedDB; after analysis, ensure the progress modal completes without errors; after export, open the `.xlsx` to verify column fidelity.
+- **Validate outputs:** After scraping, confirm `topBoxSnapshots` entries exist in IndexedDB; after analysis, ensure the progress modal completes without errors; after export, open the `.xlsx` to verify column fidelity; after import, confirm only previously missing rows were added.
 
 Use this page as your anchor for navigating the documentation and aligning implementation choices with MarketPulseAI's privacy-first, on-device principles.

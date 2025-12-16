@@ -2,7 +2,7 @@
 
 ## Runtime Overview
 
-- **Extension surfaces:** Background scripts handle orchestration, scraping, and event signaling; the popup renders analysis results and exports.
+- **Extension surfaces:** Background scripts handle orchestration, scraping, and event signaling; the popup renders analysis results and handles exports/imports.
 - **Local boundary:** Scraping, storage, and TensorFlow.js inference run entirely in the browser with no remote APIs.
 - **Schedule:** Data collection runs after market close at 13:00 IRST (UTC+03:30) and pauses by 07:00, while a strict blackout keeps all automation idle during market-open hours (09:00–13:00 IRST).
 - **Daily cadence:** At 13:00 pruning removes stale data; scraping runs within the collection window, and analysis is forced at 07:00 if crawling did not fully complete.
@@ -14,7 +14,7 @@
 - **Storage:** Dexie-backed IndexedDB schema in `storage/schema.js` remains on a single version; consistency relies on clean installs and daily pruning.
 - **Analysis workers:** `analysis/` handles TensorFlow.js scoring, ranking, and progress modal updates in a dedicated worker.
 - **Model assets:** A seven-day Temporal Convolutional Network (TCN) model, converted to TensorFlow.js, forecasts `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` and the accompanying swing probability for each symbol.
-- **UI and exports:** The popup renders ordered insights and triggers Excel exports through SheetJS, mirroring the visible table.
+- **UI, exports, and imports:** The popup renders ordered insights and triggers Excel exports/imports through SheetJS, mirroring the visible table and reading the same schema back into IndexedDB.
 - **Entry points:** `manifest.json` wires background and popup scripts; `navigator.js` drives page movement; `analysis/index.js` orchestrates worker scoring; `popup.*` renders rankings and exports.
 
 ## Storage and Configuration
@@ -38,7 +38,7 @@
 2. Enqueue any symbols missing a snapshot for the current market date.
 3. Scrape OHLC/top-box fields into IndexedDB.
 4. Run TensorFlow.js analysis against stored history.
-5. Present ranked results and export the current table to Excel.
+5. Present ranked results and offer side-by-side Export and Import controls for Excel round-tripping.
 
 ## Analysis and Ranking
 
@@ -50,4 +50,4 @@
 ## Diagnostics
 
 - **Logging:** Worker logs surface model-loading or record-format issues; clearing `analysisCache` can unblock stalled runs.
-- **Freshness checks:** If no data appears after close, verify system time matches IRST and symbol pages are reachable; exports mirror the latest analyzed table.
+- **Freshness checks:** If no data appears after close, verify system time matches IRST and symbol pages are reachable; exports mirror the latest analyzed table and imports append only missing rows.

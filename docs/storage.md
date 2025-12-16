@@ -69,7 +69,7 @@
 ### `logs`
 
 - **Primary key:** Auto-incremented `id` per entry.
-- **Purpose:** Persists structured diagnostics instead of console output, enabling retention policies by severity.
+- **Purpose:** Persists structured diagnostics, enabling retention policies by severity.
 - **Columns:**
 
 | Field       | Description                                                  |

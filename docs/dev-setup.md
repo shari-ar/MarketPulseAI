@@ -14,7 +14,7 @@
 
 1. Open browser extensions page and enable **Developer Mode**.
 2. Click **Load unpacked** and select the `extension/` directory.
-3. Confirm background scripts and popup load without console errors.
+3. Confirm background scripts and popup load with clean diagnostics.
 
 ## Local Development Tips
 

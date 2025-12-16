@@ -5,7 +5,7 @@
 - **Market hours:** Default open-to-close window is 09:00–13:00 IRST (UTC+03:30), during which the extension remains fully idle; the close value feeds scheduling checks and both endpoints are editable in settings.
 - **Storage names:** Database `marketpulseai` with tables `topBoxSnapshots` and `analysisCache`.
 - **Data retention:** Default window keeps the last 7 days of snapshots; users can increase or reduce this in settings.
-- **Log retention:** Logs are stored in IndexedDB (not the console) with per-type retention windows exposed in settings—e.g., defaults of 30 days for errors, 7 days for warnings, and 3 days for informational entries. Each type can be tuned independently to match team audit needs.
+- **Log retention:** Logs are stored in IndexedDB with per-type retention windows exposed in settings—e.g., defaults of 30 days for errors, 7 days for warnings, and 3 days for informational entries. Each type can be tuned independently to match team audit needs.
 - **Top-swing list size:** The extension displays the top 5 swing candidates on the popup, and this default count is shown in settings alongside other adjustable values.
 
 All of these values are presented as defaults; users can update them in the extension settings to match their preferred schedule or naming scheme.

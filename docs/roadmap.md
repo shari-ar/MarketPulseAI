@@ -13,14 +13,14 @@ Short, shippable steps grouped by category. Each task should land with visible r
 
 ## Data Collection & Storage
 
-| Step | Task                                                               | Outcome                                                                          |
-| ---- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| 1    | Stub IndexedDB schema in Dexie (single version)                    | Stable shape for OHLC records without migration overhead.                        |
-| 2    | Implement "wait until 13:00" guard with a visible banner           | Extension shows locked state before market close.                                |
-| 3    | Build oldest-first ticker selector using Dexie queries             | Deterministic crawl order and reproducible runs.                                 |
-| 4    | Implement tab navigator that visits symbol pages sequentially      | Guaranteed per-symbol capture without UI freezes.                                |
-| 5    | Add write validation (open/high/low/close/timestamp) before saving | Clean, trusted records only.                                                     |
-| 6    | Log collection progress to IndexedDB + in-page toast               | Durable diagnostics without console noise, plus user-visible feedback per batch. |
+| Step | Task                                                               | Outcome                                                         |
+| ---- | ------------------------------------------------------------------ | --------------------------------------------------------------- |
+| 1    | Stub IndexedDB schema in Dexie (single version)                    | Stable shape for OHLC records without migration overhead.       |
+| 2    | Implement "wait until 13:00" guard with a visible banner           | Extension shows locked state before market close.               |
+| 3    | Build oldest-first ticker selector using Dexie queries             | Deterministic crawl order and reproducible runs.                |
+| 4    | Implement tab navigator that visits symbol pages sequentially      | Guaranteed per-symbol capture without UI freezes.               |
+| 5    | Add write validation (open/high/low/close/timestamp) before saving | Clean, trusted records only.                                    |
+| 6    | Log collection progress to IndexedDB + in-page toast               | Durable diagnostics with clear user-visible feedback per batch. |
 
 ## Analysis & Modeling
 

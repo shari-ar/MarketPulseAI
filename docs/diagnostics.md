@@ -8,6 +8,6 @@
 
 ## Logging Policy
 
-- **Storage-first:** All logs write to the IndexedDB `logs` table rather than the console, keeping diagnostics durable and reviewable.
+- **Storage-first:** All logs write to the IndexedDB `logs` table, keeping diagnostics durable and reviewable.
 - **Per-type retention:** Default expirations are 30 days for `error`, 7 days for `warning`, 3 days for `info`, and 1 day for `debug`, all adjustable in settings.
 - **Daily cleanup:** At 13:00 each day, the extension runs a sweep that deletes expired log rows alongside old stock snapshot history.

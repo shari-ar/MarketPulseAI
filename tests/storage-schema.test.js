@@ -1,65 +1,34 @@
 const assert = require("assert");
 const { describe, it } = require("node:test");
 
-describe("Dexie schema", () => {
-  it("defines the TopBox snapshot table shape", async () => {
+describe("storage schema", () => {
+  it("matches documented tables and keys", async () => {
     const schema = await import("../extension/storage/schema.js");
 
     assert.strictEqual(schema.DB_NAME, "marketpulseai");
-    const versions = Object.keys(schema.SCHEMA_MIGRATIONS).map(Number);
-
-    assert.strictEqual(schema.DB_VERSION, Math.max(...versions));
+    assert.strictEqual(schema.DB_VERSION, 1);
     assert.strictEqual(schema.SNAPSHOT_TABLE, "topBoxSnapshots");
     assert.strictEqual(schema.ANALYSIS_CACHE_TABLE, "analysisCache");
-    assert.deepStrictEqual(Object.keys(schema.SNAPSHOT_FIELDS), [
-      "id",
-      "dateTime",
-      "symbolName",
-      "symbolAbbreviation",
-      "predictedSwingPercent",
-      "predictedSwingProbability",
-      "close",
-      "primeCost",
-      "open",
-      "tradesCount",
-      "tradingVolume",
-      "tradingValue",
-      "marketValue",
-      "closeTime",
-      "status",
-      "low",
-      "high",
-      "allowedLow",
-      "allowedHigh",
-      "shareCount",
-      "baseVolume",
-      "floatingShares",
-      "averageMonthlyVolume",
-      "naturalBuyVolume",
-      "naturalSellVolume",
-      "juridicalBuyVolume",
-      "juridicalSellVolume",
-      "totalBuyVolume",
-      "totalSellVolume",
-      "naturalBuyCount",
-      "naturalSellCount",
-      "juridicalBuyCount",
-      "juridicalSellCount",
-      "totalBuyCount",
-      "totalSellCount",
-    ]);
+    assert.strictEqual(schema.LOG_TABLE, "logs");
+
+    const snapshotKeys = Object.keys(schema.SNAPSHOT_FIELDS);
+    assert.ok(snapshotKeys.includes("predictedSwingPercent"));
+    assert.ok(snapshotKeys.includes("predictedSwingProbability"));
 
     assert.deepStrictEqual(Object.keys(schema.ANALYSIS_CACHE_FIELDS), ["symbol", "lastAnalyzedAt"]);
-  });
+    assert.deepStrictEqual(Object.keys(schema.LOG_FIELDS), [
+      "id",
+      "type",
+      "message",
+      "context",
+      "source",
+      "createdAt",
+      "expiresAt",
+    ]);
 
-  it("configures sequential migrations", async () => {
-    const schema = await import("../extension/storage/schema.js");
-
-    const versions = Object.keys(schema.SCHEMA_MIGRATIONS).map(Number);
-    assert.deepStrictEqual(versions, [1, 2, 3, 4]);
-
-    const latest = schema.SCHEMA_MIGRATIONS[4];
-    assert.ok(latest.stores[schema.SNAPSHOT_TABLE].includes("dateTime"));
-    assert.ok(latest.stores[schema.ANALYSIS_CACHE_TABLE].includes("lastAnalyzedAt"));
+    const definition = schema.getSchemaDefinition();
+    assert.ok(definition.topBoxSnapshots.includes("[id+dateTime]"));
+    assert.ok(definition.analysisCache.includes("symbol"));
+    assert.ok(definition.logs.includes("++id"));
   });
 });

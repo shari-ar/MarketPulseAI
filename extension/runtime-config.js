@@ -1,15 +1,24 @@
-export const RUNTIME_CONFIG = {
+export const DEFAULT_RUNTIME_CONFIG = {
   MARKET_TIMEZONE: "Asia/Tehran",
-  MARKET_LOCK_START_TIME: "08:00",
-  MARKET_LOCK_END_TIME: "13:00",
+  MARKET_OPEN: "09:00",
+  MARKET_CLOSE: "13:00",
+  ANALYSIS_DEADLINE: "07:00",
+  RETENTION_DAYS: 7,
+  TOP_SWING_COUNT: 5,
+  LOG_RETENTION_DAYS: {
+    error: 30,
+    warning: 7,
+    info: 3,
+  },
 };
 
-const chromeRuntime = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
-const hasChromeRuntime = !!chromeRuntime?.runtime?.getURL;
-
-export const ANALYSIS_CONFIG = {
-  tensorflowCdnUrl: "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.21.0/dist/tf.min.js",
-  modelUrl: hasChromeRuntime
-    ? chromeRuntime.runtime.getURL("analysis/model/model.json")
-    : "analysis/model/model.json",
-};
+export function getRuntimeConfig(overrides = {}) {
+  return {
+    ...DEFAULT_RUNTIME_CONFIG,
+    ...overrides,
+    LOG_RETENTION_DAYS: {
+      ...DEFAULT_RUNTIME_CONFIG.LOG_RETENTION_DAYS,
+      ...(overrides.LOG_RETENTION_DAYS || {}),
+    },
+  };
+}

@@ -1,23 +1,22 @@
 {
   "manifest_version": 3,
   "name": "MarketPulseAI",
-  "description": "Hello World scaffold for MarketPulseAI browser extension.",
-  "version": "0.0.1",
+  "description": "Privacy-first, offline browser extension for Iranian market swing forecasting.",
+  "version": "0.1.0",
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "popup/popup.html",
     "default_title": "MarketPulseAI"
   },
   "background": {
-    "service_worker": "navigator.js",
+    "service_worker": "background/navigator.js",
     "type": "module"
   },
-  "content_scripts": [
+  "permissions": ["tabs", "scripting", "storage"],
+  "host_permissions": ["https://*.tsetmc.com/*"],
+  "web_accessible_resources": [
     {
-      "matches": ["https://*.tsetmc.com/*"],
-      "js": ["toast.js"],
-      "run_at": "document_idle"
+      "resources": ["analysis/models/*", "vendor/*"],
+      "matches": ["<all_urls>"]
     }
-  ],
-  "permissions": ["tabs", "scripting"],
-  "host_permissions": ["https://*.tsetmc.com/*"]
+  ]
 }

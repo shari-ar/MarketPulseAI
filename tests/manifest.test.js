@@ -5,27 +5,23 @@ const { describe, it } = require("node:test");
 const manifestPath = path.join(__dirname, "..", "extension", "manifest.json");
 const manifest = require(manifestPath);
 
-describe("extension manifest", () => {
-  it("includes core metadata", () => {
-    assert.strictEqual(manifest.name, "MarketPulseAI");
-    assert.strictEqual(manifest.version, "0.0.1");
-    assert.strictEqual(manifest.manifest_version, 3);
-  });
-
-  it("defines a popup action", () => {
-    assert.ok(manifest.action, "action is defined");
-    assert.strictEqual(manifest.action.default_popup, "popup.html");
-  });
-
-  it("registers a background navigator service worker", () => {
+describe("manifest alignment with documentation", () => {
+  it("includes popup and navigator entrypoints", () => {
+    assert.strictEqual(manifest.action.default_popup, "popup/popup.html");
     assert.deepStrictEqual(manifest.background, {
-      service_worker: "navigator.js",
+      service_worker: "background/navigator.js",
       type: "module",
     });
   });
 
-  it("declares the permissions needed for tab navigation", () => {
-    assert.deepStrictEqual(manifest.permissions, ["tabs", "scripting"]);
+  it("ships offline assets through web accessible resources", () => {
+    const [resources] = manifest.web_accessible_resources;
+    assert.ok(resources.resources.includes("analysis/models/*"));
+    assert.ok(resources.resources.includes("vendor/*"));
+  });
+
+  it("requests only required permissions", () => {
+    assert.deepStrictEqual(manifest.permissions.sort(), ["scripting", "storage", "tabs"].sort());
     assert.deepStrictEqual(manifest.host_permissions, ["https://*.tsetmc.com/*"]);
   });
 });

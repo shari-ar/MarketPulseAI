@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MarketPulseAI</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>MarketPulseAI</h1>
+      <p class="subtitle">Offline swing rankings for the Tehran Stock Exchange.</p>
+      <div id="controls">
+        <button id="export">Export Excel</button>
+        <button id="import">Import Excel</button>
+      </div>
+      <table id="rankings">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Probability</th>
+            <th>Swing %</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <input id="import-file" type="file" accept=".xlsx" hidden />
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

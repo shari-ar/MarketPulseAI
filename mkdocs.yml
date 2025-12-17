@@ -14,7 +14,7 @@ nav:
       - Scheduling & Timing: scheduling.md
   - Analysis:
       - Analysis & Ranking: analysis.md
-      - Exports: exports.md
+      - Exports & Imports: exports-imports.md
       - Forecasting: forecasting.md
   - Developer Guide:
       - Development Setup: dev-setup.md

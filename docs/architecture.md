@@ -13,9 +13,17 @@
 - **Navigation and scraping:** `navigation/` and `parsing/` coordinate page traversal and DOM extraction for symbol pages.
 - **Storage:** Dexie-backed IndexedDB schema in `storage/schema.js` remains on a single version; consistency relies on clean installs and daily pruning.
 - **Analysis workers:** `analysis/` handles TensorFlow.js scoring, ranking, and progress modal updates in a dedicated worker.
-- **Model assets:** A seven-day Temporal Convolutional Network (TCN) model, converted to TensorFlow.js, forecasts `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` and the accompanying swing probability for each symbol.
+- **Model assets:** A seven-day Temporal Convolutional Network (TCN) model, converted to TensorFlow.js, forecasts `(tomorrowHigh - todayPrimeCost) * 100 / todayPrimeCost` and the accompanying swing probability for each symbol. The model uses residual Conv1D stacks (filters 32 → 64, kernel 3, dilations 1 and 2) feeding dual heads: regression (swing percent) and sigmoid classification (swing probability) via a shared dense layer.
 - **UI, exports, and imports:** The popup renders ordered insights and triggers Excel exports/imports through SheetJS, mirroring the visible table and reading the same schema back into IndexedDB.
 - **Entry points:** `manifest.json` wires background and popup scripts; `navigator.js` drives page movement; `analysis/index.js` orchestrates worker scoring; `popup.*` renders rankings and exports.
+- **Extension layout:** `extension/background/` hosts navigation, parsing, and scheduling; `extension/analysis/` contains the worker, TF.js assets, scalers, and calibration metadata; `extension/popup/` renders rankings and controls; `extension/navigation/` houses site-specific travel helpers. `manifest.json` registers background, worker, and popup bundles.
+
+## Model Training and Inference
+
+- **Training pipeline:** Build seven-day sliding windows from `topBoxSnapshots`, compute engineered ratios and returns, Z-score using training-set statistics, and train the TCN with Huber loss and Adam (cosine decay, early stopping). Calibrate the probability head with Platt scaling; clip forecasts to [-50%, 50%] (percent) and [0.01, 0.99] (probability) before display.
+- **Inference workflow:** Require seven recent snapshots, rebuild engineered features with stored scalers, and batch TF.js scoring inside the analysis worker. Apply saved calibration parameters, persist full-precision scores to the latest snapshot, and round for UI/export rendering. If assets fail to load, skip inference and keep scores null.
+- **Ranking rules:** Symbols sort by `predictedSwingProbability`; `predictedSwingPercent` appears alongside for magnitude context, with the top five highlighted by default.
+- **Artifact versioning:** Bundle TF.js model JSON/weights, scalers, and calibration params under `analysis/models/` as `swing-tcn-<yyyy-mm-dd>-v<N>`. Keep the latest two versions for rollback and point the active manifest entry to the chosen tag.
 
 ## Storage and Configuration
 

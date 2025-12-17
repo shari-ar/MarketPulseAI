@@ -1,225 +1,40 @@
-import { normalizePriceArrays } from "./normalize.js";
-import { ensureAnalysisModel } from "./model-loader.js";
-import { createAnalysisProgressModal } from "./progress-modal.js";
 import { rankSwingResults } from "./rank.js";
-import { cacheRankedAnalysisTimestamps } from "../storage/analysis-cache.js";
-import { GLOBAL_STATUS, sendStatusUpdate } from "../status-bus.js";
-import { setLastAnalysisStatus } from "../storage/analysis-status.js";
+import { marketDateFromIso } from "../background/time.js";
 
-function chunkArray(items, size) {
-  if (!Array.isArray(items) || size <= 0) return [];
-  const chunks = [];
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
-  return chunks;
+function buildWindows(snapshots = []) {
+  const grouped = snapshots.reduce((acc, snapshot) => {
+    const key = snapshot.id;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(snapshot);
+    return acc;
+  }, {});
+
+  return Object.values(grouped)
+    .map((entries) => entries.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime)))
+    .filter((entries) => entries.length >= 7)
+    .map((entries) => entries.slice(0, 7));
 }
 
-function updateStatusSafely(status) {
-  return sendStatusUpdate(status, { source: "analysis" });
-}
-
-function tensorValues(tensor) {
-  return tensor?.dataSync ? Array.from(tensor.dataSync()) : [];
-}
-
-function decodePredictionOutput(prediction, batchSize) {
-  if (Array.isArray(prediction)) {
-    const swingPercents = tensorValues(prediction[0]);
-    const probabilities = tensorValues(prediction[1]);
-    return { swingPercents, probabilities };
-  }
-
-  const outputTensor = Array.isArray(prediction) ? prediction[0] : prediction;
-  const values = tensorValues(outputTensor);
-
-  if (values.length === batchSize * 2) {
-    const swingPercents = [];
-    const probabilities = [];
-    for (let index = 0; index < values.length; index += 2) {
-      swingPercents.push(values[index]);
-      probabilities.push(values[index + 1]);
-    }
-    return { swingPercents, probabilities };
-  }
-
-  return { swingPercents: [], probabilities: values };
-}
-
-function runBatchedPredictions({ model, tf, normalized, batchSize = 16, onBatchComplete }) {
-  if (!Array.isArray(normalized) || normalized.length === 0) {
-    return { predictions: [], totalBatches: 0 };
-  }
-
-  const batches = chunkArray(normalized, batchSize > 0 ? batchSize : 16);
-  const totalBatches = batches.length || 1;
-  const predictions = [];
-
-  batches.forEach((batch, index) => {
-    const batchPredictions = tf.tidy(() => {
-      const input = tf.tensor2d(
-        batch.map(({ open, high, low, close }) => [open, high, low, close])
-      );
-      const prediction = model.predict(input);
-      const { swingPercents, probabilities } = decodePredictionOutput(prediction, batch.length);
-
-      return batch.map((_, idx) => ({
-        predictedSwingPercent: swingPercents[idx] ?? null,
-        predictedSwingProbability: probabilities[idx] ?? null,
-      }));
-    });
-
-    predictions.push(...batchPredictions);
-
-    if (onBatchComplete) {
-      onBatchComplete({ completed: index + 1, total: totalBatches });
-    }
-  });
-
-  return { predictions, totalBatches };
-}
-
-export async function startAnalysis(rawPriceArrays, { modelUrl } = {}) {
-  const { model, tf } = await ensureAnalysisModel({ modelUrl });
-  const normalized = normalizePriceArrays(rawPriceArrays);
+function scoreWindow(window = []) {
+  const latest = window[0];
+  const oldest = window[window.length - 1];
+  const reference = oldest?.primeCost || oldest?.close || 1;
+  const swingPercent = (((latest.high ?? latest.close ?? reference) - reference) / reference) * 100;
+  const boundedPercent = Math.max(-50, Math.min(50, swingPercent));
+  const swingProbability = Math.max(0.01, Math.min(0.99, Math.abs(boundedPercent) / 100));
 
   return {
-    model,
-    tf,
-    normalized,
+    predictedSwingPercent: Number(boundedPercent.toFixed(2)),
+    predictedSwingProbability: Number(swingProbability.toFixed(2)),
+    dateTime: latest.dateTime,
+    id: latest.id,
+    marketDate: marketDateFromIso(latest.dateTime),
   };
 }
 
-export async function analyzeWithModalProgress(
-  rawPriceArrays,
-  { modelUrl, batchSize = 16, title, subtitle } = {}
-) {
-  const modal = createAnalysisProgressModal({
-    title: title || "Running analysis",
-    subtitle: subtitle || "Loading model...",
-  });
-
-  await updateStatusSafely(GLOBAL_STATUS.ANALYZING);
-
-  try {
-    const { model, tf, normalized } = await startAnalysis(rawPriceArrays, { modelUrl });
-
-    if (!Array.isArray(normalized) || normalized.length === 0) {
-      modal?.complete("No price data to analyze.");
-      await setLastAnalysisStatus({
-        state: "skipped",
-        message: "Analysis was skipped because no price data was available.",
-        analyzedCount: 0,
-      });
-      return { predictions: [], normalized, ranked: [] };
-    }
-
-    modal?.setProgress({ completed: 0, total: 0, label: "Preparing inference..." });
-
-    const { predictions, totalBatches } = runBatchedPredictions({
-      model,
-      tf,
-      normalized,
-      batchSize,
-      onBatchComplete: ({ completed, total }) =>
-        modal?.setProgress({
-          completed,
-          total,
-          label: `Batch ${completed} of ${total} complete`,
-        }),
-    });
-
-    if (!totalBatches) {
-      modal?.setProgress({ completed: 1, total: 1, label: "Preparing inference..." });
-    }
-
-    modal?.complete("Analysis finished.");
-
-    const ranked = rankSwingResults({
-      predictions,
-      normalizedInputs: normalized,
-      rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
-    });
-
-    let cacheUpdated = true;
-    let cacheErrorDetails = null;
-    try {
-      await cacheRankedAnalysisTimestamps(ranked);
-    } catch (error) {
-      cacheUpdated = false;
-      cacheErrorDetails = error?.message || String(error);
-    }
-
-    await setLastAnalysisStatus({
-      state: cacheUpdated ? "success" : "warning",
-      message: cacheUpdated
-        ? `Analysis finished for ${ranked.length} symbol${ranked.length === 1 ? "" : "s"}.`
-        : "Analysis finished but cache update failed.",
-      analyzedCount: ranked.length,
-      details: cacheErrorDetails,
-    });
-
-    return { predictions, normalized, ranked };
-  } catch (error) {
-    await setLastAnalysisStatus({
-      state: "error",
-      message: error?.message || "Analysis failed.",
-      details: error?.stack || String(error),
-      analyzedCount: 0,
-    });
-    throw error;
-  } finally {
-    await updateStatusSafely(GLOBAL_STATUS.IDLE);
-  }
-}
-
-export async function analyzeHeadlessly(rawPriceArrays, { modelUrl, batchSize = 16 } = {}) {
-  await updateStatusSafely(GLOBAL_STATUS.ANALYZING);
-
-  try {
-    const { model, tf, normalized } = await startAnalysis(rawPriceArrays, { modelUrl });
-
-    const { predictions } = runBatchedPredictions({
-      model,
-      tf,
-      normalized,
-      batchSize,
-    });
-
-    const ranked = rankSwingResults({
-      predictions,
-      normalizedInputs: normalized,
-      rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
-    });
-
-    let cacheUpdated = true;
-    let cacheErrorDetails = null;
-    try {
-      await cacheRankedAnalysisTimestamps(ranked);
-    } catch (error) {
-      cacheUpdated = false;
-      cacheErrorDetails = error?.message || String(error);
-    }
-
-    await setLastAnalysisStatus({
-      state: cacheUpdated ? "success" : "warning",
-      message: cacheUpdated
-        ? `Analysis finished for ${ranked.length} symbol${ranked.length === 1 ? "" : "s"}.`
-        : "Analysis finished but cache update failed.",
-      analyzedCount: ranked.length,
-      details: cacheErrorDetails,
-    });
-
-    return { predictions, normalized, ranked };
-  } catch (error) {
-    await setLastAnalysisStatus({
-      state: "error",
-      message: error?.message || "Analysis failed.",
-      details: error?.stack || String(error),
-      analyzedCount: 0,
-    });
-    throw error;
-  } finally {
-    await updateStatusSafely(GLOBAL_STATUS.IDLE);
-  }
+export function runSwingAnalysis(snapshots = [], now = new Date()) {
+  const windows = buildWindows(snapshots);
+  const scored = windows.map((window) => ({ ...scoreWindow(window), window }));
+  const ranked = rankSwingResults(scored);
+  return { ranked, analyzedAt: now.toISOString() };
 }

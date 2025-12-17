@@ -1,27 +1,34 @@
-const { test, describe } = require("node:test");
 const assert = require("assert");
+const { describe, it } = require("node:test");
 
-describe("market time utilities", () => {
-  test("locks only during the configured market window in Asia/Tehran", async () => {
-    const { isWithinMarketLockWindow } = await import("../extension/time.js");
+describe("market time boundaries", () => {
+  it("enforces blackout between 09:00 and 13:00 Asia/Tehran", async () => {
+    const { isWithinBlackout } = await import("../extension/background/time.js");
 
-    const beforeWindow = new Date(Date.UTC(2024, 0, 1, 4, 29)); // 07:59 in Asia/Tehran
-    const atWindowStart = new Date(Date.UTC(2024, 0, 1, 4, 30)); // 08:00 in Asia/Tehran
-    const duringWindow = new Date(Date.UTC(2024, 0, 1, 8, 59)); // 12:29 in Asia/Tehran
-    const atWindowEnd = new Date(Date.UTC(2024, 0, 1, 9, 30)); // 13:00 in Asia/Tehran
+    const before = new Date(Date.UTC(2024, 0, 1, 5, 29)); // 08:59 Tehran
+    const start = new Date(Date.UTC(2024, 0, 1, 5, 30)); // 09:00 Tehran
+    const during = new Date(Date.UTC(2024, 0, 1, 7, 0)); // 10:30 Tehran
+    const end = new Date(Date.UTC(2024, 0, 1, 9, 29)); // 12:59 Tehran
+    const after = new Date(Date.UTC(2024, 0, 1, 9, 30)); // 13:00 Tehran
 
-    assert.strictEqual(isWithinMarketLockWindow(beforeWindow), false);
-    assert.strictEqual(isWithinMarketLockWindow(atWindowStart), true);
-    assert.strictEqual(isWithinMarketLockWindow(duringWindow), true);
-    assert.strictEqual(isWithinMarketLockWindow(atWindowEnd), false);
+    assert.strictEqual(isWithinBlackout(before), false);
+    assert.strictEqual(isWithinBlackout(start), true);
+    assert.strictEqual(isWithinBlackout(during), true);
+    assert.strictEqual(isWithinBlackout(end), true);
+    assert.strictEqual(isWithinBlackout(after), false);
   });
 
-  test("formats a clock string in Tehran time", async () => {
-    const { formatMarketClock } = await import("../extension/time.js");
+  it("allows collection between market close and 07:00", async () => {
+    const { isWithinCollectionWindow } = await import("../extension/background/time.js");
 
-    const noonTehran = new Date(Date.UTC(2024, 0, 1, 8, 30)); // 12:00 in Asia/Tehran
-    const formatted = formatMarketClock(noonTehran);
+    const atClose = new Date(Date.UTC(2024, 0, 1, 9, 30)); // 13:00 Tehran
+    const overnight = new Date(Date.UTC(2024, 0, 1, 21, 0)); // 00:30 Tehran next day
+    const atDeadline = new Date(Date.UTC(2024, 0, 2, 3, 30)); // 07:00 Tehran
+    const afterDeadline = new Date(Date.UTC(2024, 0, 2, 3, 31)); // 07:01 Tehran
 
-    assert.strictEqual(formatted, "12:00");
+    assert.strictEqual(isWithinCollectionWindow(atClose), true);
+    assert.strictEqual(isWithinCollectionWindow(overnight), true);
+    assert.strictEqual(isWithinCollectionWindow(atDeadline), false);
+    assert.strictEqual(isWithinCollectionWindow(afterDeadline), false);
   });
 });

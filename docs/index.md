@@ -7,7 +7,7 @@ Welcome to the reference hub for MarketPulseAI, a privacy-first browser extensio
 ## Product Foundations
 
 - **Offline by design:** All scraping, storage, TensorFlow.js analysis, and exports/imports run locally—no remote services involved.
-- **Post-close collection:** Data gathering is time-gated to market close (13:00 IRST / UTC+03:30) to avoid intraday disruption and remains completely idle while the market is open (09:00–13:00 IRST) with no navigation, scraping, storage, or analysis activity.
+- **Blackout-aware collection:** Data gathering resumes only after the 09:00–13:00 IRST blackout to avoid intraday disruption, with no navigation, scraping, storage, or analysis activity while the blackout is active.
 - **Repeatable insights:** IndexedDB snapshots feed TensorFlow.js scoring so users can reliably track swings and rankings over time.
 - **Exact exports/imports:** SheetJS mirrors the popup table into Excel and ingests the same schema, keeping what you see aligned with what you download or add back.
 
@@ -19,7 +19,7 @@ This guide is for developers and testers working on the extension codebase. It a
 
 | Workflow              | Purpose                                                                                 | Where to start                                          |
 | --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Daily data collection | Scrape each symbol once per post-close window.                                          | [Data Collection](data-collection.md)                   |
+| Daily data collection | Scrape each symbol once per blackout cycle.                                             | [Data Collection](data-collection.md)                   |
 | Swing forecasting     | Build and run seven-day TCN-based swing predictions for ranking.                        | [Swing Forecasting](forecasting.md)                     |
 | Local analysis        | Run TensorFlow.js scoring and ranking in a dedicated worker with UI progress.           | [Analysis](analysis.md) & [Diagnostics](diagnostics.md) |
 | Export/Import Excel   | Round-trip `.xlsx` files that mirror the popup table; imports add only missing records. | [Exports & Imports](exports.md)                         |
@@ -36,7 +36,7 @@ For a deeper breakdown of runtime boundaries and sequence, see [Architecture](ar
 
 ## Scheduling & Safeguards
 
-- **Time gating:** Scraping begins after market close (13:00 IRST / UTC+03:30) to avoid partial intraday data, and all extension tasks are paused during market-open hours (09:00–13:00 IRST).
+- **Time gating:** Scraping begins once the 09:00–13:00 IRST blackout ends to avoid partial intraday data, and all extension tasks are paused while the blackout is active.
 - **Validation:** DOM inputs are sanitized before persistence to prevent malformed records in IndexedDB.
 - **Responsive UI:** Analysis progress is surfaced through a modal while workers handle heavy TensorFlow.js tasks.
 

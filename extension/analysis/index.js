@@ -19,6 +19,33 @@ function updateStatusSafely(status) {
   return sendStatusUpdate(status, { source: "analysis" });
 }
 
+function tensorValues(tensor) {
+  return tensor?.dataSync ? Array.from(tensor.dataSync()) : [];
+}
+
+function decodePredictionOutput(prediction, batchSize) {
+  if (Array.isArray(prediction)) {
+    const swingPercents = tensorValues(prediction[0]);
+    const probabilities = tensorValues(prediction[1]);
+    return { swingPercents, probabilities };
+  }
+
+  const outputTensor = Array.isArray(prediction) ? prediction[0] : prediction;
+  const values = tensorValues(outputTensor);
+
+  if (values.length === batchSize * 2) {
+    const swingPercents = [];
+    const probabilities = [];
+    for (let index = 0; index < values.length; index += 2) {
+      swingPercents.push(values[index]);
+      probabilities.push(values[index + 1]);
+    }
+    return { swingPercents, probabilities };
+  }
+
+  return { swingPercents: [], probabilities: values };
+}
+
 function runBatchedPredictions({ model, tf, normalized, batchSize = 16, onBatchComplete }) {
   if (!Array.isArray(normalized) || normalized.length === 0) {
     return { predictions: [], totalBatches: 0 };
@@ -34,9 +61,12 @@ function runBatchedPredictions({ model, tf, normalized, batchSize = 16, onBatchC
         batch.map(({ open, high, low, close }) => [open, high, low, close])
       );
       const prediction = model.predict(input);
-      const outputTensor = Array.isArray(prediction) ? prediction[0] : prediction;
-      const values = outputTensor?.dataSync ? Array.from(outputTensor.dataSync()) : [];
-      return values;
+      const { swingPercents, probabilities } = decodePredictionOutput(prediction, batch.length);
+
+      return batch.map((_, idx) => ({
+        predictedSwingPercent: swingPercents[idx] ?? null,
+        predictedSwingProbability: probabilities[idx] ?? null,
+      }));
     });
 
     predictions.push(...batchPredictions);
@@ -106,7 +136,7 @@ export async function analyzeWithModalProgress(
     modal?.complete("Analysis finished.");
 
     const ranked = rankSwingResults({
-      probabilities: predictions,
+      predictions,
       normalizedInputs: normalized,
       rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
     });
@@ -157,7 +187,7 @@ export async function analyzeHeadlessly(rawPriceArrays, { modelUrl, batchSize = 
     });
 
     const ranked = rankSwingResults({
-      probabilities: predictions,
+      predictions,
       normalizedInputs: normalized,
       rawEntries: Array.isArray(rawPriceArrays) ? rawPriceArrays : [],
     });

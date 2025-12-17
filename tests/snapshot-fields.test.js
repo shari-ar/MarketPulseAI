@@ -12,6 +12,7 @@ describe("snapshot field validation helpers", () => {
       primeCost: 1180,
       floatingShares: null,
       predictedSwingPercent: undefined,
+      predictedSwingProbability: undefined,
     };
 
     assert.deepStrictEqual(missingSnapshotFields(snapshot), []);
@@ -27,6 +28,7 @@ describe("snapshot field validation helpers", () => {
       close: 1200,
       primeCost: undefined,
       floatingShares: undefined,
+      predictedSwingProbability: null,
     };
 
     assert.deepStrictEqual(missingSnapshotFields(snapshot), ["primeCost"]);

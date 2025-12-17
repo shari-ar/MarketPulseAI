@@ -145,6 +145,13 @@ h2 {
   gap: 10px;
 }
 
+.card__actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .card__button {
   padding: 10px 12px;
   border: none;

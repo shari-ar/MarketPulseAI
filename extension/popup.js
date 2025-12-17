@@ -1,5 +1,6 @@
 import db from "./storage/db.js";
 import { ANALYSIS_CACHE_TABLE, SNAPSHOT_TABLE } from "./storage/schema.js";
+import { saveSnapshotRecord } from "./storage/writes.js";
 import * as XLSX from "./vendor/xlsx.mjs";
 import { GLOBAL_STATUS, onStatusChange, requestGlobalStatus } from "./status-bus.js";
 import {
@@ -17,6 +18,7 @@ const lockChip = document.getElementById("lock-chip");
 const lockCopy = document.getElementById("lock-copy");
 const storedStatus = document.getElementById("stored-status");
 const downloadStored = document.getElementById("download-stored");
+const importStored = document.getElementById("import-stored");
 const statusChip = document.getElementById("status-chip");
 const analysisStatus = document.getElementById("analysis-status");
 const analysisResults = document.getElementById("analysis-results");
@@ -26,6 +28,7 @@ const SNAPSHOT_FIELD_CONFIG = [
   { key: "symbolName", label: "Symbol name" },
   { key: "symbolAbbreviation", label: "Abbreviation" },
   { key: "predictedSwingPercent", label: "Predicted swing (%)" },
+  { key: "predictedSwingProbability", label: "Predicted swing probability" },
   { key: "close", label: "Last trade" },
   { key: "primeCost", label: "Closing price" },
   { key: "open", label: "First price" },
@@ -221,6 +224,15 @@ async function hydrateAnalysisSection() {
   renderAnalysisRows(sorted.slice(0, 12));
 }
 
+function buildSnapshotColumns() {
+  return [
+    { key: "id", label: "Symbol" },
+    { key: "dateTime", label: "Captured (ISO)" },
+    { key: "capturedDate", label: "Captured (Market date)" },
+    ...SNAPSHOT_FIELD_CONFIG,
+  ];
+}
+
 async function downloadStoredSymbols() {
   storedStatus.textContent = "Preparing stored symbols export...";
   await db.open();
@@ -237,12 +249,7 @@ async function downloadStoredSymbols() {
   }
 
   const sorted = [...latestPerSymbol].sort((a, b) => a.id.localeCompare(b.id));
-  const columns = [
-    { key: "id", label: "Symbol" },
-    { key: "dateTime", label: "Captured (ISO)" },
-    { key: "capturedDate", label: "Captured (Market date)" },
-    ...SNAPSHOT_FIELD_CONFIG,
-  ];
+  const columns = buildSnapshotColumns();
 
   const rows = sorted.map((row) =>
     columns.reduce((acc, { key, label }) => {
@@ -303,6 +310,92 @@ async function downloadStoredSymbols() {
   storedStatus.textContent = `Downloaded ${rows.length} stored symbol${rows.length === 1 ? "" : "s"}.`;
 }
 
+const importFileInput = document.createElement("input");
+importFileInput.type = "file";
+importFileInput.accept = ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+importFileInput.style.display = "none";
+document.body.appendChild(importFileInput);
+
+function normalizeImportedValue(value) {
+  if (value === "") return null;
+  if (value === undefined || value === null) return null;
+  return value;
+}
+
+function convertRowToSnapshot(row) {
+  const columns = buildSnapshotColumns();
+  return columns.reduce((record, { key, label }) => {
+    if (key === "capturedDate") return record;
+    const value = normalizeImportedValue(row[label]);
+    if (value !== null) {
+      record[key] = value;
+    }
+    return record;
+  }, {});
+}
+
+async function importStoredSymbols(file) {
+  if (!file) return;
+
+  storedStatus.textContent = "Importing records...";
+
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const [firstSheet] = workbook.SheetNames;
+  if (!firstSheet) {
+    storedStatus.textContent = "No sheets found in the uploaded file.";
+    return;
+  }
+
+  const worksheet = workbook.Sheets[firstSheet];
+  const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+  if (!rows.length) {
+    storedStatus.textContent = "The uploaded file is empty.";
+    return;
+  }
+
+  const snapshots = rows.map(convertRowToSnapshot).filter((record) => record.id && record.dateTime);
+
+  if (!snapshots.length) {
+    storedStatus.textContent = "No valid rows to import.";
+    return;
+  }
+
+  await db.open();
+  const table = db.table(SNAPSHOT_TABLE);
+
+  let imported = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const snapshot of snapshots) {
+    const existing = await table.get([snapshot.id, snapshot.dateTime]);
+    if (existing) {
+      skipped += 1;
+      continue;
+    }
+
+    try {
+      await saveSnapshotRecord(snapshot, { table });
+      imported += 1;
+    } catch (error) {
+      failed += 1;
+      console.error("Failed to import snapshot", error);
+    }
+  }
+
+  storedStatus.textContent = `Imported ${imported} new record${
+    imported === 1 ? "" : "s"
+  }. Skipped ${skipped}. ${failed ? `${failed} failed.` : ""}`.trim();
+}
+
+importFileInput.addEventListener("change", (event) => {
+  const [file] = event.target.files || [];
+  importStoredSymbols(file);
+  importFileInput.value = "";
+});
+
+importStored?.addEventListener("click", () => importFileInput.click());
 downloadStored.addEventListener("click", downloadStoredSymbols);
 refreshAnalysis?.addEventListener("click", hydrateAnalysisSection);
 

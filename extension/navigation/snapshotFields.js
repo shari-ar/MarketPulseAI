@@ -1,4 +1,8 @@
-const OPTIONAL_SNAPSHOT_FIELDS = new Set(["floatingShares", "predictedSwingPercent"]);
+const OPTIONAL_SNAPSHOT_FIELDS = new Set([
+  "floatingShares",
+  "predictedSwingPercent",
+  "predictedSwingProbability",
+]);
 
 export function missingSnapshotFields(snapshot) {
   if (!snapshot || typeof snapshot !== "object") return ["snapshot"];

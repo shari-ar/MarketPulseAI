@@ -8,6 +8,7 @@ export const SNAPSHOT_FIELDS = {
   symbolName: "Full symbol name from header",
   symbolAbbreviation: "Ticker abbreviation from header",
   predictedSwingPercent: "Number: model-predicted swing percentage for the next session",
+  predictedSwingProbability: "Number: probability the predicted swing materializes",
   close: "Number: last trade price",
   primeCost: "Number: closing price",
   open: "Number: first price of the session",

@@ -7,6 +7,7 @@ const baseRecord = {
   symbolName: "بانک ملت",
   symbolAbbreviation: "وبملت",
   predictedSwingPercent: 3.5,
+  predictedSwingProbability: 0.62,
   close: 3566,
   primeCost: 3549,
   open: 3507,
@@ -73,6 +74,7 @@ describe("write validation", () => {
     assert.strictEqual(saved.dateTime, "2024-06-10T13:00:00.000Z");
     assert.strictEqual(saved.id, "FOLD");
     assert.strictEqual(saved.predictedSwingPercent, 3.5);
+    assert.strictEqual(saved.predictedSwingProbability, 0.62);
   });
 
   it("details validation issues for timestamps and numeric fields", async () => {

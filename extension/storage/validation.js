@@ -43,6 +43,7 @@ export function validateSnapshotRecord(record) {
     primeCost: { optional: false },
     open: { optional: false },
     predictedSwingPercent: { optional: true },
+    predictedSwingProbability: { optional: true },
     tradesCount: { optional: false },
     tradingVolume: { optional: false },
     tradingValue: { optional: false },

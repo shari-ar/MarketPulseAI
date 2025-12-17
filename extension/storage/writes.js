@@ -22,6 +22,7 @@ function buildPayload(record) {
     symbolName: normalizeText(record.symbolName),
     symbolAbbreviation: normalizeText(record.symbolAbbreviation),
     predictedSwingPercent: normalizeNumeric(record.predictedSwingPercent),
+    predictedSwingProbability: normalizeNumeric(record.predictedSwingProbability),
     close: normalizeNumeric(record.close),
     primeCost: normalizeNumeric(record.primeCost),
     open: normalizeNumeric(record.open),

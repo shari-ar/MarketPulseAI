@@ -17,6 +17,7 @@ describe("Dexie schema", () => {
       "symbolName",
       "symbolAbbreviation",
       "predictedSwingPercent",
+      "predictedSwingProbability",
       "close",
       "primeCost",
       "open",

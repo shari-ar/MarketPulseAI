@@ -27,7 +27,7 @@ This plan outlines the end-to-end tooling and platform choices that keep MarketP
   1. `npm install`
   2. `npm run lint:test:build` to validate code + artifacts.
   3. Load unpacked extension and verify IndexedDB log writes via the in-app log viewer for direct visibility.
-- **Data realism:** Use real post-close pages when possible; fall back to saved HTML fixtures to validate parsers offline.
+- **Data realism:** Use real pages from outside the 09:00–13:00 blackout when possible; fall back to saved HTML fixtures to validate parsers offline.
 
 ## Automation & CI
 
@@ -57,6 +57,6 @@ This plan outlines the end-to-end tooling and platform choices that keep MarketP
 - **Packaging:** Ensure `scripts/build-extension.js` emits clean `dist/` with hashed assets and MV3 manifest validation.
 - **Manual QA checklist:**
   - Load/unload extension with clean startup diagnostics.
-  - Complete a full crawl post-close and confirm analysis modal resolves.
+  - Complete a full crawl after the blackout and confirm analysis modal resolves.
   - Export `.xlsx` and verify column order matches popup table.
 - **Store submission:** Run Chrome Web Store MV3 validation; attach built artifact from CI for traceability.

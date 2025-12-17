@@ -2,10 +2,10 @@
 
 ## Market Close Awareness
 
-- **Collection window:** Scraping starts after 13:00 IRST (UTC+03:30) and runs only within the post-close window, with a hard stop at the 07:00 deadline the next day to keep the daily cycle inside a single 24-hour window.
+- **Collection window:** Scraping starts as soon as the 09:00–13:00 IRST blackout ends and continues until the 07:00 deadline the next day to keep the daily cycle inside a single 24-hour window.
 - **Configurable close:** The market-close time is pulled from user settings rather than hardcoded at 13:00, so schedules adapt automatically to custom trading hours.
 - **Open-market blackout:** During market-open hours (default 09:00–13:00 IRST), the extension does nothing—no navigation, scraping, storage, or analysis—enforcing a read-only posture until the close event unlocks work.
-- **Safe window:** Writes occur only during the post-close collection window to prevent intraday interference, and the blackout is configurable through the same settings that expose close time.
+- **Safe window:** Writes occur only outside the blackout window to prevent intraday interference, and the blackout is configurable through the same settings that expose close time.
 - **Daily purge:** The cycle begins with pruning data older than the configured retention window (default seven days) before any new writes occur. The same 13:00 kickoff also deletes expired logs by type (e.g., errors after 30 days, warnings after 7, info after 3) using the intervals configured in settings.
 
 ## Refresh Strategy

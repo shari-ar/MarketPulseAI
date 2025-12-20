@@ -4,7 +4,7 @@
 
 - **Extension surfaces:** Background scripts handle orchestration, scraping, and event signaling; the popup renders analysis results and handles exports/imports.
 - **Local boundary:** Scraping, storage, and TensorFlow.js inference run entirely in the browser with no remote APIs.
-- **Activation & schedule:** The background service worker spins up only while the user is on `https://tsetmc.com/*` (or subdomains), triggering pruning, collection, and forecasting on entry; it pauses as soon as the user leaves the site or switches tabs. Work is further gated by time—data collection starts when the blackout ends at the configured market-close time (default 13:00 IRST, UTC+03:30) and pauses by 07:00, while a strict blackout keeps all automation idle during market-open hours (default 09:00–13:00 IRST).
+- **Activation & schedule:** The background service worker spins up only while the user is on `https://tsetmc.com/*` (or subdomains), triggering pruning, collection, and forecasting on entry; it pauses as soon as the user leaves the site or switches tabs. Work is further gated by time—data collection starts when the blackout ends at the configured market-close time (default 13:00 IRST, UTC+03:30) and pauses by 07:00 before the next 09:00 open on Saturday–Wednesday, with a longer Wednesday-through-Saturday window that bridges the weekend.
 - **Daily cadence:** At the configured close, pruning removes stale data and clears expired logs by type before scheduling kicks off; scraping runs within the collection window, and analysis is forced at 07:00 if crawling did not fully complete.
 - **Offline bundle:** TensorFlow.js and SheetJS ship with the extension, and the manifest requests only navigation and storage permissions.
 
@@ -30,11 +30,11 @@
 - **Database contract:** IndexedDB via Dexie named `marketpulseai` with tables `topBoxSnapshots` (composite key `[id+dateTime]`), `analysisCache` (`symbol`, `lastAnalyzedAt`), and `logs` (auto-increment `id`, per-type retention windows).
 - **Versioning:** Fixed schema with reinstall-based upgrades instead of migrations.
 - **Retention:** Keep seven days of history by default; older rows are purged when the daily window opens.
-- **User defaults:** Settings expose editable defaults for the market-open blackout window (09:00–13:00 IRST), retention days (7), top swing list size (5), etc.
+- **User defaults:** Settings expose editable defaults for the market-open blackout window (09:00–13:00 IRST on Saturday–Wednesday), retention days (7), top swing list size (5), etc.
 
 ## Data Collection Flow
 
-1. **Prune and gate:** Enforce a blackout during the configured open hours (default 09:00–13:00 IRST) with no navigation, writes, or analysis; at market close delete snapshots older than the retention window, trim expired logs, and allow crawling only within the close-to-07:00 window.
+1. **Prune and gate:** Enforce a blackout during the configured open hours (default 09:00–13:00 IRST, Saturday–Wednesday) with navigation, writes, and analysis paused; at market close delete snapshots older than the retention window, trim expired logs, and allow crawling only within the close-to-07:00 window that bridges from Wednesday into Saturday across the weekend.
 2. **Select targets:** Queue symbols missing a snapshot for the current market date so each one is captured once per day.
 3. **Navigate and parse:** Background helpers move through symbol pages, wait for required selectors, extract top-box metrics, and validate inputs.
 4. **Persist:** Write sanitized records to `topBoxSnapshots` and update `analysisCache` when analysis completes.

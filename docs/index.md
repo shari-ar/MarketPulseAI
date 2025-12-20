@@ -7,7 +7,7 @@ Welcome to the reference hub for MarketPulseAI, a privacy-first browser extensio
 ## Product Foundations
 
 - **Offline by design:** All scraping, storage, TensorFlow.js analysis, and exports/imports run locally—no remote services involved.
-- **Blackout-aware collection:** Data gathering resumes only after the 09:00–13:00 IRST blackout to avoid intraday disruption, with no navigation, scraping, storage, or analysis activity while the blackout is active.
+- **Blackout-aware collection:** Data gathering resumes only after the 09:00–13:00 IRST blackout on trading days (Saturday–Wednesday) to avoid intraday disruption; the work window runs from the 13:00 close until the 07:00 pre-open buffer, and stays open from Wednesday 13:00 through Saturday 07:00 across the weekend break.
 - **Repeatable insights:** IndexedDB snapshots feed TensorFlow.js scoring so users can reliably track swings and rankings over time.
 - **Exact exports/imports:** SheetJS mirrors the popup table into Excel and ingests the same schema, keeping what you see aligned with what you download or add back.
 
@@ -36,7 +36,7 @@ For a deeper breakdown of runtime boundaries and sequence, see [Architecture](ar
 
 ## Scheduling & Safeguards
 
-- **Time gating:** Scraping begins once the 09:00–13:00 IRST blackout ends to avoid partial intraday data, and all extension tasks are paused while the blackout is active.
+- **Time gating:** Scraping begins once the 09:00–13:00 IRST blackout ends on trading days (Saturday–Wednesday) to avoid partial intraday data; work runs from the 13:00 close until the 07:00 pre-open buffer and bridges from Wednesday 13:00 through Saturday 07:00 over the weekend.
 - **Tab-aware activation:** The background worker only runs while a tab is on `https://tsetmc.com/*` (or subdomains); closing, navigating away, or switching tabs shuts the run down until the next visit.
 - **Validation:** DOM inputs are sanitized before persistence to prevent malformed records in IndexedDB.
 - **Responsive UI:** Analysis progress is surfaced through a modal while workers handle heavy TensorFlow.js tasks.

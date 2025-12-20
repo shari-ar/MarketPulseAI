@@ -37,6 +37,7 @@ For a deeper breakdown of runtime boundaries and sequence, see [Architecture](ar
 ## Scheduling & Safeguards
 
 - **Time gating:** Scraping begins once the 09:00–13:00 IRST blackout ends to avoid partial intraday data, and all extension tasks are paused while the blackout is active.
+- **Tab-aware activation:** The background worker only runs while a tab is on `https://tsetmc.com/*` (or subdomains); closing, navigating away, or switching tabs shuts the run down until the next visit.
 - **Validation:** DOM inputs are sanitized before persistence to prevent malformed records in IndexedDB.
 - **Responsive UI:** Analysis progress is surfaced through a modal while workers handle heavy TensorFlow.js tasks.
 

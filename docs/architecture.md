@@ -4,7 +4,7 @@
 
 - **Extension surfaces:** Background scripts handle orchestration, scraping, and event signaling; the popup renders analysis results and handles exports/imports.
 - **Local boundary:** Scraping, storage, and TensorFlow.js inference run entirely in the browser with no remote APIs.
-- **Schedule:** Data collection starts when the blackout ends at the configured market-close time (default 13:00 IRST, UTC+03:30) and pauses by 07:00, while a strict blackout keeps all automation idle during market-open hours (default 09:00–13:00 IRST).
+- **Activation & schedule:** The background service worker spins up only while the user is on `https://tsetmc.com/*` (or subdomains), triggering pruning, collection, and forecasting on entry; it pauses as soon as the user leaves the site or switches tabs. Work is further gated by time—data collection starts when the blackout ends at the configured market-close time (default 13:00 IRST, UTC+03:30) and pauses by 07:00, while a strict blackout keeps all automation idle during market-open hours (default 09:00–13:00 IRST).
 - **Daily cadence:** At the configured close, pruning removes stale data and clears expired logs by type before scheduling kicks off; scraping runs within the collection window, and analysis is forced at 07:00 if crawling did not fully complete.
 - **Offline bundle:** TensorFlow.js and SheetJS ship with the extension, and the manifest requests only navigation and storage permissions.
 

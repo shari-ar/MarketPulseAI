@@ -18,6 +18,14 @@ describe("market time boundaries", () => {
     assert.strictEqual(isWithinBlackout(after), false);
   });
 
+  it("keeps blackout off on non-trading days", async () => {
+    const { isWithinBlackout } = await import("../extension/background/time.js");
+
+    const thursday = new Date(Date.UTC(2024, 0, 4, 7, 0)); // 10:30 Tehran on Thursday
+
+    assert.strictEqual(isWithinBlackout(thursday), false);
+  });
+
   it("allows collection between market close and 07:00", async () => {
     const { isWithinCollectionWindow } = await import("../extension/background/time.js");
 
@@ -30,5 +38,19 @@ describe("market time boundaries", () => {
     assert.strictEqual(isWithinCollectionWindow(overnight), true);
     assert.strictEqual(isWithinCollectionWindow(atDeadline), false);
     assert.strictEqual(isWithinCollectionWindow(afterDeadline), false);
+  });
+
+  it("keeps collection open across the weekend bridge", async () => {
+    const { isWithinCollectionWindow } = await import("../extension/background/time.js");
+
+    const thursday = new Date(Date.UTC(2024, 0, 4, 6, 0)); // 09:30 Tehran on Thursday
+    const fridayLate = new Date(Date.UTC(2024, 0, 5, 18, 0)); // 21:30 Tehran on Friday
+    const saturdayPreDeadline = new Date(Date.UTC(2024, 0, 6, 3, 29)); // 06:59 Tehran on Saturday
+    const saturdayAfterDeadline = new Date(Date.UTC(2024, 0, 6, 3, 31)); // 07:01 Tehran on Saturday
+
+    assert.strictEqual(isWithinCollectionWindow(thursday), true);
+    assert.strictEqual(isWithinCollectionWindow(fridayLate), true);
+    assert.strictEqual(isWithinCollectionWindow(saturdayPreDeadline), true);
+    assert.strictEqual(isWithinCollectionWindow(saturdayAfterDeadline), false);
   });
 });

@@ -1,6 +1,14 @@
 import { rankSwingResults } from "./rank.js";
 import { marketDateFromIso } from "../background/time.js";
 
+/**
+ * Groups incoming snapshots by their identifier and builds fixed-size, most-recent-first windows.
+ * Only symbol windows with at least seven snapshots are retained so downstream analysis
+ * works with a consistent lookback period.
+ *
+ * @param {Array<{id: string, dateTime: string}>} snapshots - Raw snapshots collected over time.
+ * @returns {Array<Array<object>>} Collection of snapshot windows ordered by recency.
+ */
 function buildWindows(snapshots = []) {
   const grouped = snapshots.reduce((acc, snapshot) => {
     const key = snapshot.id;
@@ -15,6 +23,14 @@ function buildWindows(snapshots = []) {
     .map((entries) => entries.slice(0, 7));
 }
 
+/**
+ * Derives swing metrics for a single fixed window, normalizing the calculation to the
+ * oldest point in the window and constraining extremes to avoid skewed probabilities.
+ *
+ * @param {Array<object>} window - Ordered window of snapshots for a specific symbol.
+ * @returns {{predictedSwingPercent: number, predictedSwingProbability: number, dateTime: string, id: string, marketDate: string}}
+ *   Structured swing metrics tied to the most recent snapshot.
+ */
 function scoreWindow(window = []) {
   const latest = window[0];
   const oldest = window[window.length - 1];
@@ -32,6 +48,14 @@ function scoreWindow(window = []) {
   };
 }
 
+/**
+ * Scores and ranks swing opportunities across all available symbols, preserving the
+ * analyzed timestamp for traceability and reporting.
+ *
+ * @param {Array<object>} snapshots - Recent snapshots spanning multiple symbols.
+ * @param {Date} [now=new Date()] - Evaluation timestamp for the analysis output.
+ * @returns {{ranked: Array<object>, analyzedAt: string}} Ranked swing results with metadata.
+ */
 export function runSwingAnalysis(snapshots = [], now = new Date()) {
   const windows = buildWindows(snapshots);
   const scored = windows.map((window) => ({ ...scoreWindow(window), window }));

@@ -24,18 +24,35 @@ function daysBetween(startDate, endDate) {
  * @param {Date} [options.now=new Date()] - Clock used for deterministic tests.
  * @param {number} [options.retentionDays=DEFAULT_RUNTIME_CONFIG.RETENTION_DAYS]
  *   Max age for snapshots before pruning.
+ * @param {import("../background/logger.js").LoggingService} [options.logger]
+ *   Structured logger for recording retention outcomes.
  * @returns {Array<object>} Pruned snapshot collection.
  */
 export function pruneSnapshots(
   records = [],
-  { now = new Date(), retentionDays = DEFAULT_RUNTIME_CONFIG.RETENTION_DAYS } = {}
+  { now = new Date(), retentionDays = DEFAULT_RUNTIME_CONFIG.RETENTION_DAYS, logger } = {}
 ) {
   const today = marketDateFromIso(now.toISOString());
-  return records.filter((record) => {
+  const before = records.length;
+
+  const pruned = records.filter((record) => {
     const recordDate = marketDateFromIso(record.dateTime);
     if (!recordDate) return false;
     return daysBetween(recordDate, today) < retentionDays;
   });
+
+  const removed = before - pruned.length;
+  if (logger) {
+    logger.log({
+      type: "info",
+      message: "Pruned snapshots past retention window",
+      source: "storage",
+      context: { removedCount: removed, retentionDays, marketDate: today },
+      now,
+    });
+  }
+
+  return pruned;
 }
 
 /**
@@ -44,15 +61,32 @@ export function pruneSnapshots(
  * @param {Array<object>} records - Log rows to evaluate.
  * @param {object} options
  * @param {Date} [options.now=new Date()] - Current time source.
+ * @param {import("../background/logger.js").LoggingService} [options.logger]
+ *   Structured logger for recording retention outcomes.
  * @returns {Array<object>} Logs still considered active.
  */
-export function pruneLogs(records = [], { now = new Date() } = {}) {
+export function pruneLogs(records = [], { now = new Date(), logger } = {}) {
   const nowTs = now.getTime();
-  return records.filter((entry) => {
+  const before = records.length;
+
+  const filtered = records.filter((entry) => {
     const expires = entry?.expiresAt ? new Date(entry.expiresAt).getTime() : null;
     if (!expires) return true;
     return expires > nowTs;
   });
+
+  const removed = before - filtered.length;
+  if (logger) {
+    logger.log({
+      type: "info",
+      message: "Pruned expired log entries",
+      source: "storage",
+      context: { removedCount: removed },
+      now,
+    });
+  }
+
+  return filtered;
 }
 
 /**

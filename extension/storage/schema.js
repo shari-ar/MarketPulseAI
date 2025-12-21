@@ -86,8 +86,26 @@ export function getSchemaDefinition() {
  * Ensures a snapshot object has every required property before persistence.
  *
  * @param {object} snapshot - Candidate snapshot to validate.
+ * @param {object} [options]
+ * @param {import("../background/logger.js").LoggingService} [options.logger]
+ *   Structured logger for surfacing missing fields.
  * @returns {boolean} True when all declared fields are present.
  */
-export function validateSnapshot(snapshot = {}) {
-  return Object.keys(SNAPSHOT_FIELDS).every((key) => key in snapshot);
+export function validateSnapshot(snapshot = {}, { logger } = {}) {
+  const missingFields = Object.keys(SNAPSHOT_FIELDS).filter((key) => !(key in snapshot));
+
+  if (missingFields.length && logger) {
+    logger.log({
+      type: "warning",
+      message: "Snapshot missing required fields",
+      source: "storage",
+      context: {
+        symbol: snapshot?.id,
+        missingCount: missingFields.length,
+        missingFields,
+      },
+    });
+  }
+
+  return missingFields.length === 0;
 }

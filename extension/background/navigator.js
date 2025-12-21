@@ -3,6 +3,7 @@ import { shouldCollect, shouldPause, shouldRunAnalysis } from "./scheduling.js";
 import { marketDateFromIso } from "./time.js";
 import { pruneSnapshots } from "../storage/retention.js";
 import { validateSnapshot } from "../storage/schema.js";
+import { storageLogger } from "../storage/logger.js";
 import { runSwingAnalysis } from "../analysis/index.js";
 import { LoggingService, loggingService as sharedLogger } from "./logger.js";
 
@@ -93,6 +94,7 @@ export class NavigatorService {
       this.snapshots = pruneSnapshots(this.snapshots, {
         now,
         retentionDays: this.config.RETENTION_DAYS,
+        logger: storageLogger,
       });
       this.logger.prune(now);
       this.lastPruneDate = marketDate;
@@ -112,7 +114,7 @@ export class NavigatorService {
 
     const accepted = [];
     records.forEach((snapshot) => {
-      if (!validateSnapshot(snapshot)) return;
+      if (!validateSnapshot(snapshot, { logger: storageLogger })) return;
       const snapshotDate = marketDateFromIso(snapshot.dateTime);
       if (this.hasSnapshotForDay(snapshot.id, snapshotDate)) return;
       this.snapshots.push({ ...snapshot });

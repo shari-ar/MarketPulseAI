@@ -5,6 +5,10 @@ import { pruneLogs, pruneSnapshots, buildLogEntry } from "../storage/retention.j
 import { validateSnapshot } from "../storage/schema.js";
 import { runSwingAnalysis } from "../analysis/index.js";
 
+/**
+ * Central stateful controller for orchestrating snapshot collection, log retention,
+ * and triggering swing analysis once the crawl is complete or deadlines are reached.
+ */
 export class NavigatorService {
   constructor({ config = DEFAULT_RUNTIME_CONFIG } = {}) {
     this.config = { ...DEFAULT_RUNTIME_CONFIG, ...config };
@@ -16,17 +20,37 @@ export class NavigatorService {
     this.lastPruneDate = null;
   }
 
+  /**
+   * Seeds the expected symbol set to track completion status across a crawl cycle.
+   *
+   * @param {string[]} symbols - Symbols anticipated from the collector.
+   */
   planSymbols(symbols = []) {
     this.expectedSymbols = new Set(symbols.filter(Boolean).map((s) => String(s)));
     this.crawlComplete = this.expectedSymbols.size === 0;
   }
 
+  /**
+   * Determines whether a symbol already has data captured for a specific market date.
+   *
+   * @param {string} symbol - Symbol identifier.
+   * @param {string} marketDate - Trading date in YYYY-MM-DD format.
+   * @returns {boolean} True when a snapshot already exists for that day.
+   */
   hasSnapshotForDay(symbol, marketDate) {
     return this.snapshots.some(
       (entry) => entry.id === symbol && marketDateFromIso(entry.dateTime) === marketDate
     );
   }
 
+  /**
+   * Validates and stores incoming snapshots while enforcing blackout windows,
+   * pruning retention windows, and kicking off analysis when criteria are met.
+   *
+   * @param {import("../storage/schema.js").Snapshot[]} records - Candidate snapshots.
+   * @param {Date} now - Timestamp used for schedule checks.
+   * @returns {{accepted: string[]}} Set of symbol ids accepted into storage.
+   */
   recordSnapshots(records = [], now = new Date()) {
     if (shouldPause(now, this.config)) {
       this.logs.push(

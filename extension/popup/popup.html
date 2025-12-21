@@ -9,10 +9,12 @@
     <main>
       <h1>MarketPulseAI</h1>
       <p class="subtitle">Offline swing rankings for the Tehran Stock Exchange.</p>
+      <!-- Action buttons for exporting current rankings and importing new Excel data. -->
       <div id="controls">
         <button id="export">Export Excel</button>
         <button id="import">Import Excel</button>
       </div>
+      <!-- Rankings table populated by popup.js once data is loaded or imported. -->
       <table id="rankings">
         <thead>
           <tr>
@@ -23,6 +25,7 @@
         </thead>
         <tbody></tbody>
       </table>
+      <!-- Hidden file input triggered by the import button to select Excel files. -->
       <input id="import-file" type="file" accept=".xlsx" hidden />
     </main>
     <script type="module" src="popup.js"></script>

@@ -14,9 +14,11 @@ export function rankSwingResults(records = [], topCount = DEFAULT_RUNTIME_CONFIG
     .map((row) => ({ ...row }));
 
   sortable.sort((a, b) => {
+    // Prioritize confidence first so the list favors swings we believe in the most.
     if (b.predictedSwingProbability !== a.predictedSwingProbability) {
       return b.predictedSwingProbability - a.predictedSwingProbability;
     }
+    // Fall back to magnitude to surface larger potential moves when confidence ties.
     return (b.predictedSwingPercent || 0) - (a.predictedSwingPercent || 0);
   });
 

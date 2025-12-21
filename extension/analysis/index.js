@@ -2,6 +2,12 @@ import { rankSwingResults } from "./rank.js";
 import { marketDateFromIso } from "../background/time.js";
 
 /**
+ * Runs the end-to-end swing analysis pipeline from raw snapshot ingestion to
+ * a ranked output list. Keeping these steps co-located clarifies the
+ * dependency order: window building -> scoring -> ranking.
+ */
+
+/**
  * Groups incoming snapshots by their identifier and builds fixed-size, most-recent-first windows.
  * Only symbol windows with at least seven snapshots are retained so downstream analysis
  * works with a consistent lookback period.

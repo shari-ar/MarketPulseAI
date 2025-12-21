@@ -5,6 +5,12 @@ import { SNAPSHOT_FIELDS } from "../storage/schema.js";
 const COLUMN_ORDER = Object.keys(SNAPSHOT_FIELDS);
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
 
+// Excel workbook creation and import/export helpers for the popup UI.
+/**
+ * Build an Excel workbook representing the provided ranking rows using the
+ * snapshot schema column ordering. Null placeholders keep cells aligned when
+ * individual records have missing properties.
+ */
 export function buildExportWorkbook(rows = []) {
   const data = [COLUMN_ORDER];
   rows.forEach((row) => {
@@ -17,6 +23,11 @@ export function buildExportWorkbook(rows = []) {
   return workbook;
 }
 
+/**
+ * Deduplicate imported rows before merging them into the existing ranking
+ * collection. Records are keyed by id + timestamp to avoid double-counting the
+ * same snapshot when users re-import exports.
+ */
 export function mergeImportedRows(existing = [], incoming = []) {
   const byKey = new Set(existing.map((row) => `${row.id}-${row.dateTime}`));
   incoming.forEach((row) => {
@@ -29,6 +40,11 @@ export function mergeImportedRows(existing = [], incoming = []) {
   return existing;
 }
 
+/**
+ * Populate the rankings table with the provided set of swing predictions.
+ * Rows are highlighted when they fall within the top five entries to surface
+ * the highest-confidence predictions in the popup view.
+ */
 function renderRankings(rows = []) {
   if (typeof document === "undefined") return;
   const tbody = document.querySelector("#rankings tbody");
@@ -46,12 +62,20 @@ function renderRankings(rows = []) {
   });
 }
 
+/**
+ * Generate and trigger a download of the current ranking rows as an Excel
+ * workbook. Files are timestamped to keep user exports distinct.
+ */
 function exportCurrentRows(rows) {
   const workbook = buildExportWorkbook(rows);
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   XLSX.writeFile(workbook, `marketpulseai-${timestamp}.xlsx`);
 }
 
+/**
+ * Wire up popup controls for exporting/importing Excel data and hydrate the
+ * UI with the latest locally cached ranking results when available.
+ */
 function setupUi() {
   if (typeof document === "undefined") return;
   const exportBtn = document.getElementById("export");

@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import { read, utils, writeFile } from "./xlsx-loader.js";
 import { rankSwingResults } from "../analysis/rank.js";
 import { SNAPSHOT_FIELDS } from "../storage/schema.js";
 import { logPopupEvent, popupLogger } from "./logger.js";
@@ -18,9 +18,9 @@ export function buildExportWorkbook(rows = []) {
     data.push(COLUMN_ORDER.map((key) => row[key] ?? null));
   });
 
-  const worksheet = XLSX.utils.aoa_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "rankings");
+  const worksheet = utils.aoa_to_sheet(data);
+  const workbook = utils.book_new();
+  utils.book_append_sheet(workbook, worksheet, "rankings");
   return workbook;
 }
 
@@ -70,7 +70,7 @@ function renderRankings(rows = []) {
 function exportCurrentRows(rows) {
   const workbook = buildExportWorkbook(rows);
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  XLSX.writeFile(workbook, `marketpulseai-${timestamp}.xlsx`);
+  writeFile(workbook, `marketpulseai-${timestamp}.xlsx`);
   logPopupEvent({
     type: "info",
     message: "Exported ranking workbook",
@@ -96,9 +96,9 @@ function setupUi() {
     if (!file) return;
     try {
       const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array" });
+      const workbook = read(buffer, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet);
+      const rows = utils.sheet_to_json(sheet);
       const beforeCount = latestRows.length;
       latestRows = mergeImportedRows(latestRows, rows);
       const ranked = rankSwingResults(latestRows);

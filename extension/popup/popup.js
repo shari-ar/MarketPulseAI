@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { rankSwingResults } from "../analysis/rank.js";
 import { SNAPSHOT_FIELDS } from "../storage/schema.js";
+import { logPopupEvent, popupLogger } from "./logger.js";
 
 const COLUMN_ORDER = Object.keys(SNAPSHOT_FIELDS);
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
@@ -70,6 +71,11 @@ function exportCurrentRows(rows) {
   const workbook = buildExportWorkbook(rows);
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   XLSX.writeFile(workbook, `marketpulseai-${timestamp}.xlsx`);
+  logPopupEvent({
+    type: "info",
+    message: "Exported ranking workbook",
+    context: { rowCount: rows.length, timestamp },
+  });
 }
 
 /**
@@ -88,12 +94,33 @@ function setupUi() {
   const handleImport = async (event) => {
     const [file] = event.target.files || [];
     if (!file) return;
-    const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: "array" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
-    latestRows = mergeImportedRows(latestRows, rows);
-    renderRankings(rankSwingResults(latestRows));
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
+      const beforeCount = latestRows.length;
+      latestRows = mergeImportedRows(latestRows, rows);
+      const ranked = rankSwingResults(latestRows);
+      renderRankings(ranked);
+      logPopupEvent({
+        type: "info",
+        message: "Imported ranking workbook",
+        context: {
+          filename: file.name,
+          sizeBytes: file.size,
+          incomingRows: rows.length,
+          dedupedCount: latestRows.length - beforeCount,
+          totalRows: latestRows.length,
+        },
+      });
+    } catch (error) {
+      logPopupEvent({
+        type: "error",
+        message: "Failed to import workbook",
+        context: { filename: file?.name, error: error?.message },
+      });
+    }
   };
 
   exportBtn?.addEventListener("click", handleExport);
@@ -104,8 +131,20 @@ function setupUi() {
     chromeApi.storage.local.get(["rankedResults"], ({ rankedResults = [] }) => {
       latestRows = rankedResults;
       renderRankings(rankSwingResults(rankedResults));
+      logPopupEvent({
+        type: "info",
+        message: "Hydrated popup from storage",
+        context: { cachedRows: rankedResults.length },
+      });
     });
   }
+
+  popupLogger.prune();
+  logPopupEvent({
+    type: "info",
+    message: "Initialized popup UI",
+    context: { hasChrome: Boolean(chromeApi?.storage?.local) },
+  });
 }
 
 setupUi();

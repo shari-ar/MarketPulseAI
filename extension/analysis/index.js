@@ -1,5 +1,6 @@
 import { rankSwingResults } from "./rank.js";
 import { marketDateFromIso } from "../background/time.js";
+import { logAnalysisEvent } from "./logger.js";
 
 /**
  * Runs the end-to-end swing analysis pipeline from raw snapshot ingestion to
@@ -63,8 +64,54 @@ function scoreWindow(window = []) {
  * @returns {{ranked: Array<object>, analyzedAt: string}} Ranked swing results with metadata.
  */
 export function runSwingAnalysis(snapshots = [], now = new Date()) {
+  const snapshotCount = snapshots.length;
+  const symbolCount = new Set(snapshots.map((snapshot) => snapshot.id)).size;
+
+  logAnalysisEvent({
+    message: "Started swing analysis",
+    context: { snapshotCount, symbolCount },
+    now,
+  });
+
   const windows = buildWindows(snapshots);
+  const analyzedSymbols = windows.map((window) => window[0]?.id).filter(Boolean);
+  const filteredSymbols = symbolCount - analyzedSymbols.length;
+
+  logAnalysisEvent({
+    message: "Built analysis windows",
+    context: {
+      windowCount: windows.length,
+      analyzedSymbols,
+      filteredSymbols,
+    },
+    now,
+  });
+
+  if (!windows.length) {
+    logAnalysisEvent({
+      type: "warning",
+      message: "Insufficient snapshots for swing analysis",
+      context: { snapshotCount, symbolCount },
+      now,
+    });
+    return { ranked: [], analyzedAt: now.toISOString() };
+  }
+
   const scored = windows.map((window) => ({ ...scoreWindow(window), window }));
+
+  logAnalysisEvent({
+    message: "Scored swing windows",
+    context: { scoredCount: scored.length },
+    now,
+  });
+
   const ranked = rankSwingResults(scored);
+
+  logAnalysisEvent({
+    message: "Ranked swing opportunities",
+    context: { rankedCount: ranked.length },
+    now,
+  });
+
   return { ranked, analyzedAt: now.toISOString() };
 }

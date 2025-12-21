@@ -9,6 +9,16 @@ function parseTimeString(value) {
   return { hour, minute };
 }
 
+const WEEKDAY_INDEX = {
+  sun: 0,
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+  sat: 6,
+};
+
 function extractParts(now = new Date(), timeZone = DEFAULT_RUNTIME_CONFIG.MARKET_TIMEZONE) {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone,
@@ -18,6 +28,7 @@ function extractParts(now = new Date(), timeZone = DEFAULT_RUNTIME_CONFIG.MARKET
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    weekday: "short",
   });
 
   const parts = formatter.formatToParts(now).reduce((acc, part) => {
@@ -31,6 +42,7 @@ function extractParts(now = new Date(), timeZone = DEFAULT_RUNTIME_CONFIG.MARKET
     day: Number(parts.day),
     hour: Number(parts.hour),
     minute: Number(parts.minute),
+    weekday: WEEKDAY_INDEX[String(parts.weekday).slice(0, 3).toLowerCase()],
   };
 }
 
@@ -44,7 +56,8 @@ export function formatMarketClock(now = new Date(), config = DEFAULT_RUNTIME_CON
 }
 
 export function isWithinBlackout(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
-  const { hour, minute } = extractParts(now, config.MARKET_TIMEZONE);
+  const { hour, minute, weekday } = extractParts(now, config.MARKET_TIMEZONE);
+  if (!config.TRADING_DAYS.includes(weekday)) return false;
   const minutes = minutesFromParts({ hour, minute });
   const open = minutesFromParts(parseTimeString(config.MARKET_OPEN));
   const close = minutesFromParts(parseTimeString(config.MARKET_CLOSE));
@@ -52,7 +65,10 @@ export function isWithinBlackout(now = new Date(), config = DEFAULT_RUNTIME_CONF
 }
 
 export function isWithinCollectionWindow(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
-  const { hour, minute } = extractParts(now, config.MARKET_TIMEZONE);
+  const { hour, minute, weekday } = extractParts(now, config.MARKET_TIMEZONE);
+
+  if (!config.TRADING_DAYS.includes(weekday)) return true;
+
   const minutes = minutesFromParts({ hour, minute });
   const close = minutesFromParts(parseTimeString(config.MARKET_CLOSE));
   const deadline = minutesFromParts(parseTimeString(config.ANALYSIS_DEADLINE));

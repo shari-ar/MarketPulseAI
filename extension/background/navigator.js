@@ -7,6 +7,9 @@ import { storageLogger } from "../storage/logger.js";
 import { runSwingAnalysis } from "../analysis/index.js";
 import { LoggingService, loggingService as sharedLogger } from "./logger.js";
 
+const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
+const MARKET_HOST_PATTERN = /^https?:\/\/(?:[^./]+\.)*tsetmc\.com\//i;
+
 /**
  * Central stateful controller for orchestrating snapshot collection, log retention,
  * and triggering swing analysis once the crawl is complete or deadlines are reached.
@@ -19,7 +22,9 @@ export class NavigatorService {
     this.expectedSymbols = new Set();
     this.crawlComplete = false;
     this.analysisResult = null;
+    this.analysisCache = new Map();
     this.lastPruneDate = null;
+    this.activeTabId = null;
   }
 
   get logs() {
@@ -56,6 +61,43 @@ export class NavigatorService {
   }
 
   /**
+   * Performs retention sweeps for snapshots and logs, ensuring work starts
+   * with a clean slate when entering the collection window each day.
+   *
+   * @param {Date} now - Current clock used for deterministic testing.
+   * @returns {string|null} Market date used for pruning decisions.
+   */
+  pruneRetention(now) {
+    const marketDate = marketDateFromIso(now.toISOString(), this.config);
+    if (this.lastPruneDate === marketDate) return marketDate;
+
+    const snapshotCountBefore = this.snapshots.length;
+    const logCountBefore = this.logs.length;
+
+    this.snapshots = pruneSnapshots(this.snapshots, {
+      now,
+      retentionDays: this.config.RETENTION_DAYS,
+      logger: storageLogger,
+    });
+    this.logger.prune(now);
+    this.lastPruneDate = marketDate;
+
+    this.logger.log({
+      type: "info",
+      message: "Pruned retention windows",
+      source: "navigator",
+      context: {
+        prunedSnapshots: snapshotCountBefore - this.snapshots.length,
+        prunedLogs: logCountBefore - this.logs.length,
+        marketDate,
+      },
+      now,
+    });
+
+    return marketDate;
+  }
+
+  /**
    * Validates and stores incoming snapshots while enforcing blackout windows,
    * pruning retention windows, and kicking off analysis when criteria are met.
    *
@@ -86,31 +128,7 @@ export class NavigatorService {
       return { accepted: [] };
     }
 
-    const marketDate = marketDateFromIso(now.toISOString());
-
-    if (this.lastPruneDate !== marketDate) {
-      const snapshotCountBefore = this.snapshots.length;
-      const logCountBefore = this.logs.length;
-      this.snapshots = pruneSnapshots(this.snapshots, {
-        now,
-        retentionDays: this.config.RETENTION_DAYS,
-        logger: storageLogger,
-      });
-      this.logger.prune(now);
-      this.lastPruneDate = marketDate;
-
-      this.logger.log({
-        type: "info",
-        message: "Pruned retention windows",
-        source: "navigator",
-        context: {
-          prunedSnapshots: snapshotCountBefore - this.snapshots.length,
-          prunedLogs: logCountBefore - this.logs.length,
-          marketDate,
-        },
-        now,
-      });
-    }
+    const marketDate = this.pruneRetention(now);
 
     const accepted = [];
     records.forEach((snapshot) => {
@@ -130,6 +148,7 @@ export class NavigatorService {
         context: {
           acceptedCount: accepted.length,
           symbols: [...new Set(accepted)],
+          marketDate,
         },
         now,
       });
@@ -141,6 +160,10 @@ export class NavigatorService {
 
     if (shouldRunAnalysis({ now, crawlComplete: this.crawlComplete, config: this.config })) {
       this.analysisResult = runSwingAnalysis(this.snapshots, now);
+      this.snapshots = this.analysisResult.snapshots;
+      this.analysisResult.ranked.forEach((entry) => {
+        if (entry.id) this.analysisCache.set(entry.id, this.analysisResult.analyzedAt);
+      });
       this.logger.log({
         type: "info",
         message: "Triggered swing analysis",
@@ -155,6 +178,88 @@ export class NavigatorService {
 
     return { accepted };
   }
+
+  /**
+   * Activates collection for a tab that matches the documented host list.
+   *
+   * @param {number} tabId - Chrome tab identifier.
+   * @param {Date} [now=new Date()] - Clock used for deterministic testing.
+   */
+  startSession(tabId, now = new Date()) {
+    if (this.activeTabId === tabId) return;
+    this.activeTabId = tabId;
+    this.logger.log({
+      type: "info",
+      message: "Activated collection session for market tab",
+      source: "navigator",
+      context: { tabId, schedule: { ...this.config } },
+      now,
+    });
+    this.pruneRetention(now);
+  }
+
+  /**
+   * Stops collection for the previously active tab and resets crawl flags so
+   * a future visit restarts the full pipeline.
+   *
+   * @param {string} reason - Human-readable teardown cause.
+   * @param {Date} [now=new Date()] - Clock used for deterministic testing.
+   */
+  stopSession(reason = "navigation-change", now = new Date()) {
+    if (this.activeTabId === null) return;
+    const tabId = this.activeTabId;
+    this.activeTabId = null;
+    this.expectedSymbols.clear();
+    this.crawlComplete = false;
+    this.logger.log({
+      type: "info",
+      message: "Deactivated collection session",
+      source: "navigator",
+      context: { tabId, reason },
+      now,
+    });
+  }
 }
 
 export const navigatorService = new NavigatorService();
+
+function isMarketHost(url) {
+  return typeof url === "string" && MARKET_HOST_PATTERN.test(url);
+}
+
+function attachTabListeners() {
+  if (!chromeApi?.tabs || attachTabListeners.initialized) return;
+
+  const handleTabActivation = async (activeInfo) => {
+    try {
+      const tab = await chromeApi.tabs.get(activeInfo.tabId);
+      if (isMarketHost(tab?.url)) {
+        navigatorService.startSession(activeInfo.tabId);
+      } else {
+        navigatorService.stopSession("tab-inactive");
+      }
+    } catch (error) {
+      navigatorService.logger.log({
+        type: "error",
+        message: "Failed to evaluate active tab for collection",
+        source: "navigator",
+        context: { error: error?.message, tabId: activeInfo?.tabId },
+      });
+    }
+  };
+
+  const handleTabUpdate = (tabId, changeInfo) => {
+    if (!changeInfo.url) return;
+    if (isMarketHost(changeInfo.url)) {
+      navigatorService.startSession(tabId);
+    } else {
+      navigatorService.stopSession("navigated-away");
+    }
+  };
+
+  chromeApi.tabs.onActivated.addListener(handleTabActivation);
+  chromeApi.tabs.onUpdated.addListener(handleTabUpdate);
+  attachTabListeners.initialized = true;
+}
+
+attachTabListeners();

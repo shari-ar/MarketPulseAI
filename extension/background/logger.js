@@ -1,14 +1,17 @@
 import { getRuntimeConfig, DEFAULT_RUNTIME_CONFIG } from "../runtime-config.js";
 import { buildLogEntry, pruneLogs } from "../storage/retention.js";
+import { storageAdapter } from "../storage/adapter.js";
 
 /**
  * Lightweight structured logger for background scripts.
  * Centralizes log formatting, TTL handling, and retention pruning.
  */
 export class LoggingService {
-  constructor({ config = DEFAULT_RUNTIME_CONFIG } = {}) {
+  constructor({ config = DEFAULT_RUNTIME_CONFIG, storage = storageAdapter } = {}) {
     this.config = getRuntimeConfig(config);
+    this.storage = storage;
     this.logs = [];
+    this.hydrating = this.hydrate();
   }
 
   /**
@@ -27,6 +30,7 @@ export class LoggingService {
     const retentionDays = ttlDays ?? this.config.LOG_RETENTION_DAYS?.[type];
     const entry = buildLogEntry({ type, message, context, source, ttlDays: retentionDays }, now);
     this.logs.push(entry);
+    this.persistLog(entry);
     this.prune(now);
     return entry;
   }
@@ -39,6 +43,9 @@ export class LoggingService {
    */
   prune(now = new Date()) {
     this.logs = pruneLogs(this.logs, { now });
+    this.storage
+      ?.pruneLogs?.(now)
+      .catch((error) => console.warn("Failed to prune persisted logs", error)); // eslint-disable-line no-console
     return this.logs;
   }
 
@@ -49,6 +56,20 @@ export class LoggingService {
    */
   getLogs() {
     return [...this.logs];
+  }
+
+  async hydrate(now = new Date()) {
+    const persisted = (await this.storage?.getLogs?.()) || [];
+    this.logs = pruneLogs(persisted, { now });
+    return this.logs;
+  }
+
+  persistLog(entry) {
+    if (!this.storage?.saveLog) return;
+    this.storage
+      .saveLog(entry)
+      .then(() => this.storage?.pruneLogs?.())
+      .catch((error) => console.warn("Failed to persist log entry", error)); // eslint-disable-line no-console
   }
 }
 

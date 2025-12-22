@@ -6,6 +6,7 @@ import { validateSnapshot } from "../storage/schema.js";
 import { storageLogger } from "../storage/logger.js";
 import { runSwingAnalysis } from "../analysis/index.js";
 import { LoggingService, loggingService as sharedLogger } from "./logger.js";
+import { storageAdapter } from "../storage/adapter.js";
 
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
 const MARKET_HOST_PATTERN = /^https?:\/\/(?:[^./]+\.)*tsetmc\.com\//i;
@@ -15,9 +16,14 @@ const MARKET_HOST_PATTERN = /^https?:\/\/(?:[^./]+\.)*tsetmc\.com\//i;
  * and triggering swing analysis once the crawl is complete or deadlines are reached.
  */
 export class NavigatorService {
-  constructor({ config = DEFAULT_RUNTIME_CONFIG, logger = sharedLogger } = {}) {
+  constructor({
+    config = DEFAULT_RUNTIME_CONFIG,
+    logger = sharedLogger,
+    storage = storageAdapter,
+  } = {}) {
     this.config = getRuntimeConfig(config);
     this.logger = logger instanceof LoggingService ? logger : new LoggingService({ config });
+    this.storage = storage;
     this.snapshots = [];
     this.expectedSymbols = new Set();
     this.crawlComplete = false;
@@ -25,6 +31,7 @@ export class NavigatorService {
     this.analysisCache = new Map();
     this.lastPruneDate = null;
     this.activeTabId = null;
+    this.hydrating = this.hydrateFromStorage();
   }
 
   get logs() {
@@ -79,6 +86,15 @@ export class NavigatorService {
       retentionDays: this.config.RETENTION_DAYS,
       logger: storageLogger,
     });
+    this.storage?.pruneSnapshots?.(now).catch((error) =>
+      this.logger.log({
+        type: "warning",
+        message: "Failed to prune persisted snapshots",
+        source: "navigator",
+        context: { error: error?.message },
+        now,
+      })
+    );
     this.logger.prune(now);
     this.lastPruneDate = marketDate;
 
@@ -131,23 +147,37 @@ export class NavigatorService {
     const marketDate = this.pruneRetention(now);
 
     const accepted = [];
+    const acceptedSnapshots = [];
+
     records.forEach((snapshot) => {
       if (!validateSnapshot(snapshot, { logger: storageLogger })) return;
       const snapshotDate = marketDateFromIso(snapshot.dateTime);
       if (this.hasSnapshotForDay(snapshot.id, snapshotDate)) return;
-      this.snapshots.push({ ...snapshot });
+      const copy = { ...snapshot };
+      this.snapshots.push(copy);
+      acceptedSnapshots.push(copy);
       accepted.push(snapshot.id);
       if (this.expectedSymbols.has(snapshot.id)) this.expectedSymbols.delete(snapshot.id);
     });
 
-    if (accepted.length) {
+    if (acceptedSnapshots.length) {
+      this.storage?.addSnapshots?.(acceptedSnapshots).catch((error) =>
+        this.logger.log({
+          type: "warning",
+          message: "Failed to persist snapshots",
+          source: "navigator",
+          context: { error: error?.message, count: acceptedSnapshots.length },
+          now,
+        })
+      );
+
       this.logger.log({
         type: "info",
         message: "Accepted snapshots",
         source: "navigator",
         context: {
-          acceptedCount: accepted.length,
-          symbols: [...new Set(accepted)],
+          acceptedCount: acceptedSnapshots.length,
+          symbols: [...new Set(acceptedSnapshots.map((record) => record.id))],
           marketDate,
         },
         now,
@@ -164,6 +194,7 @@ export class NavigatorService {
       this.analysisResult.ranked.forEach((entry) => {
         if (entry.id) this.analysisCache.set(entry.id, this.analysisResult.analyzedAt);
       });
+      this.persistAnalysisOutputs();
       this.logger.log({
         type: "info",
         message: "Triggered swing analysis",
@@ -218,6 +249,60 @@ export class NavigatorService {
       context: { tabId, reason },
       now,
     });
+  }
+
+  async hydrateFromStorage(now = new Date()) {
+    const persistedSnapshots = (await this.storage?.getSnapshots?.()) || [];
+    if (persistedSnapshots.length) {
+      this.snapshots = pruneSnapshots(persistedSnapshots, {
+        now,
+        retentionDays: this.config.RETENTION_DAYS,
+        logger: storageLogger,
+      });
+      this.logger.log({
+        type: "info",
+        message: "Hydrated snapshots from storage",
+        source: "navigator",
+        context: { restoredCount: this.snapshots.length },
+        now,
+      });
+    }
+
+    const persistedCache = (await this.storage?.getAnalysisCache?.()) || [];
+    persistedCache.forEach((row) => {
+      if (row?.symbol && row?.lastAnalyzedAt) {
+        this.analysisCache.set(row.symbol, row.lastAnalyzedAt);
+      }
+    });
+    return { snapshots: this.snapshots.length, cache: this.analysisCache.size };
+  }
+
+  persistAnalysisOutputs() {
+    if (!this.analysisResult) return;
+    const { ranked, analyzedAt } = this.analysisResult;
+    const symbols = ranked.map((entry) => entry.id).filter(Boolean);
+
+    this.storage?.updateAnalysisCache?.(symbols, analyzedAt).catch((error) =>
+      this.logger.log({
+        type: "warning",
+        message: "Failed to persist analysis cache",
+        source: "navigator",
+        context: { error: error?.message },
+      })
+    );
+
+    if (chromeApi?.storage?.local?.set) {
+      chromeApi.storage.local.set({ rankedResults: ranked }, () => {
+        if (chromeApi.runtime?.lastError) {
+          this.logger.log({
+            type: "warning",
+            message: "Failed to cache ranked results",
+            source: "navigator",
+            context: { error: chromeApi.runtime.lastError?.message },
+          });
+        }
+      });
+    }
   }
 }
 

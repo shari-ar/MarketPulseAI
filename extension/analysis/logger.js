@@ -11,7 +11,7 @@ export const analysisLogger = new LoggingService({ config: DEFAULT_RUNTIME_CONFI
  * Helper to record analysis lifecycle events with consistent metadata.
  *
  * @param {object} params - Log definition.
- * @param {"error"|"warning"|"info"} [params.type="info"] - Severity level.
+ * @param {"error"|"warning"|"info"|"debug"} [params.type="info"] - Severity level.
  * @param {string} params.message - Human-readable summary.
  * @param {object} [params.context={}] - Structured metadata payload.
  * @param {Date} [params.now=new Date()] - Clock used for deterministic tests.

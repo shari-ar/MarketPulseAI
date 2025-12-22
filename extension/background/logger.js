@@ -1,4 +1,4 @@
-import { getRuntimeConfig, DEFAULT_RUNTIME_CONFIG } from "../runtime-config.js";
+import { getRuntimeConfig, DEFAULT_RUNTIME_CONFIG, LOG_LEVELS } from "../runtime-config.js";
 import { buildLogEntry, pruneLogs } from "../storage/retention.js";
 import { storageAdapter } from "../storage/adapter.js";
 
@@ -18,7 +18,7 @@ export class LoggingService {
    * Appends a structured log entry and prunes expired rows.
    *
    * @param {object} params - Log definition.
-   * @param {"error"|"warning"|"info"} params.type - Severity level.
+   * @param {"error"|"warning"|"info"|"debug"} params.type - Severity level.
    * @param {string} params.message - Human-readable summary.
    * @param {object} [params.context={}] - Structured metadata payload.
    * @param {string} [params.source="navigation"] - Originating module name.
@@ -27,8 +27,12 @@ export class LoggingService {
    * @returns {object} Newly created log entry.
    */
   log({ type = "info", message, context = {}, source = "navigation", ttlDays, now = new Date() }) {
-    const retentionDays = ttlDays ?? this.config.LOG_RETENTION_DAYS?.[type];
-    const entry = buildLogEntry({ type, message, context, source, ttlDays: retentionDays }, now);
+    const normalizedType = LOG_LEVELS.includes(type) ? type : "info";
+    const retentionDays = ttlDays ?? this.config.LOG_RETENTION_DAYS?.[normalizedType];
+    const entry = buildLogEntry(
+      { type: normalizedType, message, context, source, ttlDays: retentionDays },
+      now
+    );
     this.logs.push(entry);
     this.persistLog(entry);
     this.prune(now);

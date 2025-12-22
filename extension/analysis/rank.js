@@ -1,4 +1,4 @@
-import { DEFAULT_RUNTIME_CONFIG } from "../runtime-config.js";
+import { getRuntimeConfig } from "../runtime-config.js";
 
 /**
  * Orders swing results by probability and magnitude so that the most actionable
@@ -8,7 +8,7 @@ import { DEFAULT_RUNTIME_CONFIG } from "../runtime-config.js";
  * @param {number} [topCount=DEFAULT_RUNTIME_CONFIG.TOP_SWING_COUNT] - Maximum number of items to return.
  * @returns {Array<object>} Ranked subset of swing records.
  */
-export function rankSwingResults(records = [], topCount = DEFAULT_RUNTIME_CONFIG.TOP_SWING_COUNT) {
+export function rankSwingResults(records = [], topCount = getRuntimeConfig().TOP_SWING_COUNT) {
   const sortable = records
     .filter((row) => typeof row.predictedSwingProbability === "number")
     .map((row) => ({ ...row }));

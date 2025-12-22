@@ -1,10 +1,12 @@
 import { read, utils, writeFile } from "./xlsx-loader.js";
 import { rankSwingResults } from "../analysis/rank.js";
 import { SNAPSHOT_FIELDS } from "../storage/schema.js";
+import { getRuntimeConfig } from "../runtime-config.js";
 import { logPopupEvent, popupLogger } from "./logger.js";
 
 const COLUMN_ORDER = Object.keys(SNAPSHOT_FIELDS);
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
+const runtimeConfig = getRuntimeConfig();
 
 // Excel workbook creation and import/export helpers for the popup UI.
 /**
@@ -53,7 +55,7 @@ function renderRankings(rows = []) {
   tbody.innerHTML = "";
   rows.forEach((row, index) => {
     const tr = document.createElement("tr");
-    if (index < 5) tr.classList.add("highlight");
+    if (index < runtimeConfig.TOP_SWING_COUNT) tr.classList.add("highlight");
     tr.innerHTML = `
       <td>${row.symbolAbbreviation || row.id}</td>
       <td>${(row.predictedSwingProbability * 100).toFixed(1)}%</td>

@@ -1,4 +1,4 @@
-import { DEFAULT_RUNTIME_CONFIG } from "../runtime-config.js";
+import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../runtime-config.js";
 
 /**
  * Converts a "HH:mm" string into numeric hour/minute parts.
@@ -78,7 +78,8 @@ function minutesFromParts({ hour, minute }) {
  * @returns {string} Time string in HH:mm.
  */
 export function formatMarketClock(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
-  const { hour, minute } = extractParts(now, config.MARKET_TIMEZONE);
+  const runtimeConfig = getRuntimeConfig(config);
+  const { hour, minute } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
@@ -90,11 +91,12 @@ export function formatMarketClock(now = new Date(), config = DEFAULT_RUNTIME_CON
  * @returns {boolean} True when within open trading hours.
  */
 export function isWithinBlackout(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
-  const { hour, minute, weekday } = extractParts(now, config.MARKET_TIMEZONE);
-  if (!config.TRADING_DAYS.includes(weekday)) return false;
+  const runtimeConfig = getRuntimeConfig(config);
+  const { hour, minute, weekday } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
+  if (!runtimeConfig.TRADING_DAYS.includes(weekday)) return false;
   const minutes = minutesFromParts({ hour, minute });
-  const open = minutesFromParts(parseTimeString(config.MARKET_OPEN));
-  const close = minutesFromParts(parseTimeString(config.MARKET_CLOSE));
+  const open = minutesFromParts(parseTimeString(runtimeConfig.MARKET_OPEN));
+  const close = minutesFromParts(parseTimeString(runtimeConfig.MARKET_CLOSE));
   return minutes >= open && minutes < close;
 }
 
@@ -107,13 +109,14 @@ export function isWithinBlackout(now = new Date(), config = DEFAULT_RUNTIME_CONF
  * @returns {boolean} True when within the collection window.
  */
 export function isWithinCollectionWindow(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
-  const { hour, minute, weekday } = extractParts(now, config.MARKET_TIMEZONE);
+  const runtimeConfig = getRuntimeConfig(config);
+  const { hour, minute, weekday } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
 
-  if (!config.TRADING_DAYS.includes(weekday)) return true;
+  if (!runtimeConfig.TRADING_DAYS.includes(weekday)) return true;
 
   const minutes = minutesFromParts({ hour, minute });
-  const close = minutesFromParts(parseTimeString(config.MARKET_CLOSE));
-  const deadline = minutesFromParts(parseTimeString(config.ANALYSIS_DEADLINE));
+  const close = minutesFromParts(parseTimeString(runtimeConfig.MARKET_CLOSE));
+  const deadline = minutesFromParts(parseTimeString(runtimeConfig.ANALYSIS_DEADLINE));
 
   if (close > deadline) {
     // Window crosses midnight; allow from close until 23:59 and 00:00 until deadline
@@ -135,7 +138,8 @@ export function marketDateFromIso(isoString, config = DEFAULT_RUNTIME_CONFIG) {
   const date = new Date(isoString);
   if (!Number.isFinite(date.getTime())) return null;
 
-  const { year, month, day } = extractParts(date, config.MARKET_TIMEZONE);
+  const runtimeConfig = getRuntimeConfig(config);
+  const { year, month, day } = extractParts(date, runtimeConfig.MARKET_TIMEZONE);
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
@@ -147,8 +151,9 @@ export function marketDateFromIso(isoString, config = DEFAULT_RUNTIME_CONFIG) {
  * @returns {boolean} True when the deadline has passed outside active trading hours.
  */
 export function isPastAnalysisDeadline(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
-  const { hour, minute } = extractParts(now, config.MARKET_TIMEZONE);
+  const runtimeConfig = getRuntimeConfig(config);
+  const { hour, minute } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
   const minutes = minutesFromParts({ hour, minute });
-  const deadline = minutesFromParts(parseTimeString(config.ANALYSIS_DEADLINE));
-  return minutes >= deadline && !isWithinBlackout(now, config);
+  const deadline = minutesFromParts(parseTimeString(runtimeConfig.ANALYSIS_DEADLINE));
+  return minutes >= deadline && !isWithinBlackout(now, runtimeConfig);
 }

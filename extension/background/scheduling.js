@@ -1,5 +1,5 @@
 import { isWithinBlackout, isWithinCollectionWindow, isPastAnalysisDeadline } from "./time.js";
-import { DEFAULT_RUNTIME_CONFIG } from "../runtime-config.js";
+import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../runtime-config.js";
 
 /**
  * Signals whether snapshot collection should occur for the provided timestamp.
@@ -10,7 +10,8 @@ import { DEFAULT_RUNTIME_CONFIG } from "../runtime-config.js";
  * @returns {boolean} True when collection is permitted.
  */
 export function shouldCollect(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
-  return isWithinCollectionWindow(now, config) && !isWithinBlackout(now, config);
+  const runtimeConfig = getRuntimeConfig(config);
+  return isWithinCollectionWindow(now, runtimeConfig) && !isWithinBlackout(now, runtimeConfig);
 }
 
 /**
@@ -21,7 +22,7 @@ export function shouldCollect(now = new Date(), config = DEFAULT_RUNTIME_CONFIG)
  * @returns {boolean} True when work should pause.
  */
 export function shouldPause(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
-  return isWithinBlackout(now, config);
+  return isWithinBlackout(now, getRuntimeConfig(config));
 }
 
 /**
@@ -38,8 +39,9 @@ export function shouldRunAnalysis({
   crawlComplete = false,
   config = DEFAULT_RUNTIME_CONFIG,
 } = {}) {
+  const runtimeConfig = getRuntimeConfig(config);
   if (crawlComplete) return true;
-  return isPastAnalysisDeadline(now, config);
+  return isPastAnalysisDeadline(now, runtimeConfig);
 }
 
 /**
@@ -49,11 +51,12 @@ export function shouldRunAnalysis({
  * @returns {object} Serializable schedule overview useful for logging or debugging.
  */
 export function describeSchedule(config = DEFAULT_RUNTIME_CONFIG) {
+  const runtimeConfig = getRuntimeConfig(config);
   return {
-    blackout: `${config.MARKET_OPEN}-${config.MARKET_CLOSE}`,
-    collectionWindow: `${config.MARKET_CLOSE}-${config.ANALYSIS_DEADLINE}`,
-    retentionDays: config.RETENTION_DAYS,
-    logRetention: { ...config.LOG_RETENTION_DAYS },
-    topSwingCount: config.TOP_SWING_COUNT,
+    blackout: `${runtimeConfig.MARKET_OPEN}-${runtimeConfig.MARKET_CLOSE}`,
+    collectionWindow: `${runtimeConfig.MARKET_CLOSE}-${runtimeConfig.ANALYSIS_DEADLINE}`,
+    retentionDays: runtimeConfig.RETENTION_DAYS,
+    logRetention: { ...runtimeConfig.LOG_RETENTION_DAYS },
+    topSwingCount: runtimeConfig.TOP_SWING_COUNT,
   };
 }

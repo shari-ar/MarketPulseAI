@@ -56,6 +56,31 @@ function scoreWindow(window = []) {
 }
 
 /**
+ * Applies calculated swing metrics back onto the latest snapshot in each window
+ * so exports and downstream consumers stay aligned with model outputs.
+ *
+ * @param {Array<object>} snapshots - Full snapshot collection.
+ * @param {Array<object>} scores - Calculated scores keyed by id + dateTime.
+ * @returns {Array<object>} Snapshots decorated with swing predictions.
+ */
+function applyScoresToSnapshots(snapshots = [], scores = []) {
+  const keyIndex = new Map();
+  const hydrated = snapshots.map((snapshot, index) => {
+    keyIndex.set(`${snapshot.id}-${snapshot.dateTime}`, index);
+    return { ...snapshot };
+  });
+
+  scores.forEach((score) => {
+    const index = keyIndex.get(`${score.id}-${score.dateTime}`);
+    if (index === undefined) return;
+    hydrated[index].predictedSwingPercent = score.predictedSwingPercent;
+    hydrated[index].predictedSwingProbability = score.predictedSwingProbability;
+  });
+
+  return hydrated;
+}
+
+/**
  * Scores and ranks swing opportunities across all available symbols, preserving the
  * analyzed timestamp for traceability and reporting.
  *
@@ -105,6 +130,8 @@ export function runSwingAnalysis(snapshots = [], now = new Date()) {
     now,
   });
 
+  const decoratedSnapshots = applyScoresToSnapshots(snapshots, scored);
+
   const ranked = rankSwingResults(scored);
 
   logAnalysisEvent({
@@ -113,5 +140,5 @@ export function runSwingAnalysis(snapshots = [], now = new Date()) {
     now,
   });
 
-  return { ranked, analyzedAt: now.toISOString() };
+  return { ranked, analyzedAt: now.toISOString(), snapshots: decoratedSnapshots };
 }

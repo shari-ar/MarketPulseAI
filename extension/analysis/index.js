@@ -1,6 +1,6 @@
 import { rankSwingResults } from "./rank.js";
-import { marketDateFromIso } from "../background/time.js";
 import { logAnalysisEvent } from "./logger.js";
+import { loadModelManifest, resolveScoringStrategy } from "./model-runtime.js";
 
 /**
  * Runs the end-to-end swing analysis pipeline from raw snapshot ingestion to
@@ -30,29 +30,21 @@ function buildWindows(snapshots = []) {
     .map((entries) => entries.slice(0, 7));
 }
 
-/**
- * Derives swing metrics for a single fixed window, normalizing the calculation to the
- * oldest point in the window and constraining extremes to avoid skewed probabilities.
- *
- * @param {Array<object>} window - Ordered window of snapshots for a specific symbol.
- * @returns {{predictedSwingPercent: number, predictedSwingProbability: number, dateTime: string, id: string, marketDate: string}}
- *   Structured swing metrics tied to the most recent snapshot.
- */
-function scoreWindow(window = []) {
-  const latest = window[0];
-  const oldest = window[window.length - 1];
-  const reference = oldest?.primeCost || oldest?.close || 1;
-  const swingPercent = (((latest.high ?? latest.close ?? reference) - reference) / reference) * 100;
-  const boundedPercent = Math.max(-50, Math.min(50, swingPercent));
-  const swingProbability = Math.max(0.01, Math.min(0.99, Math.abs(boundedPercent) / 100));
+function isValidNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
 
-  return {
-    predictedSwingPercent: Number(boundedPercent.toFixed(2)),
-    predictedSwingProbability: Number(swingProbability.toFixed(2)),
-    dateTime: latest.dateTime,
-    id: latest.id,
-    marketDate: marketDateFromIso(latest.dateTime),
-  };
+/**
+ * Ensures a window has the minimal numerical features needed for scoring.
+ *
+ * @param {Array<object>} window - Ordered window of snapshots.
+ * @returns {boolean} True when the window can be scored.
+ */
+function isWindowScorable(window = []) {
+  if (!window.length) return false;
+  return window.every((snapshot) =>
+    [snapshot?.high, snapshot?.close, snapshot?.primeCost].some(isValidNumber)
+  );
 }
 
 /**
@@ -80,15 +72,32 @@ function applyScoresToSnapshots(snapshots = [], scores = []) {
   return hydrated;
 }
 
+function filterFreshWindows(windows, analysisCache = new Map()) {
+  if (!analysisCache?.size) return windows;
+
+  return windows.filter((window) => {
+    const latest = window[0];
+    const lastAnalyzed = analysisCache.get(latest?.id);
+    if (!lastAnalyzed) return true;
+    return new Date(latest.dateTime) > new Date(lastAnalyzed);
+  });
+}
+
 /**
  * Scores and ranks swing opportunities across all available symbols, preserving the
  * analyzed timestamp for traceability and reporting.
  *
  * @param {Array<object>} snapshots - Recent snapshots spanning multiple symbols.
- * @param {Date} [now=new Date()] - Evaluation timestamp for the analysis output.
- * @returns {{ranked: Array<object>, analyzedAt: string}} Ranked swing results with metadata.
+ * @param {object} [options]
+ * @param {Date} [options.now=new Date()] - Evaluation timestamp for the analysis output.
+ * @param {Map<string,string>} [options.analysisCache=new Map()] - Symbol freshness cache.
+ * @param {function} [options.onProgress] - Optional progress callback.
+ * @returns {Promise<{ranked: Array<object>, analyzedAt: string, snapshots: Array<object>, analyzedSymbols: Array<string>}>}
  */
-export function runSwingAnalysis(snapshots = [], now = new Date()) {
+export async function runSwingAnalysis(
+  snapshots = [],
+  { now = new Date(), analysisCache = new Map(), onProgress } = {}
+) {
   const snapshotCount = snapshots.length;
   const symbolCount = new Set(snapshots.map((snapshot) => snapshot.id)).size;
 
@@ -99,30 +108,51 @@ export function runSwingAnalysis(snapshots = [], now = new Date()) {
   });
 
   const windows = buildWindows(snapshots);
-  const analyzedSymbols = windows.map((window) => window[0]?.id).filter(Boolean);
-  const filteredSymbols = symbolCount - analyzedSymbols.length;
+  const freshWindows = filterFreshWindows(windows, analysisCache);
+  const analyzedSymbols = freshWindows.map((window) => window[0]?.id).filter(Boolean);
 
   logAnalysisEvent({
     message: "Built analysis windows",
     context: {
       windowCount: windows.length,
       analyzedSymbols,
-      filteredSymbols,
+      filteredSymbols: symbolCount - analyzedSymbols.length,
     },
     now,
   });
 
-  if (!windows.length) {
+  if (!freshWindows.length) {
     logAnalysisEvent({
       type: "warning",
       message: "Insufficient snapshots for swing analysis",
       context: { snapshotCount, symbolCount },
       now,
     });
-    return { ranked: [], analyzedAt: now.toISOString() };
+    return { ranked: [], analyzedAt: now.toISOString(), snapshots, analyzedSymbols: [] };
   }
 
-  const scored = windows.map((window) => ({ ...scoreWindow(window), window }));
+  const manifest = await loadModelManifest({ logger: logAnalysisEvent, now });
+  const scoreWindow = resolveScoringStrategy({ manifest, logger: logAnalysisEvent, now });
+
+  const scored = [];
+  for (let index = 0; index < freshWindows.length; index += 1) {
+    const window = freshWindows[index];
+    if (!isWindowScorable(window)) {
+      logAnalysisEvent({
+        type: "warning",
+        message: "Skipped window with invalid inputs",
+        context: { symbol: window[0]?.id, dateTime: window[0]?.dateTime },
+        now,
+      });
+      continue;
+    }
+
+    const scoredEntry = scoreWindow(window, { manifest, now });
+    if (!scoredEntry) continue;
+    scored.push({ ...scoredEntry, window });
+
+    if (onProgress) onProgress((index + 1) / freshWindows.length);
+  }
 
   logAnalysisEvent({
     message: "Scored swing windows",
@@ -130,8 +160,8 @@ export function runSwingAnalysis(snapshots = [], now = new Date()) {
     now,
   });
 
+  const scoredSymbols = scored.map((entry) => entry.id).filter(Boolean);
   const decoratedSnapshots = applyScoresToSnapshots(snapshots, scored);
-
   const ranked = rankSwingResults(scored);
 
   logAnalysisEvent({
@@ -140,5 +170,40 @@ export function runSwingAnalysis(snapshots = [], now = new Date()) {
     now,
   });
 
-  return { ranked, analyzedAt: now.toISOString(), snapshots: decoratedSnapshots };
+  return {
+    ranked,
+    analyzedAt: now.toISOString(),
+    snapshots: decoratedSnapshots,
+    analyzedSymbols: scoredSymbols,
+  };
+}
+
+const DedicatedWorkerScope =
+  typeof globalThis !== "undefined" ? globalThis.DedicatedWorkerGlobalScope : undefined;
+const isDedicatedWorker =
+  typeof DedicatedWorkerScope !== "undefined" &&
+  typeof self !== "undefined" &&
+  self instanceof DedicatedWorkerScope;
+
+if (isDedicatedWorker) {
+  self.onmessage = async (event) => {
+    const { type, payload } = event.data || {};
+    if (type !== "analyze") return;
+
+    try {
+      const result = await runSwingAnalysis(payload.snapshots, {
+        now: payload.now ? new Date(payload.now) : new Date(),
+        analysisCache: new Map(payload.analysisCache || []),
+        onProgress: (progress) => {
+          self.postMessage({ type: "progress", payload: { progress } });
+        },
+      });
+      self.postMessage({ type: "complete", payload: result });
+    } catch (error) {
+      self.postMessage({
+        type: "error",
+        payload: { message: error?.message || "Unknown analysis error" },
+      });
+    }
+  };
 }

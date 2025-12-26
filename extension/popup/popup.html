@@ -28,6 +28,17 @@
       <!-- Hidden file input triggered by the import button to select Excel files. -->
       <input id="import-file" type="file" accept=".xlsx" hidden />
     </main>
+
+    <div id="analysis-modal" class="modal hidden" aria-live="polite">
+      <div class="modal-card">
+        <h2>Analysis in progress</h2>
+        <p id="analysis-status-text">Analysis running...</p>
+        <div class="progress-track">
+          <div id="analysis-progress-bar" class="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+
     <script src="../vendor/xlsx.full.min.js"></script>
     <script type="module" src="popup.js"></script>
   </body>

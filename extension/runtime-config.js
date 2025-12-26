@@ -13,6 +13,12 @@ export const DEFAULT_RUNTIME_CONFIG = {
   TRADING_DAYS: [6, 0, 1, 2, 3],
   RETENTION_DAYS: 7,
   TOP_SWING_COUNT: 5,
+  SYMBOL_URL_TEMPLATE: "https://tsetmc.com/ins/?i={symbol}",
+  NAVIGATION_READY_SELECTOR: "body",
+  NAVIGATION_WAIT_TIMEOUT_MS: 15000,
+  NAVIGATION_POLL_INTERVAL_MS: 250,
+  NAVIGATION_RETRY_LIMIT: 2,
+  PARSING_SELECTORS: null,
   LOG_RETENTION_DAYS: {
     error: 30,
     warning: 7,
@@ -68,10 +74,22 @@ function parseLogRetention(env) {
   return Object.keys(retention).length ? retention : null;
 }
 
+function parseJsonEnv(value) {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    console.warn("Invalid JSON env config", error); // eslint-disable-line no-console
+  }
+  return null;
+}
+
 function loadEnvRuntimeConfig() {
   const env = getEnvSource();
   const tradingDays = parseTradingDays(env[`${ENV_PREFIX}TRADING_DAYS`]);
   const logRetention = parseLogRetention(env);
+  const parsingSelectors = parseJsonEnv(env[`${ENV_PREFIX}PARSING_SELECTORS`]);
 
   const config = {
     MARKET_TIMEZONE: env[`${ENV_PREFIX}MARKET_TIMEZONE`],
@@ -85,6 +103,18 @@ function loadEnvRuntimeConfig() {
     TOP_SWING_COUNT: env[`${ENV_PREFIX}TOP_SWING_COUNT`]
       ? Number(env[`${ENV_PREFIX}TOP_SWING_COUNT`])
       : undefined,
+    SYMBOL_URL_TEMPLATE: env[`${ENV_PREFIX}SYMBOL_URL_TEMPLATE`],
+    NAVIGATION_READY_SELECTOR: env[`${ENV_PREFIX}NAVIGATION_READY_SELECTOR`],
+    NAVIGATION_WAIT_TIMEOUT_MS: env[`${ENV_PREFIX}NAVIGATION_WAIT_TIMEOUT_MS`]
+      ? Number(env[`${ENV_PREFIX}NAVIGATION_WAIT_TIMEOUT_MS`])
+      : undefined,
+    NAVIGATION_POLL_INTERVAL_MS: env[`${ENV_PREFIX}NAVIGATION_POLL_INTERVAL_MS`]
+      ? Number(env[`${ENV_PREFIX}NAVIGATION_POLL_INTERVAL_MS`])
+      : undefined,
+    NAVIGATION_RETRY_LIMIT: env[`${ENV_PREFIX}NAVIGATION_RETRY_LIMIT`]
+      ? Number(env[`${ENV_PREFIX}NAVIGATION_RETRY_LIMIT`])
+      : undefined,
+    PARSING_SELECTORS: parsingSelectors || undefined,
     LOG_RETENTION_DAYS: logRetention || undefined,
   };
 

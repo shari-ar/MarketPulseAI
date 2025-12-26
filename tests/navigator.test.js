@@ -7,7 +7,7 @@ describe("navigator service", () => {
 
     const navigator = new NavigatorService();
     const blackoutTime = new Date(Date.UTC(2024, 0, 1, 6, 0)); // 09:30 Tehran
-    const result = navigator.recordSnapshots(
+    const result = await navigator.recordSnapshots(
       [
         {
           id: "AAA",
@@ -96,7 +96,7 @@ describe("navigator service", () => {
       totalSellCount: 1,
     };
 
-    navigator.recordSnapshots(
+    await navigator.recordSnapshots(
       Array.from({ length: 7 }, (_, idx) => ({
         ...baseSnapshot,
         id: "AAA",
@@ -105,7 +105,7 @@ describe("navigator service", () => {
       collectionTime
     );
 
-    navigator.recordSnapshots(
+    await navigator.recordSnapshots(
       Array.from({ length: 7 }, (_, idx) => ({
         ...baseSnapshot,
         id: "BBB",

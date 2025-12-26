@@ -3,10 +3,12 @@ import { rankSwingResults } from "../analysis/rank.js";
 import { SNAPSHOT_FIELDS } from "../storage/schema.js";
 import { getRuntimeConfig } from "../runtime-config.js";
 import { logPopupEvent, popupLogger } from "./logger.js";
+import { createStorageAdapter } from "../storage/adapter.js";
 
 const COLUMN_ORDER = Object.keys(SNAPSHOT_FIELDS);
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
 const runtimeConfig = getRuntimeConfig();
+const storage = createStorageAdapter();
 
 // Excel workbook creation and import/export helpers for the popup UI.
 /**
@@ -33,14 +35,15 @@ export function buildExportWorkbook(rows = []) {
  */
 export function mergeImportedRows(existing = [], incoming = []) {
   const byKey = new Set(existing.map((row) => `${row.id}-${row.dateTime}`));
+  const merged = existing.map((row) => ({ ...row }));
   incoming.forEach((row) => {
     const key = `${row.id}-${row.dateTime}`;
     if (!byKey.has(key)) {
-      existing.push(row);
+      merged.push(row);
       byKey.add(key);
     }
   });
-  return existing;
+  return merged;
 }
 
 /**
@@ -56,13 +59,54 @@ function renderRankings(rows = []) {
   rows.forEach((row, index) => {
     const tr = document.createElement("tr");
     if (index < runtimeConfig.TOP_SWING_COUNT) tr.classList.add("highlight");
+    const probability = Number.isFinite(row.predictedSwingProbability)
+      ? `${(row.predictedSwingProbability * 100).toFixed(1)}%`
+      : "--";
+    const swingPercent = Number.isFinite(row.predictedSwingPercent)
+      ? `${row.predictedSwingPercent.toFixed(2)}%`
+      : "--";
     tr.innerHTML = `
       <td>${row.symbolAbbreviation || row.id}</td>
-      <td>${(row.predictedSwingProbability * 100).toFixed(1)}%</td>
-      <td>${row.predictedSwingPercent.toFixed(2)}%</td>
+      <td>${probability}</td>
+      <td>${swingPercent}</td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+function updateAnalysisModal(status) {
+  if (typeof document === "undefined") return;
+  const modal = document.getElementById("analysis-modal");
+  const progressBar = document.getElementById("analysis-progress-bar");
+  const statusText = document.getElementById("analysis-status-text");
+  if (!modal || !progressBar || !statusText) return;
+
+  if (!status || status.state === "complete") {
+    modal.classList.add("hidden");
+    return;
+  }
+
+  modal.classList.remove("hidden");
+  const progressPercent = Math.round((status.progress || 0) * 100);
+  progressBar.style.width = `${progressPercent}%`;
+  statusText.textContent =
+    status.state === "error"
+      ? `Analysis failed: ${status.error || "Unknown error"}`
+      : `Analysis running (${progressPercent}%)`;
+}
+
+async function hydrateExistingSnapshots() {
+  const snapshots = await storage.getSnapshots();
+  return Array.isArray(snapshots) ? snapshots : [];
+}
+
+async function persistImportedRows(rows = []) {
+  const existing = await hydrateExistingSnapshots();
+  const existingKeys = new Set(existing.map((row) => `${row.id}-${row.dateTime}`));
+  const freshRows = rows.filter((row) => !existingKeys.has(`${row.id}-${row.dateTime}`));
+  if (!freshRows.length) return { inserted: 0 };
+  await storage.addSnapshots(freshRows);
+  return { inserted: freshRows.length };
 }
 
 /**
@@ -103,8 +147,12 @@ function setupUi() {
       const rows = utils.sheet_to_json(sheet);
       const beforeCount = latestRows.length;
       latestRows = mergeImportedRows(latestRows, rows);
+      const { inserted } = await persistImportedRows(rows);
       const ranked = rankSwingResults(latestRows);
       renderRankings(ranked);
+      if (chromeApi?.storage?.local?.set) {
+        chromeApi.storage.local.set({ rankedResults: ranked });
+      }
       logPopupEvent({
         type: "info",
         message: "Imported ranking workbook",
@@ -113,6 +161,7 @@ function setupUi() {
           sizeBytes: file.size,
           incomingRows: rows.length,
           dedupedCount: latestRows.length - beforeCount,
+          insertedCount: inserted,
           totalRows: latestRows.length,
         },
       });
@@ -130,14 +179,28 @@ function setupUi() {
   importFile?.addEventListener("change", handleImport);
 
   if (chromeApi?.storage?.local) {
-    chromeApi.storage.local.get(["rankedResults"], ({ rankedResults = [] }) => {
-      latestRows = rankedResults;
-      renderRankings(rankSwingResults(rankedResults));
-      logPopupEvent({
-        type: "info",
-        message: "Hydrated popup from storage",
-        context: { cachedRows: rankedResults.length },
-      });
+    chromeApi.storage.local.get(
+      ["rankedResults", "analysisStatus"],
+      ({ rankedResults = [], analysisStatus }) => {
+        latestRows = rankedResults;
+        renderRankings(rankSwingResults(rankedResults));
+        updateAnalysisModal(analysisStatus);
+        logPopupEvent({
+          type: "info",
+          message: "Hydrated popup from storage",
+          context: { cachedRows: rankedResults.length },
+        });
+      }
+    );
+
+    chromeApi.storage.onChanged.addListener((changes) => {
+      if (changes.analysisStatus) {
+        updateAnalysisModal(changes.analysisStatus.newValue);
+      }
+      if (changes.rankedResults) {
+        latestRows = changes.rankedResults.newValue || [];
+        renderRankings(rankSwingResults(latestRows));
+      }
     });
   }
 

@@ -21,16 +21,35 @@ async function loadManifestFromFetch() {
 }
 
 export async function loadModelManifest({ logger, now = new Date() } = {}) {
+  const startedAt = Date.now();
   try {
     if (typeof window === "undefined" && typeof process !== "undefined") {
-      return await loadManifestFromFs();
+      const manifest = await loadManifestFromFs();
+      logger?.({
+        message: "Loaded model manifest from filesystem",
+        context: {
+          version: manifest?.version,
+          durationMs: Date.now() - startedAt,
+        },
+        now,
+      });
+      return manifest;
     }
-    return await loadManifestFromFetch();
+    const manifest = await loadManifestFromFetch();
+    logger?.({
+      message: "Loaded model manifest from fetch",
+      context: {
+        version: manifest?.version,
+        durationMs: Date.now() - startedAt,
+      },
+      now,
+    });
+    return manifest;
   } catch (error) {
     logger?.({
       type: "warning",
       message: "Model manifest unavailable; using heuristic scoring",
-      context: { error: error?.message },
+      context: { error: error?.message, durationMs: Date.now() - startedAt },
       now,
     });
     return null;
@@ -51,12 +70,12 @@ function heuristicScore(window = [], { manifest, now }) {
   const [minPercent, maxPercent] = calibration.percentClip || DEFAULT_CALIBRATION.percentClip;
   const [minProb, maxProb] = calibration.probabilityClip || DEFAULT_CALIBRATION.probabilityClip;
 
-  const boundedPercent = clamp(Number(swingPercent.toFixed(2)), minPercent, maxPercent);
+  const boundedPercent = clamp(swingPercent, minPercent, maxPercent);
   const probability = clamp(Math.abs(boundedPercent) / 100, minProb, maxProb);
 
   return {
-    predictedSwingPercent: Number(boundedPercent.toFixed(2)),
-    predictedSwingProbability: Number(probability.toFixed(2)),
+    predictedSwingPercent: boundedPercent,
+    predictedSwingProbability: probability,
     dateTime: latest.dateTime,
     id: latest.id,
     marketDate: marketDateFromIso(latest.dateTime),

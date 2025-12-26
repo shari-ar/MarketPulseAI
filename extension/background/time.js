@@ -157,3 +157,57 @@ export function isPastAnalysisDeadline(now = new Date(), config = DEFAULT_RUNTIM
   const deadline = minutesFromParts(parseTimeString(runtimeConfig.ANALYSIS_DEADLINE));
   return minutes >= deadline && !isWithinBlackout(now, runtimeConfig);
 }
+
+/**
+ * Calculates the delay (in milliseconds) until the next occurrence of a market
+ * time in the configured timezone. Useful for scheduling close/deadline timers.
+ *
+ * @param {Date} [now=new Date()] - Current time reference.
+ * @param {string} targetTime - Target time in "HH:mm" format.
+ * @param {object} [config=DEFAULT_RUNTIME_CONFIG] - Runtime configuration.
+ * @param {object} [options]
+ * @param {boolean} [options.requireTradingDay=true] - Skip to the next trading day.
+ * @returns {number|null} Milliseconds until the next target time or null if invalid.
+ */
+export function getDelayUntilMarketTime(
+  now = new Date(),
+  targetTime,
+  config = DEFAULT_RUNTIME_CONFIG,
+  { requireTradingDay = true } = {}
+) {
+  const runtimeConfig = getRuntimeConfig(config);
+  const target = parseTimeString(targetTime);
+  if (!target) return null;
+
+  const { hour, minute, weekday } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
+  const currentMinutes = minutesFromParts({ hour, minute });
+  const targetMinutes = minutesFromParts(target);
+  const isTradingDay = (day) => runtimeConfig.TRADING_DAYS.includes(day);
+
+  let dayOffset = 0;
+  let candidateWeekday = weekday;
+
+  const advanceDay = () => {
+    dayOffset += 1;
+    candidateWeekday = (candidateWeekday + 1) % 7;
+  };
+
+  if (requireTradingDay && !isTradingDay(candidateWeekday)) {
+    while (!isTradingDay(candidateWeekday)) {
+      advanceDay();
+    }
+  }
+
+  if (dayOffset === 0 && currentMinutes >= targetMinutes) {
+    advanceDay();
+  }
+
+  if (requireTradingDay) {
+    while (!isTradingDay(candidateWeekday)) {
+      advanceDay();
+    }
+  }
+
+  const minutesUntil = dayOffset * 1440 + (targetMinutes - currentMinutes);
+  return Math.max(0, minutesUntil) * 60 * 1000;
+}

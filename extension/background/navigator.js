@@ -1,6 +1,6 @@
 import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../runtime-config.js";
 import { shouldCollect, shouldPause, shouldRunAnalysis } from "./scheduling.js";
-import { marketDateFromIso } from "./time.js";
+import { getDelayUntilMarketTime, marketDateFromIso } from "./time.js";
 import { pruneSnapshots } from "../storage/retention.js";
 import { validateSnapshot } from "../storage/schema.js";
 import { storageLogger } from "../storage/logger.js";
@@ -37,10 +37,94 @@ export class NavigatorService {
     this.crawlController = null;
     this.crawlTask = null;
     this.hydrating = this.hydrateFromStorage();
+    this.closeTimer = null;
+    this.deadlineTimer = null;
   }
 
   get logs() {
     return this.logger.getLogs();
+  }
+
+  clearTimers() {
+    if (this.closeTimer) clearTimeout(this.closeTimer);
+    if (this.deadlineTimer) clearTimeout(this.deadlineTimer);
+    this.closeTimer = null;
+    this.deadlineTimer = null;
+  }
+
+  scheduleDailyTasks(now = new Date()) {
+    this.clearTimers();
+    const closeDelay = getDelayUntilMarketTime(now, this.config.MARKET_CLOSE, this.config, {
+      requireTradingDay: true,
+    });
+    const deadlineDelay = getDelayUntilMarketTime(now, this.config.ANALYSIS_DEADLINE, this.config, {
+      requireTradingDay: true,
+    });
+
+    if (closeDelay !== null) {
+      this.closeTimer = setTimeout(() => this.handleMarketClose(), closeDelay);
+    }
+    if (deadlineDelay !== null) {
+      this.deadlineTimer = setTimeout(() => this.handleAnalysisDeadline(), deadlineDelay);
+    }
+
+    this.logger.log({
+      type: "debug",
+      message: "Scheduled market timers",
+      source: "navigator",
+      context: {
+        closeInMs: closeDelay,
+        deadlineInMs: deadlineDelay,
+        closeAt: closeDelay !== null ? new Date(now.getTime() + closeDelay).toISOString() : null,
+        deadlineAt:
+          deadlineDelay !== null ? new Date(now.getTime() + deadlineDelay).toISOString() : null,
+      },
+      now,
+    });
+  }
+
+  haltCrawl(reason = "manual-stop", now = new Date()) {
+    const wasActive = Boolean(this.crawlController || this.crawlTask);
+    if (!wasActive) return;
+    if (this.crawlController) this.crawlController.abort();
+    this.crawlController = null;
+    this.crawlTask = null;
+    this.logger.log({
+      type: "info",
+      message: "Crawl halted",
+      source: "navigator",
+      context: { reason },
+      now,
+    });
+  }
+
+  handleMarketClose(now = new Date()) {
+    this.logger.log({
+      type: "info",
+      message: "Market close reached; starting daily retention sweep",
+      source: "navigator",
+      context: { timestamp: now.toISOString() },
+      now,
+    });
+    this.pruneRetention(now);
+    if (this.activeTabId !== null && shouldCollect(now, this.config)) {
+      this.startCrawl();
+    }
+    this.scheduleDailyTasks(now);
+  }
+
+  async handleAnalysisDeadline(now = new Date()) {
+    this.logger.log({
+      type: "info",
+      message: "Analysis deadline reached; stopping crawl and running analysis",
+      source: "navigator",
+      context: { timestamp: now.toISOString() },
+      now,
+    });
+    this.haltCrawl("analysis-deadline", now);
+    this.crawlComplete = true;
+    await this.runAnalysisIfDue(now, "deadline");
+    this.scheduleDailyTasks(now);
   }
 
   /**
@@ -61,7 +145,7 @@ export class NavigatorService {
       context: { expectedCount: this.expectedSymbols.size },
       source: "navigator",
     });
-    if (this.activeTabId !== null) this.startCrawl();
+    if (this.activeTabId !== null && shouldCollect(new Date(), this.config)) this.startCrawl();
   }
 
   /**
@@ -289,12 +373,30 @@ export class NavigatorService {
       context: { tabId, schedule: { ...this.config } },
       now,
     });
-    this.pruneRetention(now);
-    this.startCrawl();
+    this.scheduleDailyTasks(now);
+
+    if (shouldPause(now, this.config)) {
+      this.logger.log({
+        type: "info",
+        message: "Market blackout active; deferring collection until close",
+        source: "navigator",
+        context: { timestamp: now.toISOString() },
+        now,
+      });
+      return;
+    }
+
+    if (shouldCollect(now, this.config)) {
+      this.pruneRetention(now);
+      this.startCrawl();
+    } else {
+      this.runAnalysisIfDue(now, "deadline");
+    }
   }
 
   async startCrawl() {
     if (!this.symbolQueue.length || this.crawlTask || this.activeTabId === null) return;
+    if (!shouldCollect(new Date(), this.config)) return;
 
     this.crawlController = new AbortController();
     const signal = this.crawlController.signal;
@@ -346,9 +448,8 @@ export class NavigatorService {
     this.expectedSymbols.clear();
     this.crawlComplete = false;
     this.symbolQueue = [];
-    if (this.crawlController) this.crawlController.abort();
-    this.crawlController = null;
-    this.crawlTask = null;
+    this.clearTimers();
+    this.haltCrawl(reason, now);
     this.logger.log({
       type: "info",
       message: "Deactivated collection session",

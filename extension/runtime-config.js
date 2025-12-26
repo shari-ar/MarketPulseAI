@@ -3,6 +3,8 @@
  * Environment variables can override any value using the `MARKETPULSEAI_` prefix, keeping
  * the extension configurable without code changes (e.g., `MARKETPULSEAI_TOP_SWING_COUNT=7`).
  */
+export const LOG_LEVELS = ["error", "warning", "info", "debug"];
+
 export const DEFAULT_RUNTIME_CONFIG = {
   MARKET_TIMEZONE: "Asia/Tehran",
   MARKET_OPEN: "09:00",
@@ -15,6 +17,7 @@ export const DEFAULT_RUNTIME_CONFIG = {
     error: 30,
     warning: 7,
     info: 3,
+    debug: 1,
   },
 };
 
@@ -54,7 +57,7 @@ function parseLogRetention(env) {
     }
   }
 
-  ["error", "warning", "info"].forEach((type) => {
+  LOG_LEVELS.forEach((type) => {
     const value = env[`${ENV_PREFIX}LOG_RETENTION_${type.toUpperCase()}`];
     if (value !== undefined) {
       const days = Number(value);

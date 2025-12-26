@@ -60,10 +60,10 @@ function renderRankings(rows = []) {
     const tr = document.createElement("tr");
     if (index < runtimeConfig.TOP_SWING_COUNT) tr.classList.add("highlight");
     const probability = Number.isFinite(row.predictedSwingProbability)
-      ? `${(row.predictedSwingProbability * 100).toFixed(1)}%`
+      ? `${(row.predictedSwingProbability * 100).toFixed(3)}%`
       : "--";
     const swingPercent = Number.isFinite(row.predictedSwingPercent)
-      ? `${row.predictedSwingPercent.toFixed(2)}%`
+      ? `${row.predictedSwingPercent.toFixed(3)}%`
       : "--";
     tr.innerHTML = `
       <td>${row.symbolAbbreviation || row.id}</td>

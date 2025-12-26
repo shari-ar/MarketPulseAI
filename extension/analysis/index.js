@@ -134,6 +134,7 @@ export async function runSwingAnalysis(
   const manifest = await loadModelManifest({ logger: logAnalysisEvent, now });
   const scoreWindow = resolveScoringStrategy({ manifest, logger: logAnalysisEvent, now });
 
+  const scoringStartedAt = Date.now();
   const scored = [];
   for (let index = 0; index < freshWindows.length; index += 1) {
     const window = freshWindows[index];
@@ -156,7 +157,7 @@ export async function runSwingAnalysis(
 
   logAnalysisEvent({
     message: "Scored swing windows",
-    context: { scoredCount: scored.length },
+    context: { scoredCount: scored.length, durationMs: Date.now() - scoringStartedAt },
     now,
   });
 

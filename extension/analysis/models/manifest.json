@@ -1,0 +1,7 @@
+{
+  "version": "2024-01-01-v1",
+  "calibration": {
+    "percentClip": [-50, 50],
+    "probabilityClip": [0.01, 0.99]
+  }
+}

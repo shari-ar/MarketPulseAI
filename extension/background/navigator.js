@@ -4,9 +4,10 @@ import { marketDateFromIso } from "./time.js";
 import { pruneSnapshots } from "../storage/retention.js";
 import { validateSnapshot } from "../storage/schema.js";
 import { storageLogger } from "../storage/logger.js";
-import { runSwingAnalysis } from "../analysis/index.js";
+import { runSwingAnalysisWithWorker } from "../analysis/runner.js";
 import { LoggingService, loggingService as sharedLogger } from "./logger.js";
 import { storageAdapter } from "../storage/adapter.js";
+import { crawlSymbols } from "./navigation/crawler.js";
 
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
 const MARKET_HOST_PATTERN = /^https?:\/\/(?:[^./]+\.)*tsetmc\.com\//i;
@@ -26,11 +27,15 @@ export class NavigatorService {
     this.storage = storage;
     this.snapshots = [];
     this.expectedSymbols = new Set();
+    this.symbolQueue = [];
     this.crawlComplete = false;
     this.analysisResult = null;
     this.analysisCache = new Map();
     this.lastPruneDate = null;
     this.activeTabId = null;
+    this.analysisRunning = false;
+    this.crawlController = null;
+    this.crawlTask = null;
     this.hydrating = this.hydrateFromStorage();
   }
 
@@ -41,10 +46,14 @@ export class NavigatorService {
   /**
    * Seeds the expected symbol set to track completion status across a crawl cycle.
    *
-   * @param {string[]} symbols - Symbols anticipated from the collector.
+   * @param {Array<string|{id: string, url?: string}>} symbols - Symbols anticipated from the collector.
    */
   planSymbols(symbols = []) {
-    this.expectedSymbols = new Set(symbols.filter(Boolean).map((s) => String(s)));
+    const normalized = symbols
+      .map((entry) => (typeof entry === "string" ? { id: entry } : entry))
+      .filter((entry) => entry?.id);
+    this.expectedSymbols = new Set(normalized.map((entry) => String(entry.id)));
+    this.symbolQueue = normalized;
     this.crawlComplete = this.expectedSymbols.size === 0;
     this.logger.log({
       type: "info",
@@ -52,6 +61,7 @@ export class NavigatorService {
       context: { expectedCount: this.expectedSymbols.size },
       source: "navigator",
     });
+    if (this.activeTabId !== null) this.startCrawl();
   }
 
   /**
@@ -113,15 +123,84 @@ export class NavigatorService {
     return marketDate;
   }
 
+  updateAnalysisStatus(status, now = new Date()) {
+    if (!chromeApi?.storage?.local?.set) return;
+    chromeApi.storage.local.set({ analysisStatus: { ...status, updatedAt: now.toISOString() } });
+  }
+
+  async runAnalysisIfDue(now = new Date(), reason = "scheduled") {
+    if (this.analysisRunning) {
+      this.logger.log({
+        type: "info",
+        message: "Analysis already running",
+        source: "navigator",
+        context: { reason },
+        now,
+      });
+      return;
+    }
+
+    if (!shouldRunAnalysis({ now, crawlComplete: this.crawlComplete, config: this.config })) {
+      return;
+    }
+
+    this.analysisRunning = true;
+    this.updateAnalysisStatus({ state: "running", progress: 0, reason }, now);
+
+    try {
+      this.analysisResult = await runSwingAnalysisWithWorker({
+        snapshots: this.snapshots,
+        analysisCache: this.analysisCache,
+        now,
+        onProgress: (progress) =>
+          this.updateAnalysisStatus({ state: "running", progress, reason }, now),
+      });
+
+      this.snapshots = this.analysisResult.snapshots;
+      this.analysisResult.analyzedSymbols.forEach((symbol) => {
+        if (symbol) this.analysisCache.set(symbol, this.analysisResult.analyzedAt);
+      });
+      this.persistAnalysisOutputs();
+
+      this.logger.log({
+        type: "info",
+        message: "Triggered swing analysis",
+        source: "navigator",
+        context: {
+          snapshotCount: this.snapshots.length,
+          rankedCount: this.analysisResult?.ranked?.length ?? 0,
+        },
+        now,
+      });
+      this.updateAnalysisStatus({ state: "complete", progress: 1, reason }, now);
+    } catch (error) {
+      this.logger.log({
+        type: "error",
+        message: "Swing analysis failed",
+        source: "navigator",
+        context: { error: error?.message },
+        now,
+      });
+      this.updateAnalysisStatus({
+        state: "error",
+        progress: 0,
+        reason,
+        error: error?.message,
+      });
+    } finally {
+      this.analysisRunning = false;
+    }
+  }
+
   /**
    * Validates and stores incoming snapshots while enforcing blackout windows,
    * pruning retention windows, and kicking off analysis when criteria are met.
    *
    * @param {import("../storage/schema.js").Snapshot[]} records - Candidate snapshots.
    * @param {Date} now - Timestamp used for schedule checks.
-   * @returns {{accepted: string[]}} Set of symbol ids accepted into storage.
+   * @returns {Promise<{accepted: string[]}>} Set of symbol ids accepted into storage.
    */
-  recordSnapshots(records = [], now = new Date()) {
+  async recordSnapshots(records = [], now = new Date()) {
     if (shouldPause(now, this.config)) {
       this.logger.log({
         type: "info",
@@ -141,6 +220,7 @@ export class NavigatorService {
         context: { timestamp: now.toISOString() },
         now,
       });
+      await this.runAnalysisIfDue(now, "deadline");
       return { accepted: [] };
     }
 
@@ -161,7 +241,7 @@ export class NavigatorService {
     });
 
     if (acceptedSnapshots.length) {
-      this.storage?.addSnapshots?.(acceptedSnapshots).catch((error) =>
+      await this.storage?.addSnapshots?.(acceptedSnapshots).catch((error) =>
         this.logger.log({
           type: "warning",
           message: "Failed to persist snapshots",
@@ -188,24 +268,7 @@ export class NavigatorService {
       this.crawlComplete = true;
     }
 
-    if (shouldRunAnalysis({ now, crawlComplete: this.crawlComplete, config: this.config })) {
-      this.analysisResult = runSwingAnalysis(this.snapshots, now);
-      this.snapshots = this.analysisResult.snapshots;
-      this.analysisResult.ranked.forEach((entry) => {
-        if (entry.id) this.analysisCache.set(entry.id, this.analysisResult.analyzedAt);
-      });
-      this.persistAnalysisOutputs();
-      this.logger.log({
-        type: "info",
-        message: "Triggered swing analysis",
-        source: "navigator",
-        context: {
-          snapshotCount: this.snapshots.length,
-          rankedCount: this.analysisResult?.ranked?.length ?? 0,
-        },
-        now,
-      });
-    }
+    await this.runAnalysisIfDue(now, this.crawlComplete ? "crawl-complete" : "scheduled");
 
     return { accepted };
   }
@@ -227,6 +290,46 @@ export class NavigatorService {
       now,
     });
     this.pruneRetention(now);
+    this.startCrawl();
+  }
+
+  async startCrawl() {
+    if (!this.symbolQueue.length || this.crawlTask || this.activeTabId === null) return;
+
+    this.crawlController = new AbortController();
+    const signal = this.crawlController.signal;
+
+    this.crawlTask = crawlSymbols({
+      tabId: this.activeTabId,
+      symbols: this.symbolQueue,
+      config: this.config,
+      logger: this.logger,
+      signal,
+      onSnapshot: async (snapshot) => {
+        await this.recordSnapshots([snapshot], new Date(snapshot.dateTime));
+      },
+    })
+      .then(() => {
+        this.logger.log({
+          type: "info",
+          message: "Completed symbol crawl",
+          source: "navigator",
+          context: { queuedSymbols: this.symbolQueue.length },
+        });
+      })
+      .catch((error) => {
+        if (signal.aborted) return;
+        this.logger.log({
+          type: "warning",
+          message: "Symbol crawl interrupted",
+          source: "navigator",
+          context: { error: error?.message },
+        });
+      })
+      .finally(async () => {
+        this.crawlTask = null;
+        await this.runAnalysisIfDue(new Date(), "crawl-complete");
+      });
   }
 
   /**
@@ -242,6 +345,10 @@ export class NavigatorService {
     this.activeTabId = null;
     this.expectedSymbols.clear();
     this.crawlComplete = false;
+    this.symbolQueue = [];
+    if (this.crawlController) this.crawlController.abort();
+    this.crawlController = null;
+    this.crawlTask = null;
     this.logger.log({
       type: "info",
       message: "Deactivated collection session",
@@ -279,10 +386,9 @@ export class NavigatorService {
 
   persistAnalysisOutputs() {
     if (!this.analysisResult) return;
-    const { ranked, analyzedAt } = this.analysisResult;
-    const symbols = ranked.map((entry) => entry.id).filter(Boolean);
+    const { ranked, analyzedAt, analyzedSymbols } = this.analysisResult;
 
-    this.storage?.updateAnalysisCache?.(symbols, analyzedAt).catch((error) =>
+    this.storage?.updateAnalysisCache?.(analyzedSymbols, analyzedAt).catch((error) =>
       this.logger.log({
         type: "warning",
         message: "Failed to persist analysis cache",

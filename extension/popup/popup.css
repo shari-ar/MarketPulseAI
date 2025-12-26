@@ -62,3 +62,54 @@ th {
 .highlight {
   background: rgba(59, 130, 246, 0.1);
 }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-card {
+  width: 90%;
+  max-width: 320px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #111827;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.4);
+  text-align: center;
+}
+
+.modal-card h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.modal-card p {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.progress-track {
+  height: 8px;
+  width: 100%;
+  background: #1f2937;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #38bdf8, #3b82f6);
+  transition: width 0.2s ease;
+}

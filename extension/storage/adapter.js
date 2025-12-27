@@ -49,6 +49,7 @@ class MemoryAdapter {
     this.snapshots = pruneSnapshots(this.snapshots, {
       now,
       retentionDays: this.config.RETENTION_DAYS,
+      config: this.config,
     });
     return { removed: before - this.snapshots.length, remaining: this.snapshots.length };
   }
@@ -117,6 +118,7 @@ class DexieAdapter extends MemoryAdapter {
     const pruned = pruneSnapshots(all, {
       now,
       retentionDays: this.config.RETENTION_DAYS,
+      config: this.config,
     });
     if (pruned.length !== all.length) {
       await this.db[SNAPSHOT_TABLE].clear();

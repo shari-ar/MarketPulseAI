@@ -1,4 +1,4 @@
-import { DEFAULT_RUNTIME_CONFIG } from "../runtime-config.js";
+import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../runtime-config.js";
 import { marketDateFromIso } from "../background/time.js";
 
 /**
@@ -30,13 +30,19 @@ function daysBetween(startDate, endDate) {
  */
 export function pruneSnapshots(
   records = [],
-  { now = new Date(), retentionDays = DEFAULT_RUNTIME_CONFIG.RETENTION_DAYS, logger } = {}
+  {
+    now = new Date(),
+    retentionDays = DEFAULT_RUNTIME_CONFIG.RETENTION_DAYS,
+    logger,
+    config = DEFAULT_RUNTIME_CONFIG,
+  } = {}
 ) {
-  const today = marketDateFromIso(now.toISOString());
+  const runtimeConfig = getRuntimeConfig(config);
+  const today = marketDateFromIso(now.toISOString(), runtimeConfig);
   const before = records.length;
 
   const pruned = records.filter((record) => {
-    const recordDate = marketDateFromIso(record.dateTime);
+    const recordDate = marketDateFromIso(record.dateTime, runtimeConfig);
     if (!recordDate) return false;
     return daysBetween(recordDate, today) < retentionDays;
   });
@@ -47,7 +53,12 @@ export function pruneSnapshots(
       type: "info",
       message: "Pruned snapshots past retention window",
       source: "storage",
-      context: { removedCount: removed, retentionDays, marketDate: today },
+      context: {
+        removedCount: removed,
+        retentionDays,
+        marketDate: today,
+        timezone: runtimeConfig.MARKET_TIMEZONE,
+      },
       now,
     });
   }

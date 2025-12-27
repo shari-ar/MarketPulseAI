@@ -256,6 +256,7 @@ export class NavigatorService {
       now,
       retentionDays: this.config.RETENTION_DAYS,
       logger: storageLogger,
+      config: this.config,
     });
     this.storage?.pruneSnapshots?.(now).catch((error) =>
       this.logger.log({
@@ -544,6 +545,7 @@ export class NavigatorService {
         now,
         retentionDays: this.config.RETENTION_DAYS,
         logger: storageLogger,
+        config: this.config,
       });
       this.logger.log({
         type: "info",
@@ -633,9 +635,36 @@ function attachTabListeners() {
     }
   };
 
+  const handleTabRemoved = (tabId) => {
+    if (tabId !== navigatorService.activeTabId) return;
+    navigatorService.stopSession("tab-closed");
+  };
+
+  const hydrateActiveTab = async () => {
+    try {
+      const [tab] = await chromeApi.tabs.query({ active: true, lastFocusedWindow: true });
+      if (isMarketHost(tab?.url)) {
+        navigatorService.startSession(tab.id);
+      } else {
+        navigatorService.stopSession("tab-inactive");
+      }
+    } catch (error) {
+      navigatorService.logger.log({
+        type: "warning",
+        message: "Failed to hydrate active tab",
+        source: "navigator",
+        context: { error: error?.message },
+      });
+    }
+  };
+
   chromeApi.tabs.onActivated.addListener(handleTabActivation);
   chromeApi.tabs.onUpdated.addListener(handleTabUpdate);
+  chromeApi.tabs.onRemoved.addListener(handleTabRemoved);
   attachTabListeners.initialized = true;
+
+  // Ensure we attach to the current active tab when the service worker wakes.
+  hydrateActiveTab();
 }
 
 attachTabListeners();

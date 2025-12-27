@@ -96,6 +96,18 @@ function renderRankings(rows = []) {
   });
 }
 
+// Normalize imported headers so schema checks stay resilient to Excel cell formatting.
+function normalizeHeaderRow(row = []) {
+  return row.map((cell) => String(cell ?? "").trim());
+}
+
+// Enforce strict column parity with the export schema.
+function hasMatchingHeaders(headerRow = []) {
+  if (!Array.isArray(headerRow)) return false;
+  if (headerRow.length !== COLUMN_ORDER.length) return false;
+  return headerRow.every((header, index) => header === COLUMN_ORDER[index]);
+}
+
 function updateAnalysisModal(status) {
   if (typeof document === "undefined") return;
   const modal = document.getElementById("analysis-modal");
@@ -215,6 +227,22 @@ function setupUi() {
       const buffer = await file.arrayBuffer();
       const workbook = read(buffer, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const [headerRow = []] = utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+      const normalizedHeader = normalizeHeaderRow(headerRow);
+      if (!hasMatchingHeaders(normalizedHeader)) {
+        logPopupEvent({
+          type: "error",
+          message: "Import rejected due to mismatched schema",
+          context: {
+            filename: file.name,
+            expected: COLUMN_ORDER,
+            received: normalizedHeader,
+          },
+        });
+        event.target.value = "";
+        return;
+      }
+
       const rows = utils.sheet_to_json(sheet);
       const beforeCount = latestRows.length;
       latestRows = mergeImportedRows(latestRows, rows);
@@ -242,6 +270,8 @@ function setupUi() {
         message: "Failed to import workbook",
         context: { filename: file?.name, error: error?.message },
       });
+    } finally {
+      event.target.value = "";
     }
   };
 

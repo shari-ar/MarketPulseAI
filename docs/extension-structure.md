@@ -8,12 +8,14 @@ extension/
 │   ├── settings.js     # Runtime settings hydration from storage
 │   └── navigator.js    # Drives page movement and crawl orchestration
 ├── analysis/           # Worker, TensorFlow.js assets, scalers, calibration metadata
-│   ├── models/         # Bundled model JSON/weights versions
+│   ├── models/         # Bundled model JSON/weights versions (swing-tcn-<date>-vN)
+│   │   ├── manifest.json
+│   │   └── swing-tcn-2024-01-01-v1/ # Versioned TF.js metadata, scalers, calibration, weights
 │   ├── feature-engineering.js # Feature extraction + z-score normalization helpers
 │   └── index.js        # Worker entry for scoring and progress reporting
 ├── popup/              # Popup UI scripts, styles, and markup
 │   ├── popup.html      # Popup markup registered by the manifest
-│   └── popup.js        # Rankings, exports, imports, and controls
+│   ├── popup.js        # Rankings, exports, imports, and controls
 │   └── settings.js     # Settings persistence + popup hydration helpers
 ├── storage/            # Dexie schema, cache, validation, and writes
 ├── vendor/             # Third-party bundles (e.g., TensorFlow.js, SheetJS)

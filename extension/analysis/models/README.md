@@ -1,5 +1,5 @@
 # Model Assets
 
-- `manifest.json` declares model metadata, calibration settings, and asset paths.
-- `scalers.json` stores feature normalization statistics used during inference.
-- `weights.json` provides a lightweight baseline scoring profile for the local model runner.
+- `manifest.json` declares the active model tag and keeps the latest two tagged versions for rollback.
+- Each `swing-tcn-<yyyy-mm-dd>-vN/` directory bundles TensorFlow.js metadata, scalers, calibration data, and weights.
+- `model.json` stores the architecture descriptor, while `scalers.json`, `weights.json`, and `calibration.json` supply runtime assets.

@@ -2,6 +2,21 @@ import { FEATURE_ORDER, aggregateFeatureRows, buildFeatureWindow } from "./featu
 
 const MANIFEST_URL = new URL("./models/manifest.json", import.meta.url);
 
+function resolveActiveManifest(manifest) {
+  if (manifest?.activeVersion && manifest?.versions) {
+    const entry = manifest.versions[manifest.activeVersion];
+    if (entry) {
+      return { ...entry, version: manifest.activeVersion };
+    }
+  }
+
+  if (manifest?.version) {
+    return { ...manifest, version: manifest.version };
+  }
+
+  return null;
+}
+
 async function loadJsonFromFs(url) {
   const { readFile } = await import("fs/promises");
   const data = await readFile(url, "utf-8");
@@ -27,15 +42,16 @@ export async function loadModelManifest({ logger, now = new Date() } = {}) {
   const startedAt = Date.now();
   try {
     const manifest = await loadJsonAsset(MANIFEST_URL);
+    const resolved = resolveActiveManifest(manifest);
     logger?.({
       message: "Loaded model manifest",
       context: {
-        version: manifest?.version,
+        version: resolved?.version,
         durationMs: Date.now() - startedAt,
       },
       now,
     });
-    return manifest;
+    return resolved;
   } catch (error) {
     logger?.({
       type: "warning",
@@ -124,6 +140,31 @@ async function loadWeights(manifest, logger, now) {
   }
 }
 
+async function loadCalibration(manifest, logger, now) {
+  const calibrationUrl = buildAssetUrl(manifest, "calibrationPath");
+  if (!calibrationUrl) {
+    return manifest?.calibration || null;
+  }
+  const startedAt = Date.now();
+  try {
+    const calibration = await loadJsonAsset(calibrationUrl);
+    logger?.({
+      message: "Loaded model calibration",
+      context: { durationMs: Date.now() - startedAt },
+      now,
+    });
+    return calibration;
+  } catch (error) {
+    logger?.({
+      type: "warning",
+      message: "Failed to load model calibration",
+      context: { error: error?.message },
+      now,
+    });
+    return manifest?.calibration || null;
+  }
+}
+
 function scoreWindowWithWeights(window, manifest, assets, now, logger) {
   const featureWindow = buildFeatureWindow(window, { scalers: assets.scalers });
   if (!featureWindow) {
@@ -146,14 +187,12 @@ function scoreWindowWithWeights(window, manifest, assets, now, logger) {
     dotProduct(aggregated, assets.weights?.swingProbability?.weights) +
     (assets.weights?.swingProbability?.bias || 0);
 
-  const swingPercent = clamp(percentScore, manifest?.calibration?.percentClip || [-50, 50]);
-  const calibratedProbability = applyPlattScaling(
-    probabilityScore,
-    manifest?.calibration?.platt || {}
-  );
+  const calibration = assets.calibration || manifest?.calibration;
+  const swingPercent = clamp(percentScore, calibration?.percentClip || [-50, 50]);
+  const calibratedProbability = applyPlattScaling(probabilityScore, calibration?.platt || {});
   const swingProbability = clamp(
     calibratedProbability,
-    manifest?.calibration?.probabilityClip || [0.01, 0.99]
+    calibration?.probabilityClip || [0.01, 0.99]
   );
 
   return {
@@ -175,9 +214,10 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
     return null;
   }
 
-  const [scalers, weights] = await Promise.all([
+  const [scalers, weights, calibration] = await Promise.all([
     loadScalers(manifest, logger, now),
     loadWeights(manifest, logger, now),
+    loadCalibration(manifest, logger, now),
   ]);
 
   if (!weights) {
@@ -195,7 +235,7 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
     const result = scoreWindowWithWeights(
       window,
       manifest,
-      { scalers, weights },
+      { scalers, weights, calibration },
       runtimeNow,
       logger
     );

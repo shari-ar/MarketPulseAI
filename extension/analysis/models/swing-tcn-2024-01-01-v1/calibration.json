@@ -1,0 +1,8 @@
+{
+  "percentClip": [-50, 50],
+  "probabilityClip": [0.01, 0.99],
+  "platt": {
+    "plattA": -1.2,
+    "plattB": 0.4
+  }
+}

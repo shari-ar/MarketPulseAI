@@ -27,6 +27,11 @@ async function loadJsonFromFs(url) {
   return JSON.parse(data);
 }
 
+async function loadTextFromFs(url) {
+  const { readFile } = await import("fs/promises");
+  return readFile(url, "utf-8");
+}
+
 async function loadJsonFromFetch(url) {
   const response = await fetch(url);
   if (!response.ok) {
@@ -35,11 +40,26 @@ async function loadJsonFromFetch(url) {
   return response.json();
 }
 
+async function loadTextFromFetch(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to load text asset: ${response.status}`);
+  }
+  return response.text();
+}
+
 async function loadJsonAsset(url) {
   if (typeof window === "undefined" && typeof process !== "undefined") {
     return loadJsonFromFs(url);
   }
   return loadJsonFromFetch(url);
+}
+
+async function loadTextAsset(url) {
+  if (typeof window === "undefined" && typeof process !== "undefined") {
+    return loadTextFromFs(url);
+  }
+  return loadTextFromFetch(url);
 }
 
 function loadTensorflowModule() {
@@ -105,6 +125,27 @@ function buildAssetUrl(manifest, pathKey) {
   return new URL(path, MANIFEST_URL);
 }
 
+function decodeBase64WeightData(encoded) {
+  if (!encoded) return null;
+  const BufferConstructor = typeof globalThis !== "undefined" ? globalThis.Buffer : undefined;
+  if (BufferConstructor) {
+    const buffer = BufferConstructor.from(encoded, "base64");
+    return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+  }
+
+  if (typeof atob === "function") {
+    const binary = atob(encoded);
+    const length = binary.length;
+    const bytes = new Uint8Array(length);
+    for (let i = 0; i < length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  return null;
+}
+
 async function loadModel(manifest, logger, now, tf) {
   const modelUrl = buildAssetUrl(manifest, "modelPath");
   if (!modelUrl) return null;
@@ -119,6 +160,37 @@ async function loadModel(manifest, logger, now, tf) {
 
   logger?.({
     message: "Loaded TensorFlow.js model",
+    context: { durationMs: Date.now() - startedAt, url: modelUrl.toString() },
+    now,
+  });
+  return model;
+}
+
+async function loadModelFromMemory(manifest, logger, now, tf) {
+  const modelUrl = buildAssetUrl(manifest, "modelPath");
+  const weightsUrl = buildAssetUrl(manifest, "weightsBase64Path");
+  if (!modelUrl || !weightsUrl) return null;
+
+  const cacheKey = `memory:${modelUrl.toString()}:${weightsUrl.toString()}`;
+  if (modelCache.has(cacheKey)) {
+    return modelCache.get(cacheKey);
+  }
+
+  const startedAt = Date.now();
+  const modelPromise = Promise.all([loadJsonAsset(modelUrl), loadTextAsset(weightsUrl)]).then(
+    ([modelJson, weightsBase64]) => {
+      const weightSpecs = modelJson?.weightsManifest?.[0]?.weights || [];
+      const weightData = decodeBase64WeightData(weightsBase64.trim());
+      if (!weightData) throw new Error("Invalid base64 weight data");
+      const ioHandler = tf.io.fromMemory(modelJson.modelTopology, weightSpecs, weightData);
+      return tf.loadLayersModel(ioHandler);
+    }
+  );
+
+  modelCache.set(cacheKey, modelPromise);
+  const model = await modelPromise;
+  logger?.({
+    message: "Loaded TensorFlow.js model from base64 weights",
     context: { durationMs: Date.now() - startedAt, url: modelUrl.toString() },
     now,
   });
@@ -338,7 +410,11 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
       });
     } else {
       tf = tfResult.module;
-      const modelResult = await loadModel(manifest, logger, now, tf)
+      const modelResult = await (
+        manifest?.weightsBase64Path
+          ? loadModelFromMemory(manifest, logger, now, tf)
+          : loadModel(manifest, logger, now, tf)
+      )
         .then((loaded) => ({ loaded }))
         .catch((error) => ({ error }));
       if (modelResult.error) {

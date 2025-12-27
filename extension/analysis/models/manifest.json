@@ -5,12 +5,14 @@
       "modelPath": "swing-tcn-2024-01-01-v1/model.json",
       "scalersPath": "swing-tcn-2024-01-01-v1/scalers.json",
       "weightsPath": "swing-tcn-2024-01-01-v1/weights.json",
+      "weightsBase64Path": "swing-tcn-2024-01-01-v1/weights.base64",
       "calibrationPath": "swing-tcn-2024-01-01-v1/calibration.json"
     },
     "swing-tcn-2023-12-01-v1": {
       "modelPath": "swing-tcn-2023-12-01-v1/model.json",
       "scalersPath": "swing-tcn-2023-12-01-v1/scalers.json",
       "weightsPath": "swing-tcn-2023-12-01-v1/weights.json",
+      "weightsBase64Path": "swing-tcn-2023-12-01-v1/weights.base64",
       "calibrationPath": "swing-tcn-2023-12-01-v1/calibration.json"
     }
   }

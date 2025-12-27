@@ -1,6 +1,66 @@
 {
-  "format": "tfjs-layers-model",
-  "generatedBy": "MarketPulseAI offline bundler",
-  "architecture": "tcn",
-  "notes": "Model topology and weights are bundled separately to keep the extension offline."
+  "format": "layers-model",
+  "generatedBy": "MarketPulseAI",
+  "convertedBy": "MarketPulseAI",
+  "modelTopology": {
+    "class_name": "Sequential",
+    "config": {
+      "name": "swing_tcn_fallback",
+      "layers": [
+        {
+          "class_name": "InputLayer",
+          "config": {
+            "batch_input_shape": [null, 7, 206],
+            "dtype": "float32",
+            "sparse": false,
+            "name": "input"
+          }
+        },
+        {
+          "class_name": "Flatten",
+          "config": {
+            "name": "flatten",
+            "trainable": true
+          }
+        },
+        {
+          "class_name": "Dense",
+          "config": {
+            "name": "dense",
+            "units": 2,
+            "activation": "linear",
+            "use_bias": true,
+            "kernel_initializer": {
+              "class_name": "Zeros",
+              "config": {}
+            },
+            "bias_initializer": {
+              "class_name": "Zeros",
+              "config": {}
+            },
+            "trainable": true
+          }
+        }
+      ]
+    },
+    "keras_version": "2.13.1",
+    "backend": "tensorflow"
+  },
+  "weightsManifest": [
+    {
+      "paths": ["weights.bin"],
+      "weights": [
+        {
+          "name": "dense/kernel",
+          "shape": [1442, 2],
+          "dtype": "float32"
+        },
+        {
+          "name": "dense/bias",
+          "shape": [2],
+          "dtype": "float32"
+        }
+      ]
+    }
+  ]
 }

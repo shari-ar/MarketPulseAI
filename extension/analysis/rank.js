@@ -15,7 +15,7 @@ function resolveLimit(limit) {
  * @param {number|{max?: number}} [limit] - Optional max count for truncating results.
  * @returns {Array<object>} Ranked swing records.
  */
-export function rankSwingResults(records = [], limit) {
+export function rankSwingResults(records = [], limit = 5) {
   const max = resolveLimit(limit);
   const sortable = records
     .filter((row) => typeof row.predictedSwingProbability === "number")
@@ -30,5 +30,5 @@ export function rankSwingResults(records = [], limit) {
     return (b.predictedSwingPercent || 0) - (a.predictedSwingPercent || 0);
   });
 
-  return max ? sortable.slice(0, max) : sortable;
+  return Number.isFinite(max) ? sortable.slice(0, max) : sortable;
 }

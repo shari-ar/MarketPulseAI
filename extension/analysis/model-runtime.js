@@ -1,6 +1,10 @@
 import { FEATURE_ORDER, aggregateFeatureRows, buildFeatureWindow } from "./feature-engineering.js";
 
 const MANIFEST_URL = new URL("./models/manifest.json", import.meta.url);
+const TFJS_MODULE_URL = new URL("../vendor/tfjs.esm.min.js", import.meta.url);
+
+let tfjsModulePromise = null;
+const modelCache = new Map();
 
 function resolveActiveManifest(manifest) {
   if (manifest?.activeVersion && manifest?.versions) {
@@ -36,6 +40,13 @@ async function loadJsonAsset(url) {
     return loadJsonFromFs(url);
   }
   return loadJsonFromFetch(url);
+}
+
+function loadTensorflowModule() {
+  if (!tfjsModulePromise) {
+    tfjsModulePromise = import(TFJS_MODULE_URL).then((module) => module.default ?? module);
+  }
+  return tfjsModulePromise;
 }
 
 export async function loadModelManifest({ logger, now = new Date() } = {}) {
@@ -92,6 +103,26 @@ function buildAssetUrl(manifest, pathKey) {
   const path = manifest?.[pathKey];
   if (!path) return null;
   return new URL(path, MANIFEST_URL);
+}
+
+async function loadModel(manifest, logger, now, tf) {
+  const modelUrl = buildAssetUrl(manifest, "modelPath");
+  if (!modelUrl) return null;
+  if (modelCache.has(modelUrl.toString())) {
+    return modelCache.get(modelUrl.toString());
+  }
+
+  const startedAt = Date.now();
+  const modelPromise = tf.loadLayersModel(modelUrl.toString());
+  modelCache.set(modelUrl.toString(), modelPromise);
+  const model = await modelPromise;
+
+  logger?.({
+    message: "Loaded TensorFlow.js model",
+    context: { durationMs: Date.now() - startedAt, url: modelUrl.toString() },
+    now,
+  });
+  return model;
 }
 
 async function loadScalers(manifest, logger, now) {
@@ -165,6 +196,35 @@ async function loadCalibration(manifest, logger, now) {
   }
 }
 
+function extractTfjsOutputs(output) {
+  if (Array.isArray(output) && output.length >= 2) {
+    return [output[0], output[1]];
+  }
+  if (output && typeof output.dataSync === "function") {
+    const data = output.dataSync();
+    if (data.length >= 2) {
+      return [{ dataSync: () => [data[0]] }, { dataSync: () => [data[1]] }];
+    }
+    return [{ dataSync: () => [data[0] ?? 0] }, { dataSync: () => [0] }];
+  }
+  return [{ dataSync: () => [0] }, { dataSync: () => [0] }];
+}
+
+function extractScalar(tensor, fallback = 0) {
+  if (!tensor || typeof tensor.dataSync !== "function") return fallback;
+  const data = tensor.dataSync();
+  return Number.isFinite(data[0]) ? data[0] : fallback;
+}
+
+function disposeOutputs(output) {
+  if (!output) return;
+  if (Array.isArray(output)) {
+    output.forEach((tensor) => tensor?.dispose?.());
+    return;
+  }
+  output.dispose?.();
+}
+
 function scoreWindowWithWeights(window, manifest, assets, now, logger) {
   const featureWindow = buildFeatureWindow(window, { scalers: assets.scalers });
   if (!featureWindow) {
@@ -203,6 +263,49 @@ function scoreWindowWithWeights(window, manifest, assets, now, logger) {
   };
 }
 
+function buildModelInput(windowRows = []) {
+  return windowRows.map((row) => FEATURE_ORDER.map((name) => row[name] ?? 0));
+}
+
+function scoreWindowWithTfjs(window, manifest, assets, now, logger) {
+  const featureWindow = buildFeatureWindow(window, { scalers: assets.scalers });
+  if (!featureWindow) {
+    logger?.({
+      type: "warning",
+      message: "Skipped window due to incomplete feature inputs",
+      context: { symbol: window?.[0]?.id },
+      now,
+    });
+    return null;
+  }
+
+  const calibration = assets.calibration || manifest?.calibration;
+  const inputData = buildModelInput(featureWindow.rows);
+  const input = assets.tf.tensor([inputData], undefined, "float32");
+
+  const output = assets.model.predict(input);
+  const [percentTensor, probabilityTensor] = extractTfjsOutputs(output);
+  const rawPercent = extractScalar(percentTensor, 0);
+  const rawProbability = extractScalar(probabilityTensor, 0);
+
+  input.dispose?.();
+  disposeOutputs(output);
+
+  const swingPercent = clamp(rawPercent, calibration?.percentClip || [-50, 50]);
+  const calibratedProbability = applyPlattScaling(rawProbability, calibration?.platt || {});
+  const swingProbability = clamp(
+    calibratedProbability,
+    calibration?.probabilityClip || [0.01, 0.99]
+  );
+
+  return {
+    id: featureWindow.latest?.id,
+    dateTime: featureWindow.latest?.dateTime,
+    predictedSwingPercent: swingPercent,
+    predictedSwingProbability: swingProbability,
+  };
+}
+
 export async function resolveScoringStrategy({ manifest, logger, now = new Date() } = {}) {
   if (!manifest) {
     logger?.({
@@ -220,7 +323,38 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
     loadCalibration(manifest, logger, now),
   ]);
 
-  if (!weights) {
+  let model = null;
+  let tf = null;
+  if (manifest?.modelPath) {
+    const tfResult = await loadTensorflowModule()
+      .then((module) => ({ module }))
+      .catch((error) => ({ error }));
+    if (tfResult.error) {
+      logger?.({
+        type: "warning",
+        message: "TensorFlow.js runtime unavailable; falling back to weights",
+        context: { error: tfResult.error?.message, version: manifest?.version },
+        now,
+      });
+    } else {
+      tf = tfResult.module;
+      const modelResult = await loadModel(manifest, logger, now, tf)
+        .then((loaded) => ({ loaded }))
+        .catch((error) => ({ error }));
+      if (modelResult.error) {
+        logger?.({
+          type: "warning",
+          message: "TensorFlow.js model unavailable; falling back to weights",
+          context: { error: modelResult.error?.message, version: manifest?.version },
+          now,
+        });
+      } else {
+        model = modelResult.loaded;
+      }
+    }
+  }
+
+  if (!model && !weights) {
     logger?.({
       type: "warning",
       message: "Model weights unavailable; skipping inference",
@@ -232,19 +366,28 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
 
   return (window, { now: runtimeNow = now } = {}) => {
     const startedAt = Date.now();
-    const result = scoreWindowWithWeights(
-      window,
-      manifest,
-      { scalers, weights, calibration },
-      runtimeNow,
-      logger
-    );
+    const result = model
+      ? scoreWindowWithTfjs(
+          window,
+          manifest,
+          { tf, model, scalers, calibration },
+          runtimeNow,
+          logger
+        )
+      : scoreWindowWithWeights(
+          window,
+          manifest,
+          { scalers, weights, calibration },
+          runtimeNow,
+          logger
+        );
     logger?.({
       message: "Scored swing window",
       context: {
         symbol: result?.id,
         durationMs: Date.now() - startedAt,
         version: manifest?.version,
+        usedTfjs: Boolean(model),
       },
       now: runtimeNow,
     });

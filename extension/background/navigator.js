@@ -568,6 +568,7 @@ export class NavigatorService {
   persistAnalysisOutputs() {
     if (!this.analysisResult) return;
     const { ranked, analyzedAt, analyzedSymbols } = this.analysisResult;
+    const now = new Date();
 
     this.storage?.updateAnalysisCache?.(analyzedSymbols, analyzedAt).catch((error) =>
       this.logger.log({
@@ -577,6 +578,30 @@ export class NavigatorService {
         context: { error: error?.message },
       })
     );
+
+    const scoredSnapshots = this.analysisResult.snapshots.filter(
+      (snapshot) =>
+        Number.isFinite(snapshot?.predictedSwingProbability) ||
+        Number.isFinite(snapshot?.predictedSwingPercent)
+    );
+    if (scoredSnapshots.length) {
+      this.storage?.upsertSnapshots?.(scoredSnapshots).catch((error) =>
+        this.logger.log({
+          type: "warning",
+          message: "Failed to persist scored snapshots",
+          source: "navigator",
+          context: { error: error?.message, count: scoredSnapshots.length },
+          now,
+        })
+      );
+      this.logger.log({
+        type: "info",
+        message: "Persisted scored snapshots",
+        source: "navigator",
+        context: { count: scoredSnapshots.length },
+        now,
+      });
+    }
 
     if (chromeApi?.storage?.local?.set) {
       chromeApi.storage.local.set({ rankedResults: ranked }, () => {

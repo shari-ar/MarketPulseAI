@@ -70,6 +70,10 @@ function minutesFromParts({ hour, minute }) {
   return hour * 60 + minute;
 }
 
+function isTradingDay(weekday, config) {
+  return config.TRADING_DAYS.includes(weekday);
+}
+
 /**
  * Formats the current market time for display using the configured timezone.
  *
@@ -93,7 +97,7 @@ export function formatMarketClock(now = new Date(), config = DEFAULT_RUNTIME_CON
 export function isWithinBlackout(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
   const runtimeConfig = getRuntimeConfig(config);
   const { hour, minute, weekday } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
-  if (!runtimeConfig.TRADING_DAYS.includes(weekday)) return false;
+  if (!isTradingDay(weekday, runtimeConfig)) return false;
   const minutes = minutesFromParts({ hour, minute });
   const open = minutesFromParts(parseTimeString(runtimeConfig.MARKET_OPEN));
   const close = minutesFromParts(parseTimeString(runtimeConfig.MARKET_CLOSE));
@@ -112,7 +116,7 @@ export function isWithinCollectionWindow(now = new Date(), config = DEFAULT_RUNT
   const runtimeConfig = getRuntimeConfig(config);
   const { hour, minute, weekday } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
 
-  if (!runtimeConfig.TRADING_DAYS.includes(weekday)) return true;
+  if (!isTradingDay(weekday, runtimeConfig)) return true;
 
   const minutes = minutesFromParts({ hour, minute });
   const close = minutesFromParts(parseTimeString(runtimeConfig.MARKET_CLOSE));
@@ -144,7 +148,8 @@ export function marketDateFromIso(isoString, config = DEFAULT_RUNTIME_CONFIG) {
 }
 
 /**
- * Evaluates whether the analysis deadline has passed while ensuring the market is not open.
+ * Evaluates whether the analysis deadline has passed on a trading day while ensuring the
+ * market is not open. Non-trading days stay eligible for collection until the next session.
  *
  * @param {Date} [now=new Date()] - Time to evaluate.
  * @param {object} [config=DEFAULT_RUNTIME_CONFIG] - Runtime configuration controlling schedule.
@@ -152,7 +157,8 @@ export function marketDateFromIso(isoString, config = DEFAULT_RUNTIME_CONFIG) {
  */
 export function isPastAnalysisDeadline(now = new Date(), config = DEFAULT_RUNTIME_CONFIG) {
   const runtimeConfig = getRuntimeConfig(config);
-  const { hour, minute } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
+  const { hour, minute, weekday } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
+  if (!isTradingDay(weekday, runtimeConfig)) return false;
   const minutes = minutesFromParts({ hour, minute });
   const deadline = minutesFromParts(parseTimeString(runtimeConfig.ANALYSIS_DEADLINE));
   return minutes >= deadline && !isWithinBlackout(now, runtimeConfig);
@@ -182,7 +188,6 @@ export function getDelayUntilMarketTime(
   const { hour, minute, weekday } = extractParts(now, runtimeConfig.MARKET_TIMEZONE);
   const currentMinutes = minutesFromParts({ hour, minute });
   const targetMinutes = minutesFromParts(target);
-  const isTradingDay = (day) => runtimeConfig.TRADING_DAYS.includes(day);
 
   let dayOffset = 0;
   let candidateWeekday = weekday;
@@ -192,8 +197,8 @@ export function getDelayUntilMarketTime(
     candidateWeekday = (candidateWeekday + 1) % 7;
   };
 
-  if (requireTradingDay && !isTradingDay(candidateWeekday)) {
-    while (!isTradingDay(candidateWeekday)) {
+  if (requireTradingDay && !isTradingDay(candidateWeekday, runtimeConfig)) {
+    while (!isTradingDay(candidateWeekday, runtimeConfig)) {
       advanceDay();
     }
   }
@@ -203,7 +208,7 @@ export function getDelayUntilMarketTime(
   }
 
   if (requireTradingDay) {
-    while (!isTradingDay(candidateWeekday)) {
+    while (!isTradingDay(candidateWeekday, runtimeConfig)) {
       advanceDay();
     }
   }

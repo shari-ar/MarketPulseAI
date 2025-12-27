@@ -40,6 +40,11 @@ extension/
 │   ├── logger.js       # Storage logging helpers
 │   ├── retention.js    # Snapshot + log retention utilities
 │   └── schema.js       # Snapshot/log schemas and validation
+├── navigation/         # Compatibility re-exports for navigation helpers
+│   ├── crawler.js      # Re-exports background/navigation crawler helpers
+│   ├── helpers.js      # Re-exports tab navigation utilities
+│   ├── symbols.js      # Re-exports symbol discovery helpers
+│   └── README.md       # Compatibility module overview
 ├── vendor/             # Third-party bundles (e.g., TensorFlow.js, SheetJS)
 │   └── README.md
 ├── manifest.json       # Registers background, worker, and popup bundles

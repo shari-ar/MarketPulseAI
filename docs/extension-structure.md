@@ -6,8 +6,10 @@ extension/
 │   ├── navigation/     # Shared travel helpers for symbol pages
 │   │   ├── crawler.js  # Sequential crawler + retry coordination
 │   │   ├── helpers.js  # Tab navigation utilities + parser runner
+│   │   ├── README.md   # Navigation module overview
 │   │   └── symbols.js  # Extracts symbol ids from TSETMC listings
 │   ├── parsing/        # DOM extraction utilities
+│   │   ├── README.md   # Parsing module overview
 │   │   └── top-box.js  # Parses top-box metrics into snapshot payloads
 │   ├── logger.js       # IndexedDB-backed logging helpers
 │   ├── scheduling.js   # Collection/analysis gating rules
@@ -16,7 +18,9 @@ extension/
 │   └── navigator.js    # Drives page movement and crawl orchestration
 ├── analysis/           # Worker, TensorFlow.js assets, scalers, calibration metadata
 │   ├── models/         # Bundled model JSON/weights versions (swing-tcn-<date>-vN)
+│   │   ├── README.md
 │   │   ├── manifest.json
+│   │   ├── swing-tcn-2023-12-01-v1/ # Versioned TF.js metadata, scalers, calibration, weights
 │   │   └── swing-tcn-2024-01-01-v1/ # Versioned TF.js metadata, scalers, calibration, weights
 │   ├── feature-engineering.js # Feature extraction + z-score normalization helpers
 │   ├── logger.js        # Analysis-specific structured logging
@@ -29,7 +33,7 @@ extension/
 │   ├── popup.js        # Rankings, exports, imports, and controls
 │   ├── popup.css       # Popup styling and modal layout
 │   ├── logger.js       # Popup log persistence helpers
-│   └── settings.js     # Settings persistence + popup hydration helpers
+│   ├── settings.js     # Settings persistence + popup hydration helpers
 │   └── xlsx-loader.js  # SheetJS loader for exports/imports
 ├── storage/            # Dexie schema, cache, validation, and writes
 │   ├── adapter.js      # IndexedDB/Dexie adapter with in-memory fallback
@@ -37,7 +41,9 @@ extension/
 │   ├── retention.js    # Snapshot + log retention utilities
 │   └── schema.js       # Snapshot/log schemas and validation
 ├── vendor/             # Third-party bundles (e.g., TensorFlow.js, SheetJS)
+│   └── README.md
 ├── manifest.json       # Registers background, worker, and popup bundles
+├── package.json        # Extension module type declaration
 ├── runtime-config.js   # Runtime configuration utilities
 └── runtime-settings.js # Normalizes/merges runtime config overrides
 ```

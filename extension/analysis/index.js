@@ -133,6 +133,15 @@ export async function runSwingAnalysis(
 
   const manifest = await loadModelManifest({ logger: logAnalysisEvent, now });
   const scoreWindow = resolveScoringStrategy({ manifest, logger: logAnalysisEvent, now });
+  if (!scoreWindow) {
+    logAnalysisEvent({
+      type: "warning",
+      message: "Analysis skipped due to missing model assets",
+      context: { snapshotCount, symbolCount },
+      now,
+    });
+    return { ranked: [], analyzedAt: now.toISOString(), snapshots, analyzedSymbols: [] };
+  }
 
   const scoringStartedAt = Date.now();
   const scored = [];

@@ -1,10 +1,4 @@
-import { marketDateFromIso } from "../background/time.js";
-
 const MANIFEST_URL = new URL("./models/manifest.json", import.meta.url);
-const DEFAULT_CALIBRATION = {
-  percentClip: [-50, 50],
-  probabilityClip: [0.01, 0.99],
-};
 
 async function loadManifestFromFs() {
   const { readFile } = await import("fs/promises");
@@ -56,43 +50,27 @@ export async function loadModelManifest({ logger, now = new Date() } = {}) {
   }
 }
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function heuristicScore(window = [], { manifest, now }) {
-  const latest = window[0];
-  const oldest = window[window.length - 1];
-  const reference = oldest?.primeCost || oldest?.close || 1;
-  const swingPercent = (((latest.high ?? latest.close ?? reference) - reference) / reference) * 100;
-
-  const calibration = manifest?.calibration || DEFAULT_CALIBRATION;
-  const [minPercent, maxPercent] = calibration.percentClip || DEFAULT_CALIBRATION.percentClip;
-  const [minProb, maxProb] = calibration.probabilityClip || DEFAULT_CALIBRATION.probabilityClip;
-
-  const boundedPercent = clamp(swingPercent, minPercent, maxPercent);
-  const probability = clamp(Math.abs(boundedPercent) / 100, minProb, maxProb);
-
-  return {
-    predictedSwingPercent: boundedPercent,
-    predictedSwingProbability: probability,
-    dateTime: latest.dateTime,
-    id: latest.id,
-    marketDate: marketDateFromIso(latest.dateTime),
-    modelVersion: manifest?.version || "heuristic",
-    analyzedAt: now.toISOString(),
-  };
+function isManifestReady(manifest) {
+  return Boolean(manifest?.modelPath);
 }
 
 export function resolveScoringStrategy({ manifest, logger, now = new Date() } = {}) {
-  if (!manifest) {
+  if (!manifest || !isManifestReady(manifest)) {
     logger?.({
       type: "warning",
-      message: "Using heuristic scoring fallback",
-      context: { fallback: true },
+      message: "Model assets unavailable; skipping inference",
+      context: { hasManifest: Boolean(manifest), modelPath: manifest?.modelPath || null },
       now,
     });
+    return null;
   }
 
-  return heuristicScore;
+  logger?.({
+    type: "error",
+    message: "Model assets present but scoring pipeline not initialized",
+    context: { version: manifest?.version, modelPath: manifest?.modelPath },
+    now,
+  });
+
+  return null;
 }

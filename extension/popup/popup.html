@@ -14,6 +14,72 @@
         <button id="export">Export Excel</button>
         <button id="import">Import Excel</button>
       </div>
+      <section id="settings">
+        <h2>Settings</h2>
+        <form id="settings-form">
+          <label>
+            Database Name
+            <input id="setting-db-name" type="text" placeholder="marketpulseai" />
+          </label>
+          <label>
+            Market Timezone
+            <input id="setting-timezone" type="text" placeholder="Asia/Tehran" />
+          </label>
+          <div class="grid">
+            <label>
+              Market Open
+              <input id="setting-market-open" type="time" />
+            </label>
+            <label>
+              Market Close
+              <input id="setting-market-close" type="time" />
+            </label>
+          </div>
+          <label>
+            Analysis Deadline
+            <input id="setting-analysis-deadline" type="time" />
+          </label>
+          <label>
+            Trading Days (0=Sun..6=Sat)
+            <input id="setting-trading-days" type="text" placeholder="6,0,1,2,3" />
+          </label>
+          <div class="grid">
+            <label>
+              Retention Days
+              <input id="setting-retention-days" type="number" min="1" step="1" />
+            </label>
+            <label>
+              Top Swing Count
+              <input id="setting-top-swing-count" type="number" min="1" step="1" />
+            </label>
+          </div>
+          <fieldset>
+            <legend>Log Retention (Days)</legend>
+            <div class="grid">
+              <label>
+                Error
+                <input id="setting-log-error" type="number" min="1" step="1" />
+              </label>
+              <label>
+                Warning
+                <input id="setting-log-warning" type="number" min="1" step="1" />
+              </label>
+              <label>
+                Info
+                <input id="setting-log-info" type="number" min="1" step="1" />
+              </label>
+              <label>
+                Debug
+                <input id="setting-log-debug" type="number" min="1" step="1" />
+              </label>
+            </div>
+          </fieldset>
+          <div class="settings-actions">
+            <button type="submit">Save Settings</button>
+            <button id="settings-reset" type="button">Reset Defaults</button>
+          </div>
+        </form>
+      </section>
       <!-- Rankings table populated by popup.js once data is loaded or imported. -->
       <table id="rankings">
         <thead>

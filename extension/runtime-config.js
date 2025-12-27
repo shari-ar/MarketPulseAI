@@ -6,6 +6,7 @@
 export const LOG_LEVELS = ["error", "warning", "info", "debug"];
 
 export const DEFAULT_RUNTIME_CONFIG = {
+  DB_NAME: "marketpulseai",
   MARKET_TIMEZONE: "Asia/Tehran",
   MARKET_OPEN: "09:00",
   MARKET_CLOSE: "13:00",
@@ -28,6 +29,15 @@ export const DEFAULT_RUNTIME_CONFIG = {
 };
 
 const ENV_PREFIX = "MARKETPULSEAI_";
+let STORED_RUNTIME_CONFIG = {};
+
+export function setStoredRuntimeConfig(overrides = {}) {
+  STORED_RUNTIME_CONFIG = { ...overrides };
+}
+
+export function getStoredRuntimeConfig() {
+  return { ...STORED_RUNTIME_CONFIG };
+}
 
 function getEnvSource() {
   const maybeProcess = typeof globalThis !== "undefined" ? globalThis.process : undefined;
@@ -92,6 +102,7 @@ function loadEnvRuntimeConfig() {
   const parsingSelectors = parseJsonEnv(env[`${ENV_PREFIX}PARSING_SELECTORS`]);
 
   const config = {
+    DB_NAME: env[`${ENV_PREFIX}DB_NAME`],
     MARKET_TIMEZONE: env[`${ENV_PREFIX}MARKET_TIMEZONE`],
     MARKET_OPEN: env[`${ENV_PREFIX}MARKET_OPEN`],
     MARKET_CLOSE: env[`${ENV_PREFIX}MARKET_CLOSE`],
@@ -128,6 +139,7 @@ const ENV_RUNTIME_CONFIG = loadEnvRuntimeConfig();
 export function getRuntimeConfig(overrides = {}) {
   const base = {
     ...DEFAULT_RUNTIME_CONFIG,
+    ...STORED_RUNTIME_CONFIG,
     ...ENV_RUNTIME_CONFIG,
     ...overrides,
   };
@@ -136,6 +148,7 @@ export function getRuntimeConfig(overrides = {}) {
     ...base,
     LOG_RETENTION_DAYS: {
       ...DEFAULT_RUNTIME_CONFIG.LOG_RETENTION_DAYS,
+      ...(STORED_RUNTIME_CONFIG.LOG_RETENTION_DAYS || {}),
       ...(ENV_RUNTIME_CONFIG.LOG_RETENTION_DAYS || {}),
       ...(overrides.LOG_RETENTION_DAYS || {}),
     },

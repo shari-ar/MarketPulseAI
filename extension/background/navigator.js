@@ -233,7 +233,8 @@ export class NavigatorService {
    */
   hasSnapshotForDay(symbol, marketDate) {
     return this.snapshots.some(
-      (entry) => entry.id === symbol && marketDateFromIso(entry.dateTime) === marketDate
+      (entry) =>
+        entry.id === symbol && marketDateFromIso(entry.dateTime, this.config) === marketDate
     );
   }
 
@@ -391,7 +392,7 @@ export class NavigatorService {
 
     records.forEach((snapshot) => {
       if (!validateSnapshot(snapshot, { logger: storageLogger })) return;
-      const snapshotDate = marketDateFromIso(snapshot.dateTime);
+      const snapshotDate = marketDateFromIso(snapshot.dateTime, this.config);
       if (this.hasSnapshotForDay(snapshot.id, snapshotDate)) return;
       const copy = { ...snapshot };
       this.snapshots.push(copy);

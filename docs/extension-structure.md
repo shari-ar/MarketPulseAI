@@ -9,6 +9,7 @@ extension/
 │   └── navigator.js    # Drives page movement and crawl orchestration
 ├── analysis/           # Worker, TensorFlow.js assets, scalers, calibration metadata
 │   ├── models/         # Bundled model JSON/weights versions
+│   ├── feature-engineering.js # Feature extraction + z-score normalization helpers
 │   └── index.js        # Worker entry for scoring and progress reporting
 ├── popup/              # Popup UI scripts, styles, and markup
 │   ├── popup.html      # Popup markup registered by the manifest

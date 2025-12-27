@@ -1,0 +1,24 @@
+{
+  "swingPercent": {
+    "bias": 0,
+    "weights": {
+      "rangeRatio": 25,
+      "intradayRangeRatio": 10,
+      "returnClose": 15,
+      "returnPrimeCost": 10,
+      "liquidityVolumeRatio": 2,
+      "buySellVolumeRatio": 1
+    }
+  },
+  "swingProbability": {
+    "bias": 0,
+    "weights": {
+      "rangeRatio_z": 1.3,
+      "intradayRangeRatio_z": 0.9,
+      "returnClose_z": 0.7,
+      "liquidityVolumeRatio_z": 0.4,
+      "naturalBuyToJuridicalBuyRatio_z": 0.25,
+      "buySellVolumeRatio_z": 0.2
+    }
+  }
+}

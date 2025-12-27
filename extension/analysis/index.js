@@ -132,7 +132,7 @@ export async function runSwingAnalysis(
   }
 
   const manifest = await loadModelManifest({ logger: logAnalysisEvent, now });
-  const scoreWindow = resolveScoringStrategy({ manifest, logger: logAnalysisEvent, now });
+  const scoreWindow = await resolveScoringStrategy({ manifest, logger: logAnalysisEvent, now });
   if (!scoreWindow) {
     logAnalysisEvent({
       type: "warning",
@@ -157,7 +157,7 @@ export async function runSwingAnalysis(
       continue;
     }
 
-    const scoredEntry = scoreWindow(window, { manifest, now });
+    const scoredEntry = scoreWindow(window, { now });
     if (!scoredEntry) continue;
     scored.push({ ...scoredEntry, window });
 

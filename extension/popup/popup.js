@@ -11,6 +11,7 @@ const COLUMN_ORDER = Object.keys(SNAPSHOT_FIELDS);
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
 let runtimeConfig = getRuntimeConfig();
 const storage = createStorageAdapter();
+let latestAnalysisStatus = null;
 
 // Excel workbook creation and import/export helpers for the popup UI.
 /**
@@ -194,14 +195,22 @@ async function persistImportedRows(rows = []) {
  * Generate and trigger a download of the current ranking rows as an Excel
  * workbook. Files are timestamped to keep user exports distinct.
  */
+function resolveExportTimestamp(status) {
+  if (status?.state === "complete" && status.updatedAt) {
+    const parsed = new Date(status.updatedAt);
+    if (Number.isFinite(parsed.getTime())) return parsed.toISOString();
+  }
+  return new Date().toISOString();
+}
+
 function exportCurrentRows(rows) {
   const workbook = buildExportWorkbook(rows);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const timestamp = resolveExportTimestamp(latestAnalysisStatus).replace(/[:.]/g, "-");
   writeFile(workbook, `marketpulseai-${timestamp}.xlsx`);
   logPopupEvent({
     type: "info",
     message: "Exported ranking workbook",
-    context: { rowCount: rows.length, timestamp },
+    context: { rowCount: rows.length, timestamp, analysisStatus: latestAnalysisStatus?.state },
   });
 }
 
@@ -303,6 +312,7 @@ function setupUi() {
       ({ rankedResults = [], analysisStatus }) => {
         latestRows = rankedResults;
         renderRankings(rankSwingResults(rankedResults));
+        latestAnalysisStatus = analysisStatus || null;
         updateAnalysisModal(analysisStatus);
         logPopupEvent({
           type: "info",
@@ -314,6 +324,7 @@ function setupUi() {
 
     chromeApi.storage.onChanged.addListener((changes) => {
       if (changes.analysisStatus) {
+        latestAnalysisStatus = changes.analysisStatus.newValue || null;
         updateAnalysisModal(changes.analysisStatus.newValue);
       }
       if (changes.rankedResults) {

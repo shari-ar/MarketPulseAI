@@ -1,0 +1,6 @@
+{
+  "format": "tfjs-layers-model",
+  "generatedBy": "MarketPulseAI offline bundler",
+  "architecture": "tcn",
+  "notes": "Model topology and weights are bundled separately to keep the extension offline."
+}

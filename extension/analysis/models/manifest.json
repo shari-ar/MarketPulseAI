@@ -1,13 +1,17 @@
 {
-  "version": "2024-01-01-v1",
-  "scalersPath": "scalers.json",
-  "weightsPath": "weights.json",
-  "calibration": {
-    "percentClip": [-50, 50],
-    "probabilityClip": [0.01, 0.99],
-    "platt": {
-      "plattA": -1.2,
-      "plattB": 0.4
+  "activeVersion": "swing-tcn-2024-01-01-v1",
+  "versions": {
+    "swing-tcn-2024-01-01-v1": {
+      "modelPath": "swing-tcn-2024-01-01-v1/model.json",
+      "scalersPath": "swing-tcn-2024-01-01-v1/scalers.json",
+      "weightsPath": "swing-tcn-2024-01-01-v1/weights.json",
+      "calibrationPath": "swing-tcn-2024-01-01-v1/calibration.json"
+    },
+    "swing-tcn-2023-12-01-v1": {
+      "modelPath": "swing-tcn-2023-12-01-v1/model.json",
+      "scalersPath": "swing-tcn-2023-12-01-v1/scalers.json",
+      "weightsPath": "swing-tcn-2023-12-01-v1/weights.json",
+      "calibrationPath": "swing-tcn-2023-12-01-v1/calibration.json"
     }
   }
 }

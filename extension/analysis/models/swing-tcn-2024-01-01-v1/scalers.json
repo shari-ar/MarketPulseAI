@@ -1,0 +1,826 @@
+{
+  "primeCost": {
+    "mean": 0,
+    "std": 1
+  },
+  "open": {
+    "mean": 0,
+    "std": 1
+  },
+  "close": {
+    "mean": 0,
+    "std": 1
+  },
+  "high": {
+    "mean": 0,
+    "std": 1
+  },
+  "low": {
+    "mean": 0,
+    "std": 1
+  },
+  "allowedHigh": {
+    "mean": 0,
+    "std": 1
+  },
+  "allowedLow": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolume": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValue": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCount": {
+    "mean": 0,
+    "std": 1
+  },
+  "baseVolume": {
+    "mean": 0,
+    "std": 1
+  },
+  "averageMonthlyVolume": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolume": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolume": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyVolume": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalSellVolume": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolume": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolume": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyCount": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellCount": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyCount": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalSellCount": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCount": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCount": {
+    "mean": 0,
+    "std": 1
+  },
+  "marketValue": {
+    "mean": 0,
+    "std": 1
+  },
+  "shareCount": {
+    "mean": 0,
+    "std": 1
+  },
+  "floatingShares": {
+    "mean": 0,
+    "std": 1
+  },
+  "returnClose": {
+    "mean": 0,
+    "std": 1
+  },
+  "returnPrimeCost": {
+    "mean": 0,
+    "std": 1
+  },
+  "rangeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "intradayRangeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "liquidityVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "buySellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyToJuridicalBuyRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellToJuridicalSellRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyToJuridicalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellToJuridicalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTotradingValueRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTototalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTototalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTonaturalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTonaturalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTojuridicalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTojuridicalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTobaseVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeToaverageMonthlyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTototalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTototalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTonaturalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTonaturalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTojuridicalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTojuridicalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTobaseVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueToaverageMonthlyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTototalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTonaturalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTonaturalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTojuridicalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTojuridicalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTobaseVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeToaverageMonthlyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTonaturalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTonaturalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTojuridicalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTojuridicalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTobaseVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeToaverageMonthlyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeTonaturalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeTojuridicalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeTojuridicalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeTobaseVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeToaverageMonthlyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolumeTojuridicalBuyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolumeTojuridicalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolumeTobaseVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolumeToaverageMonthlyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyVolumeTojuridicalSellVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyVolumeTobaseVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyVolumeToaverageMonthlyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalSellVolumeTobaseVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalSellVolumeToaverageMonthlyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "baseVolumeToaverageMonthlyVolumeRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTototalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTototalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTonaturalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTonaturalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTojuridicalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTojuridicalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTototalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTonaturalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTonaturalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTojuridicalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTojuridicalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCountTonaturalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCountTonaturalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCountTojuridicalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCountTojuridicalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyCountTonaturalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyCountTojuridicalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyCountTojuridicalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellCountTojuridicalBuyCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellCountTojuridicalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyCountTojuridicalSellCountRatio": {
+    "mean": 0,
+    "std": 1
+  },
+  "primeCost_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "open_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "close_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "high_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "low_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "allowedHigh_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "allowedLow_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolume_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValue_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCount_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "baseVolume_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "averageMonthlyVolume_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolume_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolume_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyVolume_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalSellVolume_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolume_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolume_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyCount_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellCount_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyCount_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalSellCount_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCount_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCount_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "marketValue_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "shareCount_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "floatingShares_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "returnClose_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "returnPrimeCost_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "rangeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "intradayRangeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "liquidityVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "buySellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyToJuridicalBuyRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellToJuridicalSellRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyToJuridicalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellToJuridicalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTotradingValueRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTototalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTototalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTonaturalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTonaturalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTojuridicalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTojuridicalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeTobaseVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingVolumeToaverageMonthlyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTototalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTototalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTonaturalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTonaturalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTojuridicalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTojuridicalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueTobaseVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradingValueToaverageMonthlyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTototalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTonaturalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTonaturalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTojuridicalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTojuridicalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeTobaseVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyVolumeToaverageMonthlyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTonaturalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTonaturalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTojuridicalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTojuridicalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeTobaseVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellVolumeToaverageMonthlyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeTonaturalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeTojuridicalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeTojuridicalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeTobaseVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyVolumeToaverageMonthlyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolumeTojuridicalBuyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolumeTojuridicalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolumeTobaseVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellVolumeToaverageMonthlyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyVolumeTojuridicalSellVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyVolumeTobaseVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyVolumeToaverageMonthlyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalSellVolumeTobaseVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalSellVolumeToaverageMonthlyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "baseVolumeToaverageMonthlyVolumeRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTototalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTototalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTonaturalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTonaturalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTojuridicalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "tradesCountTojuridicalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTototalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTonaturalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTonaturalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTojuridicalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalBuyCountTojuridicalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCountTonaturalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCountTonaturalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCountTojuridicalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "totalSellCountTojuridicalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyCountTonaturalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyCountTojuridicalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalBuyCountTojuridicalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellCountTojuridicalBuyCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "naturalSellCountTojuridicalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  },
+  "juridicalBuyCountTojuridicalSellCountRatio_z": {
+    "mean": 0,
+    "std": 1
+  }
+}

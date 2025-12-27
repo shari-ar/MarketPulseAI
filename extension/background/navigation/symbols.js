@@ -1,0 +1,39 @@
+import { executeParser } from "./helpers.js";
+
+function extractSymbolsFromDom() {
+  const ids = new Set();
+  const urls = new Map();
+
+  const addSymbol = (id, url) => {
+    if (!id) return;
+    ids.add(id);
+    if (url) urls.set(id, url);
+  };
+
+  document.querySelectorAll("[data-symbol-id], [data-ins-code]").forEach((node) => {
+    const id = node.getAttribute("data-symbol-id") || node.getAttribute("data-ins-code");
+    addSymbol(id);
+  });
+
+  const linkSelector = 'a[href*="tsetmc.com/ins"], a[href*="/ins/?i="]';
+  document.querySelectorAll(linkSelector).forEach((link) => {
+    const href = link.getAttribute("href");
+    if (!href) return;
+    const resolved = new URL(href, window.location.href);
+    const id = resolved.searchParams.get("i");
+    addSymbol(id, resolved.toString());
+  });
+
+  return Array.from(ids).map((id) => ({
+    id,
+    url: urls.get(id),
+  }));
+}
+
+/**
+ * Pulls symbol identifiers from the active tab so the crawler can sequence visits.
+ */
+export async function collectSymbolsFromTab(tabId) {
+  const symbols = await executeParser(tabId, extractSymbolsFromDom);
+  return Array.isArray(symbols) ? symbols.filter((symbol) => symbol?.id) : [];
+}

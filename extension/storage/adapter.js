@@ -2,7 +2,6 @@ import Dexie from "dexie";
 import {
   ANALYSIS_CACHE_FIELDS,
   ANALYSIS_CACHE_TABLE,
-  DB_NAME,
   DB_VERSION,
   LOG_FIELDS,
   LOG_TABLE,
@@ -29,6 +28,10 @@ class MemoryAdapter {
     this.snapshots = [];
     this.logs = [];
     this.analysisCache = new Map();
+  }
+
+  updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
+    this.config = getRuntimeConfig(config);
   }
 
   async addSnapshots(records = []) {
@@ -84,8 +87,19 @@ class MemoryAdapter {
 class DexieAdapter extends MemoryAdapter {
   constructor(config = DEFAULT_RUNTIME_CONFIG) {
     super(config);
-    this.db = new Dexie(DB_NAME);
+    this.db = new Dexie(this.config.DB_NAME);
     this.db.version(DB_VERSION).stores(getSchemaDefinition());
+  }
+
+  updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
+    const nextConfig = getRuntimeConfig(config);
+    const shouldReset = nextConfig.DB_NAME !== this.config.DB_NAME;
+    this.config = nextConfig;
+    if (shouldReset) {
+      this.db.close();
+      this.db = new Dexie(this.config.DB_NAME);
+      this.db.version(DB_VERSION).stores(getSchemaDefinition());
+    }
   }
 
   async addSnapshots(records = []) {

@@ -2,12 +2,14 @@ import { read, utils, writeFile } from "./xlsx-loader.js";
 import { rankSwingResults } from "../analysis/rank.js";
 import { SNAPSHOT_FIELDS } from "../storage/schema.js";
 import { getRuntimeConfig } from "../runtime-config.js";
+import { normalizeRuntimeConfig, RUNTIME_CONFIG_STORAGE_KEY } from "../runtime-settings.js";
 import { logPopupEvent, popupLogger } from "./logger.js";
 import { createStorageAdapter } from "../storage/adapter.js";
+import { initializePopupRuntimeSettings, persistPopupRuntimeSettings } from "./settings.js";
 
 const COLUMN_ORDER = Object.keys(SNAPSHOT_FIELDS);
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
-const runtimeConfig = getRuntimeConfig();
+let runtimeConfig = getRuntimeConfig();
 const storage = createStorageAdapter();
 
 // Excel workbook creation and import/export helpers for the popup UI.
@@ -95,6 +97,53 @@ function updateAnalysisModal(status) {
       : `Analysis running (${progressPercent}%)`;
 }
 
+function getInputValue(selector) {
+  if (typeof document === "undefined") return null;
+  const input = document.querySelector(selector);
+  return input ? input.value : null;
+}
+
+function setInputValue(selector, value) {
+  if (typeof document === "undefined") return;
+  const input = document.querySelector(selector);
+  if (input) input.value = value ?? "";
+}
+
+function readSettingsForm() {
+  const raw = {
+    DB_NAME: getInputValue("#setting-db-name"),
+    MARKET_TIMEZONE: getInputValue("#setting-timezone"),
+    MARKET_OPEN: getInputValue("#setting-market-open"),
+    MARKET_CLOSE: getInputValue("#setting-market-close"),
+    ANALYSIS_DEADLINE: getInputValue("#setting-analysis-deadline"),
+    TRADING_DAYS: getInputValue("#setting-trading-days"),
+    RETENTION_DAYS: getInputValue("#setting-retention-days"),
+    TOP_SWING_COUNT: getInputValue("#setting-top-swing-count"),
+    LOG_RETENTION_DAYS: {
+      error: getInputValue("#setting-log-error"),
+      warning: getInputValue("#setting-log-warning"),
+      info: getInputValue("#setting-log-info"),
+      debug: getInputValue("#setting-log-debug"),
+    },
+  };
+  return normalizeRuntimeConfig(raw);
+}
+
+function hydrateSettingsForm(config) {
+  setInputValue("#setting-db-name", config.DB_NAME);
+  setInputValue("#setting-timezone", config.MARKET_TIMEZONE);
+  setInputValue("#setting-market-open", config.MARKET_OPEN);
+  setInputValue("#setting-market-close", config.MARKET_CLOSE);
+  setInputValue("#setting-analysis-deadline", config.ANALYSIS_DEADLINE);
+  setInputValue("#setting-trading-days", (config.TRADING_DAYS || []).join(","));
+  setInputValue("#setting-retention-days", config.RETENTION_DAYS);
+  setInputValue("#setting-top-swing-count", config.TOP_SWING_COUNT);
+  setInputValue("#setting-log-error", config.LOG_RETENTION_DAYS?.error);
+  setInputValue("#setting-log-warning", config.LOG_RETENTION_DAYS?.warning);
+  setInputValue("#setting-log-info", config.LOG_RETENTION_DAYS?.info);
+  setInputValue("#setting-log-debug", config.LOG_RETENTION_DAYS?.debug);
+}
+
 async function hydrateExistingSnapshots() {
   const snapshots = await storage.getSnapshots();
   return Array.isArray(snapshots) ? snapshots : [];
@@ -133,6 +182,8 @@ function setupUi() {
   const exportBtn = document.getElementById("export");
   const importBtn = document.getElementById("import");
   const importFile = document.getElementById("import-file");
+  const settingsForm = document.getElementById("settings-form");
+  const settingsReset = document.getElementById("settings-reset");
 
   let latestRows = [];
 
@@ -178,6 +229,22 @@ function setupUi() {
   importBtn?.addEventListener("click", () => importFile?.click());
   importFile?.addEventListener("change", handleImport);
 
+  settingsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const normalized = readSettingsForm();
+    await persistPopupRuntimeSettings(normalized);
+  });
+
+  settingsReset?.addEventListener("click", async () => {
+    if (!chromeApi?.storage?.local?.remove) return;
+    await chromeApi.storage.local.remove(RUNTIME_CONFIG_STORAGE_KEY);
+    logPopupEvent({
+      type: "info",
+      message: "Reset runtime settings to defaults",
+      context: {},
+    });
+  });
+
   if (chromeApi?.storage?.local) {
     chromeApi.storage.local.get(
       ["rankedResults", "analysisStatus"],
@@ -210,6 +277,17 @@ function setupUi() {
     message: "Initialized popup UI",
     context: { hasChrome: Boolean(chromeApi?.storage?.local) },
   });
+
+  initializePopupRuntimeSettings({
+    onUpdate: (config) => {
+      runtimeConfig = config;
+      storage.updateConfig?.(config);
+      hydrateSettingsForm(runtimeConfig);
+      renderRankings(rankSwingResults(latestRows));
+    },
+  });
+
+  hydrateSettingsForm(runtimeConfig);
 }
 
 setupUi();

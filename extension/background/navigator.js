@@ -8,6 +8,8 @@ import { runSwingAnalysisWithWorker } from "../analysis/runner.js";
 import { LoggingService, loggingService as sharedLogger } from "./logger.js";
 import { storageAdapter } from "../storage/adapter.js";
 import { crawlSymbols } from "./navigation/crawler.js";
+import { collectSymbolsFromTab } from "./navigation/symbols.js";
+import { initializeRuntimeSettings } from "./settings.js";
 
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
 const MARKET_HOST_PATTERN = /^https?:\/\/(?:[^./]+\.)*tsetmc\.com\//i;
@@ -39,6 +41,7 @@ export class NavigatorService {
     this.hydrating = this.hydrateFromStorage();
     this.closeTimer = null;
     this.deadlineTimer = null;
+    this.symbolRefresh = null;
   }
 
   get logs() {
@@ -50,6 +53,22 @@ export class NavigatorService {
     if (this.deadlineTimer) clearTimeout(this.deadlineTimer);
     this.closeTimer = null;
     this.deadlineTimer = null;
+  }
+
+  updateConfig(config = DEFAULT_RUNTIME_CONFIG, now = new Date()) {
+    this.config = getRuntimeConfig(config);
+    this.logger.updateConfig?.(this.config);
+    this.storage?.updateConfig?.(this.config);
+    this.logger.log({
+      type: "info",
+      message: "Runtime config updated",
+      source: "navigator",
+      context: { schedule: { ...this.config } },
+      now,
+    });
+    if (this.activeTabId !== null) {
+      this.scheduleDailyTasks(now);
+    }
   }
 
   scheduleDailyTasks(now = new Date()) {
@@ -132,20 +151,77 @@ export class NavigatorService {
    *
    * @param {Array<string|{id: string, url?: string}>} symbols - Symbols anticipated from the collector.
    */
-  planSymbols(symbols = []) {
+  planSymbols(symbols = [], now = new Date()) {
     const normalized = symbols
       .map((entry) => (typeof entry === "string" ? { id: entry } : entry))
       .filter((entry) => entry?.id);
-    this.expectedSymbols = new Set(normalized.map((entry) => String(entry.id)));
-    this.symbolQueue = normalized;
+    const marketDate = marketDateFromIso(now.toISOString(), this.config);
+    const latestBySymbol = new Map();
+    this.snapshots.forEach((snapshot) => {
+      if (!snapshot?.id || !snapshot?.dateTime) return;
+      const existing = latestBySymbol.get(snapshot.id);
+      if (!existing || new Date(snapshot.dateTime) > new Date(existing)) {
+        latestBySymbol.set(snapshot.id, snapshot.dateTime);
+      }
+    });
+    const missing = normalized.filter((entry) => {
+      const latest = latestBySymbol.get(entry.id);
+      return !latest || marketDateFromIso(latest, this.config) !== marketDate;
+    });
+
+    missing.sort((a, b) => {
+      const aTime = latestBySymbol.get(a.id);
+      const bTime = latestBySymbol.get(b.id);
+      if (!aTime && !bTime) return 0;
+      if (!aTime) return -1;
+      if (!bTime) return 1;
+      return new Date(aTime) - new Date(bTime);
+    });
+
+    this.expectedSymbols = new Set(missing.map((entry) => String(entry.id)));
+    this.symbolQueue = missing;
     this.crawlComplete = this.expectedSymbols.size === 0;
     this.logger.log({
       type: "info",
       message: "Planned symbol crawl",
-      context: { expectedCount: this.expectedSymbols.size },
+      context: {
+        expectedCount: this.expectedSymbols.size,
+        marketDate,
+      },
       source: "navigator",
     });
     if (this.activeTabId !== null && shouldCollect(new Date(), this.config)) this.startCrawl();
+  }
+
+  async refreshSymbolPlan(now = new Date()) {
+    if (this.symbolRefresh || this.activeTabId === null) return;
+    this.symbolRefresh = collectSymbolsFromTab(this.activeTabId, this.config)
+      .then((symbols) => {
+        if (!symbols.length) {
+          this.logger.log({
+            type: "warning",
+            message: "No symbols detected on page",
+            source: "navigator",
+            context: { tabId: this.activeTabId },
+            now,
+          });
+          return;
+        }
+        this.planSymbols(symbols, now);
+      })
+      .catch((error) => {
+        this.logger.log({
+          type: "warning",
+          message: "Failed to collect symbol list",
+          source: "navigator",
+          context: { error: error?.message, tabId: this.activeTabId },
+          now,
+        });
+      })
+      .finally(() => {
+        this.symbolRefresh = null;
+      });
+    await this.symbolRefresh;
   }
 
   /**
@@ -374,6 +450,7 @@ export class NavigatorService {
       now,
     });
     this.scheduleDailyTasks(now);
+    this.refreshSymbolPlan(now);
 
     if (shouldPause(now, this.config)) {
       this.logger.log({
@@ -515,6 +592,11 @@ export class NavigatorService {
 
 export const navigatorService = new NavigatorService();
 
+initializeRuntimeSettings({
+  logger: navigatorService.logger,
+  onUpdate: (config) => navigatorService.updateConfig(config),
+});
+
 function isMarketHost(url) {
   return typeof url === "string" && MARKET_HOST_PATTERN.test(url);
 }
@@ -544,6 +626,7 @@ function attachTabListeners() {
     if (!changeInfo.url) return;
     if (isMarketHost(changeInfo.url)) {
       navigatorService.startSession(tabId);
+      navigatorService.refreshSymbolPlan();
     } else {
       navigatorService.stopSession("navigated-away");
     }

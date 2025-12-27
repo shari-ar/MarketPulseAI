@@ -14,6 +14,10 @@ export class LoggingService {
     this.hydrating = this.hydrate();
   }
 
+  updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
+    this.config = getRuntimeConfig(config);
+  }
+
   /**
    * Appends a structured log entry and prunes expired rows.
    *

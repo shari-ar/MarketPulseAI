@@ -22,6 +22,10 @@ function sanitizeRecord(record, shape) {
   return normalized;
 }
 
+function snapshotKey(record) {
+  return `${record.id}-${record.dateTime}`;
+}
+
 class MemoryAdapter {
   constructor(config = DEFAULT_RUNTIME_CONFIG) {
     this.config = getRuntimeConfig(config);
@@ -38,6 +42,17 @@ class MemoryAdapter {
     const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
     this.snapshots.push(...sanitized);
     return { inserted: sanitized.length };
+  }
+
+  async upsertSnapshots(records = []) {
+    const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
+    const byKey = new Map(this.snapshots.map((snapshot) => [snapshotKey(snapshot), snapshot]));
+    sanitized.forEach((record) => {
+      if (!record.id || !record.dateTime) return;
+      byKey.set(snapshotKey(record), record);
+    });
+    this.snapshots = Array.from(byKey.values());
+    return { upserted: sanitized.length, total: this.snapshots.length };
   }
 
   async getSnapshots() {
@@ -107,6 +122,12 @@ class DexieAdapter extends MemoryAdapter {
     const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
     await this.db[SNAPSHOT_TABLE].bulkPut(sanitized);
     return { inserted: sanitized.length };
+  }
+
+  async upsertSnapshots(records = []) {
+    const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
+    await this.db[SNAPSHOT_TABLE].bulkPut(sanitized);
+    return { upserted: sanitized.length };
   }
 
   async getSnapshots() {

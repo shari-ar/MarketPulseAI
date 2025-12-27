@@ -108,10 +108,17 @@ button:hover {
   background: #3b82f6;
 }
 
+.table-scroll {
+  margin-top: 8px;
+  overflow-x: auto;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+}
+
 table {
   width: 100%;
+  min-width: 720px;
   border-collapse: collapse;
-  margin-top: 8px;
 }
 
 th,
@@ -119,6 +126,8 @@ td {
   border-bottom: 1px solid #1f2937;
   padding: 6px;
   text-align: left;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 th {

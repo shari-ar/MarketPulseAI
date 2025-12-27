@@ -72,6 +72,11 @@ function applyScoresToSnapshots(snapshots = [], scores = []) {
   return hydrated;
 }
 
+function selectRankableSnapshots(scored = [], snapshots = []) {
+  const scoredKeys = new Set(scored.map((entry) => `${entry.id}-${entry.dateTime}`));
+  return snapshots.filter((snapshot) => scoredKeys.has(`${snapshot.id}-${snapshot.dateTime}`));
+}
+
 function filterFreshWindows(windows, analysisCache = new Map()) {
   if (!analysisCache?.size) return windows;
 
@@ -172,7 +177,8 @@ export async function runSwingAnalysis(
 
   const scoredSymbols = scored.map((entry) => entry.id).filter(Boolean);
   const decoratedSnapshots = applyScoresToSnapshots(snapshots, scored);
-  const ranked = rankSwingResults(scored);
+  const rankableSnapshots = selectRankableSnapshots(scored, decoratedSnapshots);
+  const ranked = rankSwingResults(rankableSnapshots);
 
   logAnalysisEvent({
     message: "Ranked swing opportunities",

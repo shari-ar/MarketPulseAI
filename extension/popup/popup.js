@@ -53,6 +53,32 @@ export function mergeImportedRows(existing = [], incoming = []) {
  * Rows are highlighted when they fall within the top five entries to surface
  * the highest-confidence predictions in the popup view.
  */
+function formatCellValue(key, value) {
+  if (value === null || value === undefined || value === "") return "--";
+  if (key === "predictedSwingProbability") {
+    return Number.isFinite(value) ? `${(value * 100).toFixed(3)}%` : "--";
+  }
+  if (key === "predictedSwingPercent") {
+    return Number.isFinite(value) ? `${value.toFixed(3)}%` : "--";
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value.toLocaleString();
+  }
+  return String(value);
+}
+
+function renderTableHeader() {
+  if (typeof document === "undefined") return;
+  const theadRow = document.querySelector("#rankings thead tr");
+  if (!theadRow) return;
+  theadRow.innerHTML = "";
+  COLUMN_ORDER.forEach((column) => {
+    const th = document.createElement("th");
+    th.textContent = column;
+    theadRow.appendChild(th);
+  });
+}
+
 function renderRankings(rows = []) {
   if (typeof document === "undefined") return;
   const tbody = document.querySelector("#rankings tbody");
@@ -61,17 +87,11 @@ function renderRankings(rows = []) {
   rows.forEach((row, index) => {
     const tr = document.createElement("tr");
     if (index < runtimeConfig.TOP_SWING_COUNT) tr.classList.add("highlight");
-    const probability = Number.isFinite(row.predictedSwingProbability)
-      ? `${(row.predictedSwingProbability * 100).toFixed(3)}%`
-      : "--";
-    const swingPercent = Number.isFinite(row.predictedSwingPercent)
-      ? `${row.predictedSwingPercent.toFixed(3)}%`
-      : "--";
-    tr.innerHTML = `
-      <td>${row.symbolAbbreviation || row.id}</td>
-      <td>${probability}</td>
-      <td>${swingPercent}</td>
-    `;
+    COLUMN_ORDER.forEach((column) => {
+      const td = document.createElement("td");
+      td.textContent = formatCellValue(column, row?.[column]);
+      tr.appendChild(td);
+    });
     tbody.appendChild(tr);
   });
 }
@@ -244,6 +264,8 @@ function setupUi() {
       context: {},
     });
   });
+
+  renderTableHeader();
 
   if (chromeApi?.storage?.local) {
     chromeApi.storage.local.get(

@@ -81,16 +81,14 @@
         </form>
       </section>
       <!-- Rankings table populated by popup.js once data is loaded or imported. -->
-      <table id="rankings">
-        <thead>
-          <tr>
-            <th>Symbol</th>
-            <th>Probability</th>
-            <th>Swing %</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-scroll">
+        <table id="rankings">
+          <thead>
+            <tr></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <!-- Hidden file input triggered by the import button to select Excel files. -->
       <input id="import-file" type="file" accept=".xlsx" hidden />
     </main>

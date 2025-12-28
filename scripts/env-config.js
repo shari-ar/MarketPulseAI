@@ -1,8 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
-const { logWarn } = require("./logger");
+const { logInfo, logWarn } = require("./logger");
 
+// Default configuration values used when environment overrides are absent.
 const DEFAULTS = {
   tsetmcBaseUrl: "https://www.tsetmc.com",
   symbolUrlTemplate: "https://tsetmc.com/ins/?i={symbol}",
@@ -25,6 +26,36 @@ const DEFAULTS = {
   extensionDistDir: "dist/extension",
 };
 
+// Explicit list of environment variables that may override defaults.
+const OVERRIDE_KEYS = [
+  "TSETMC_BASE_URL",
+  "SYMBOL_URL_TEMPLATE",
+  "MARKET_LOCK_START_TIME",
+  "MARKET_LOCK_END_TIME",
+  "ANALYSIS_DEADLINE",
+  "MARKET_TIMEZONE",
+  "TRADING_DAYS",
+  "DEXIE_DB_NAME",
+  "DEXIE_DB_VERSION",
+  "RETENTION_DAYS",
+  "TOP_SWING_COUNT",
+  "NAVIGATION_READY_SELECTOR",
+  "NAVIGATION_WAIT_TIMEOUT_MS",
+  "NAVIGATION_POLL_INTERVAL_MS",
+  "NAVIGATION_RETRY_LIMIT",
+  "PARSING_SELECTORS",
+  "EXTENSION_SRC_DIR",
+  "EXTENSION_DIST_DIR",
+];
+
+/**
+ * Parse a numeric env value and warn when invalid.
+ *
+ * @param {string|undefined} value - Raw env value.
+ * @param {number} fallback - Default value when parsing fails.
+ * @param {string} label - Friendly label for log messages.
+ * @returns {number} Parsed integer or fallback.
+ */
 function parseIntOrDefault(value, fallback, label) {
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) {
@@ -36,6 +67,14 @@ function parseIntOrDefault(value, fallback, label) {
   return parsed;
 }
 
+/**
+ * Parse a JSON env value and warn when invalid.
+ *
+ * @param {string|undefined} value - Raw env value.
+ * @param {any} fallback - Default value when parsing fails.
+ * @param {string} label - Friendly label for log messages.
+ * @returns {any} Parsed JSON or fallback.
+ */
 function parseJsonOrDefault(value, fallback, label) {
   if (!value) return fallback;
   try {
@@ -46,10 +85,32 @@ function parseJsonOrDefault(value, fallback, label) {
   }
 }
 
+/**
+ * Load environment configuration with explicit defaults and log active overrides.
+ *
+ * @returns {object} Resolved build configuration.
+ */
 function loadEnvConfig() {
   const projectRoot = path.resolve(__dirname, "..");
+  const envPath = path.join(projectRoot, ".env");
   // Load .env from project root to provide optional overrides.
-  dotenv.config({ path: path.join(projectRoot, ".env") });
+  const result = dotenv.config({ path: envPath });
+  if (result?.error) {
+    if (result.error.code === "ENOENT") {
+      logInfo("No .env file found; using defaults and process environment overrides.");
+    } else {
+      logWarn(`Failed to load .env file at ${envPath}.`);
+    }
+  } else if (result?.parsed) {
+    logInfo("Loaded environment overrides from .env.");
+  }
+
+  const overrideKeys = OVERRIDE_KEYS.filter((key) => process.env[key] !== undefined);
+  if (overrideKeys.length) {
+    logInfo(`Using ${overrideKeys.length} environment override(s): ${overrideKeys.join(", ")}`);
+  } else {
+    logInfo("No environment overrides detected; defaults will be used.");
+  }
 
   return {
     tsetmcBaseUrl: process.env.TSETMC_BASE_URL || DEFAULTS.tsetmcBaseUrl,
@@ -103,6 +164,12 @@ function loadEnvConfig() {
   };
 }
 
+/**
+ * Emit the runtime-config module consumed by the extension.
+ *
+ * @param {object} config - Build configuration source.
+ * @param {string} destination - Output path for runtime-config module.
+ */
 function writeRuntimeConfig(
   config,
   destination = path.resolve(__dirname, "../extension/runtime-config.js")

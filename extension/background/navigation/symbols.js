@@ -1,5 +1,10 @@
 import { executeParser } from "./helpers.js";
 
+/**
+ * Scrapes the active DOM for symbol identifiers and their canonical URLs.
+ *
+ * @returns {Array<{id: string, url?: string}>} Raw symbol entries found in the DOM.
+ */
 function extractSymbolsFromDom() {
   const ids = new Set();
   const urls = new Map();
@@ -32,8 +37,22 @@ function extractSymbolsFromDom() {
 
 /**
  * Pulls symbol identifiers from the active tab so the crawler can sequence visits.
+ *
+ * @param {number} tabId - Chrome tab identifier to inspect.
+ * @param {object} [options={}] - Optional instrumentation overrides.
+ * @param {import("../logger.js").LoggingService} [options.logger] - Structured logger.
+ * @param {Date} [options.now=new Date()] - Clock used for deterministic tests.
+ * @returns {Promise<Array<{id: string, url?: string}>>} Normalized symbol list.
  */
-export async function collectSymbolsFromTab(tabId) {
+export async function collectSymbolsFromTab(tabId, { logger, now = new Date() } = {}) {
   const symbols = await executeParser(tabId, extractSymbolsFromDom);
-  return Array.isArray(symbols) ? symbols.filter((symbol) => symbol?.id) : [];
+  const normalized = Array.isArray(symbols) ? symbols.filter((symbol) => symbol?.id) : [];
+  logger?.log({
+    type: "debug",
+    message: "Collected symbols from active tab",
+    source: "navigator",
+    context: { tabId, count: normalized.length },
+    now,
+  });
+  return normalized;
 }

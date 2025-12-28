@@ -7,6 +7,11 @@ function supportsWorker() {
   return typeof Worker !== "undefined" && Boolean(chromeApi?.runtime?.getURL);
 }
 
+/**
+ * Creates a module worker bound to the extension runtime bundle.
+ *
+ * @returns {Worker} Newly created analysis worker.
+ */
 function createWorker() {
   const url = chromeApi.runtime.getURL("analysis/index.js");
   return new Worker(url, { type: "module" });
@@ -34,6 +39,12 @@ export async function runSwingAnalysisWithWorker({
 
   return new Promise((resolve, reject) => {
     const worker = createWorker();
+    logAnalysisEvent({
+      type: "info",
+      message: "Spawned analysis worker",
+      context: { snapshotCount: snapshots.length, cacheSize: analysisCache.size },
+      now,
+    });
 
     worker.onmessage = (event) => {
       const { type, payload } = event.data || {};
@@ -43,16 +54,37 @@ export async function runSwingAnalysisWithWorker({
       }
       if (type === "complete") {
         worker.terminate();
+        logAnalysisEvent({
+          type: "info",
+          message: "Analysis worker completed",
+          context: {
+            analyzedAt: payload?.analyzedAt,
+            rankedCount: payload?.ranked?.length ?? 0,
+          },
+          now,
+        });
         resolve(payload);
       }
       if (type === "error") {
         worker.terminate();
+        logAnalysisEvent({
+          type: "error",
+          message: "Analysis worker reported an error",
+          context: { error: payload?.message },
+          now,
+        });
         reject(new Error(payload?.message || "Analysis worker error"));
       }
     };
 
     worker.onerror = (error) => {
       worker.terminate();
+      logAnalysisEvent({
+        type: "error",
+        message: "Analysis worker crashed",
+        context: { error: error?.message },
+        now,
+      });
       reject(error);
     };
 

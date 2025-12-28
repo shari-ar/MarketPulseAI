@@ -300,7 +300,7 @@ function disposeOutputs(output) {
 }
 
 function scoreWindowWithWeights(window, manifest, assets, now, logger) {
-  const featureWindow = buildFeatureWindow(window, { scalers: assets.scalers });
+  const featureWindow = buildFeatureWindow(window, { scalers: assets.scalers, logger, now });
   if (!featureWindow) {
     logger?.({
       type: "warning",
@@ -342,7 +342,7 @@ function buildModelInput(windowRows = []) {
 }
 
 function scoreWindowWithTfjs(window, manifest, assets, now, logger) {
-  const featureWindow = buildFeatureWindow(window, { scalers: assets.scalers });
+  const featureWindow = buildFeatureWindow(window, { scalers: assets.scalers, logger, now });
   if (!featureWindow) {
     logger?.({
       type: "warning",

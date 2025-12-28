@@ -508,17 +508,32 @@ export class NavigatorService {
       });
       return;
     }
-    if (!shouldCollect(new Date(), this.config)) {
+    const now = new Date();
+    if (!shouldCollect(now, this.config)) {
       this.logger.log({
         type: "debug",
         message: "Crawl blocked outside collection window",
         source: "navigator",
+        context: { timestamp: now.toISOString() },
+        now,
       });
       return;
     }
 
+    // Create a fresh controller so this crawl can be cancelled independently.
     this.crawlController = new AbortController();
     const signal = this.crawlController.signal;
+
+    this.logger.log({
+      type: "info",
+      message: "Starting symbol crawl",
+      source: "navigator",
+      context: {
+        queuedSymbols: this.symbolQueue.length,
+        tabId: this.activeTabId,
+      },
+      now,
+    });
 
     this.crawlTask = crawlSymbols({
       tabId: this.activeTabId,

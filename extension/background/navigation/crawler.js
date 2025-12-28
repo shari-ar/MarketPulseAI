@@ -4,6 +4,13 @@ import { navigateTo, waitForSelector, executeParser } from "./helpers.js";
 import { DEFAULT_SELECTORS, parseTopBoxSnapshot } from "../parsing/top-box.js";
 import { SNAPSHOT_FIELDS } from "../../storage/schema.js";
 
+/**
+ * Builds a symbol-specific URL from config templates or a precomputed URL.
+ *
+ * @param {{id: string, url?: string}} symbol - Symbol descriptor.
+ * @param {object} config - Runtime configuration.
+ * @returns {string|null} Resolved URL or null when unavailable.
+ */
 function buildUrl(symbol, config) {
   if (!symbol) return null;
   if (symbol.url) return symbol.url;
@@ -11,11 +18,27 @@ function buildUrl(symbol, config) {
   return template.replace("{symbol}", encodeURIComponent(symbol.id));
 }
 
+/**
+ * Ensures every snapshot includes all schema keys to simplify downstream handling.
+ *
+ * @param {object} snapshot - Raw parser output.
+ * @returns {object} Snapshot aligned with schema defaults.
+ */
 function withSnapshotDefaults(snapshot) {
   const base = Object.fromEntries(Object.keys(SNAPSHOT_FIELDS).map((key) => [key, null]));
   return { ...base, ...snapshot };
 }
 
+/**
+ * Visits the symbol page, waits for readiness, and parses the snapshot payload.
+ *
+ * @param {object} params - Crawl parameters.
+ * @param {number} params.tabId - Target tab id.
+ * @param {{id: string, url?: string}} params.symbol - Symbol descriptor.
+ * @param {object} params.config - Runtime configuration.
+ * @param {AbortSignal} params.signal - Abort signal for cancellation.
+ * @returns {Promise<object>} Parsed snapshot with schema defaults.
+ */
 async function attemptParse({ tabId, symbol, config, signal }) {
   const url = buildUrl(symbol, config);
   if (!url) throw new Error("Missing symbol URL");
@@ -53,6 +76,17 @@ export async function crawlSymbols({
   const runtimeConfig = buildCrawlerConfig(config);
   const queue = symbols.slice();
   const retryQueue = [];
+  logger?.log({
+    type: "info",
+    message: "Starting symbol crawl",
+    source: "navigator",
+    context: {
+      tabId,
+      queuedSymbols: queue.length,
+      retryLimit: runtimeConfig.NAVIGATION_RETRY_LIMIT,
+    },
+    now: new Date(),
+  });
 
   while (queue.length) {
     if (signal?.aborted) throw new Error("Crawl aborted");
@@ -98,6 +132,13 @@ export async function crawlSymbols({
   const retries = runtimeConfig.NAVIGATION_RETRY_LIMIT;
   for (let attempt = 0; attempt < retries; attempt += 1) {
     if (signal?.aborted) throw new Error("Crawl aborted");
+    logger?.log({
+      type: "debug",
+      message: "Starting crawl retry pass",
+      source: "navigator",
+      context: { attempt: attempt + 1, remaining: retryQueue.length },
+      now: new Date(),
+    });
     const remaining = retryQueue.splice(0, retryQueue.length);
     for (const symbol of remaining) {
       try {

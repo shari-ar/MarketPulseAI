@@ -195,7 +195,10 @@ export class NavigatorService {
 
   async refreshSymbolPlan(now = new Date()) {
     if (this.symbolRefresh || this.activeTabId === null) return;
-    this.symbolRefresh = collectSymbolsFromTab(this.activeTabId, this.config)
+    this.symbolRefresh = collectSymbolsFromTab(this.activeTabId, {
+      logger: this.logger,
+      now,
+    })
       .then((symbols) => {
         if (!symbols.length) {
           this.logger.log({

@@ -12,7 +12,7 @@ import { collectSymbolsFromTab } from "./navigation/symbols.js";
 import { initializeRuntimeSettings } from "./settings.js";
 
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
-const MARKET_HOST_PATTERN = /^https?:\/\/(?:[^./]+\.)*tsetmc\.com\//i;
+const MARKET_HOST_PATTERN = /^https?:\/\/tsetmc\.com\//i;
 
 /**
  * Central stateful controller for orchestrating snapshot collection, log retention,

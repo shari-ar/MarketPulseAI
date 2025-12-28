@@ -12,7 +12,7 @@
     "type": "module"
   },
   "permissions": ["tabs", "scripting", "storage"],
-  "host_permissions": ["https://*.tsetmc.com/*"],
+  "host_permissions": ["https://tsetmc.com/*"],
   "web_accessible_resources": [
     {
       "resources": ["analysis/models/*", "vendor/*"],

@@ -5,7 +5,7 @@ const { logInfo, logWarn } = require("./logger");
 
 // Default configuration values used when environment overrides are absent.
 const DEFAULTS = {
-  tsetmcBaseUrl: "https://www.tsetmc.com",
+  tsetmcBaseUrl: "https://tsetmc.com",
   symbolUrlTemplate: "https://tsetmc.com/ins/?i={symbol}",
   marketLockStartTime: "09:00",
   marketLockEndTime: "13:00",

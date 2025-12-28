@@ -31,14 +31,29 @@ export const DEFAULT_RUNTIME_CONFIG = {
 const ENV_PREFIX = "MARKETPULSEAI_";
 let STORED_RUNTIME_CONFIG = {};
 
+/**
+ * Cache runtime overrides in memory (e.g., from popup settings).
+ *
+ * @param {object} [overrides={}] - Runtime configuration overrides to store.
+ */
 export function setStoredRuntimeConfig(overrides = {}) {
   STORED_RUNTIME_CONFIG = { ...overrides };
 }
 
+/**
+ * Read the currently cached runtime overrides without exposing mutability.
+ *
+ * @returns {object} Shallow copy of stored runtime overrides.
+ */
 export function getStoredRuntimeConfig() {
   return { ...STORED_RUNTIME_CONFIG };
 }
 
+/**
+ * Determine the environment source for runtime overrides (Node, injected, or empty).
+ *
+ * @returns {object} Environment-like key/value map.
+ */
 function getEnvSource() {
   const maybeProcess = typeof globalThis !== "undefined" ? globalThis.process : undefined;
   if (maybeProcess?.env) return maybeProcess.env;
@@ -48,6 +63,12 @@ function getEnvSource() {
   return {};
 }
 
+/**
+ * Parse trading day overrides from env strings into numeric weekday indexes.
+ *
+ * @param {unknown} value - Raw env input.
+ * @returns {number[]|null} Sanitized trading day list.
+ */
 function parseTradingDays(value) {
   if (!value) return null;
   if (Array.isArray(value)) return value.map((day) => Number(day)).filter(Number.isFinite);
@@ -61,6 +82,12 @@ function parseTradingDays(value) {
   return null;
 }
 
+/**
+ * Normalize log retention overrides from env sources.
+ *
+ * @param {object} env - Environment map to parse.
+ * @returns {object|null} Per-level retention map.
+ */
 function parseLogRetention(env) {
   const retention = {};
   const serialized = env[`${ENV_PREFIX}LOG_RETENTION_DAYS`];
@@ -84,6 +111,12 @@ function parseLogRetention(env) {
   return Object.keys(retention).length ? retention : null;
 }
 
+/**
+ * Parse a JSON-like env value into an object literal.
+ *
+ * @param {string|undefined} value - Raw env value.
+ * @returns {object|null} Parsed object or null if invalid.
+ */
 function parseJsonEnv(value) {
   if (!value) return null;
   try {
@@ -95,6 +128,22 @@ function parseJsonEnv(value) {
   return null;
 }
 
+/**
+ * Emit a succinct summary of active environment overrides for observability.
+ *
+ * @param {object} envConfig - Resolved environment overrides.
+ */
+function logEnvOverrides(envConfig) {
+  const keys = Object.keys(envConfig || {});
+  if (!keys.length) return;
+  console.info(`Loaded runtime config overrides from environment: ${keys.sort().join(", ")}`); // eslint-disable-line no-console
+}
+
+/**
+ * Compute runtime configuration overrides supplied via env variables.
+ *
+ * @returns {object} Normalized environment overrides.
+ */
 function loadEnvRuntimeConfig() {
   const env = getEnvSource();
   const tradingDays = parseTradingDays(env[`${ENV_PREFIX}TRADING_DAYS`]);
@@ -135,7 +184,14 @@ function loadEnvRuntimeConfig() {
 }
 
 const ENV_RUNTIME_CONFIG = loadEnvRuntimeConfig();
+logEnvOverrides(ENV_RUNTIME_CONFIG);
 
+/**
+ * Resolve the effective runtime configuration, honoring stored, env, and call overrides.
+ *
+ * @param {object} [overrides={}] - Per-call overrides for runtime settings.
+ * @returns {object} Merged runtime configuration.
+ */
 export function getRuntimeConfig(overrides = {}) {
   const base = {
     ...DEFAULT_RUNTIME_CONFIG,

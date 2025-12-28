@@ -5,7 +5,7 @@ import { LoggingService } from "../background/logger.js";
  * Dedicated logger for storage operations to keep retention and validation
  * telemetry consistent with the rest of the extension.
  */
-export const storageLogger = new LoggingService({ config: DEFAULT_RUNTIME_CONFIG });
+export const storageLogger = new LoggingService({ config: DEFAULT_RUNTIME_CONFIG, storage: null });
 
 /**
  * Helper to record storage lifecycle events with contextual metadata.

@@ -7,6 +7,7 @@ import {
 
 export const RUNTIME_CONFIG_STORAGE_KEY = "runtimeConfig";
 
+// Keys that expect numeric values for runtime configuration overrides.
 const NUMERIC_KEYS = new Set([
   "RETENTION_DAYS",
   "TOP_SWING_COUNT",
@@ -15,6 +16,7 @@ const NUMERIC_KEYS = new Set([
   "NAVIGATION_RETRY_LIMIT",
 ]);
 
+// Keys that expect non-empty string values for runtime configuration overrides.
 const STRING_KEYS = new Set([
   "DB_NAME",
   "MARKET_TIMEZONE",
@@ -25,6 +27,12 @@ const STRING_KEYS = new Set([
   "NAVIGATION_READY_SELECTOR",
 ]);
 
+/**
+ * Normalize log retention inputs into a finite days-per-level map.
+ *
+ * @param {unknown} value - Raw log retention configuration.
+ * @returns {object|undefined} Normalized retention map or undefined if invalid.
+ */
 function normalizeLogRetention(value) {
   if (!value || typeof value !== "object") return undefined;
   const normalized = {};
@@ -37,6 +45,12 @@ function normalizeLogRetention(value) {
   return Object.keys(normalized).length ? normalized : undefined;
 }
 
+/**
+ * Normalize trading days as numeric weekday indexes (0-6).
+ *
+ * @param {unknown} value - Raw trading day input.
+ * @returns {number[]|undefined} Sanitized trading day list.
+ */
 function normalizeTradingDays(value) {
   if (!value) return undefined;
   const raw = Array.isArray(value) ? value : String(value).split(",");
@@ -46,6 +60,12 @@ function normalizeTradingDays(value) {
   return parsed.length ? parsed : undefined;
 }
 
+/**
+ * Coerce arbitrary overrides into a safe runtime configuration subset.
+ *
+ * @param {object} raw - Raw configuration overrides.
+ * @returns {object} Normalized overrides aligned with runtime config schema.
+ */
 export function normalizeRuntimeConfig(raw = {}) {
   if (!raw || typeof raw !== "object") return {};
   const normalized = {};
@@ -86,8 +106,37 @@ export function normalizeRuntimeConfig(raw = {}) {
   return normalized;
 }
 
-export function applyRuntimeConfigOverrides(raw = {}) {
+/**
+ * Apply configuration overrides and persist them to runtime state.
+ *
+ * @param {object} raw - Raw configuration overrides.
+ * @param {object} [options] - Optional logging metadata.
+ * @param {object} [options.logger] - Logger with a .log({type,message,context,source,now}) API.
+ * @param {string} [options.source="settings"] - Source label for log entries.
+ * @param {Date} [options.now=new Date()] - Clock used for deterministic tests.
+ * @returns {object} Fully merged runtime configuration.
+ */
+export function applyRuntimeConfigOverrides(
+  raw = {},
+  { logger, source = "settings", now = new Date() } = {}
+) {
   const normalized = normalizeRuntimeConfig(raw);
   setStoredRuntimeConfig(normalized);
+  if (logger?.log) {
+    const requestedKeys = Object.keys(raw || {});
+    const appliedKeys = Object.keys(normalized);
+    const ignoredKeys = requestedKeys.filter((key) => !appliedKeys.includes(key));
+    logger.log({
+      type: "debug",
+      message: "Applied runtime configuration overrides",
+      source,
+      context: {
+        requestedKeys,
+        appliedKeys,
+        ignoredKeys,
+      },
+      now,
+    });
+  }
   return getRuntimeConfig();
 }

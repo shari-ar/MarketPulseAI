@@ -103,7 +103,10 @@ function writeRuntimeConfig(
       2
     )};\n` +
     `export const DEFAULT_RUNTIME_CONFIG = ${JSON.stringify(runtimeConfig, null, 2)};\n` +
-    `export function getRuntimeConfig(overrides = {}) { return { ...DEFAULT_RUNTIME_CONFIG, ...overrides, LOG_RETENTION_DAYS: { ...DEFAULT_RUNTIME_CONFIG.LOG_RETENTION_DAYS, ...(overrides.LOG_RETENTION_DAYS || {}) } }; }\n`;
+    `let STORED_RUNTIME_CONFIG = {};\n` +
+    `export function setStoredRuntimeConfig(overrides = {}) { STORED_RUNTIME_CONFIG = { ...overrides }; }\n` +
+    `export function getStoredRuntimeConfig() { return { ...STORED_RUNTIME_CONFIG }; }\n` +
+    `export function getRuntimeConfig(overrides = {}) { const base = { ...DEFAULT_RUNTIME_CONFIG, ...STORED_RUNTIME_CONFIG, ...overrides }; return { ...base, LOG_RETENTION_DAYS: { ...DEFAULT_RUNTIME_CONFIG.LOG_RETENTION_DAYS, ...(STORED_RUNTIME_CONFIG.LOG_RETENTION_DAYS || {}), ...(overrides.LOG_RETENTION_DAYS || {}) } }; }\n`;
   fs.writeFileSync(destination, contents);
 }
 

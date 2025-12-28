@@ -229,9 +229,15 @@ function setupUi() {
   let latestRows = [];
 
   const handleExport = () => exportCurrentRows(latestRows);
+  // Import workflow: validate schema headers, merge rows, persist, and re-rank for display.
   const handleImport = async (event) => {
     const [file] = event.target.files || [];
     if (!file) return;
+    logPopupEvent({
+      type: "info",
+      message: "Starting ranking import",
+      context: { filename: file.name, sizeBytes: file.size },
+    });
     try {
       const buffer = await file.arrayBuffer();
       const workbook = read(buffer, { type: "array" });

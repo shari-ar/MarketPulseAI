@@ -1,9 +1,11 @@
 import { FEATURE_ORDER, aggregateFeatureRows, buildFeatureWindow } from "./feature-engineering.js";
 
+// Asset URLs for model metadata and the bundled TensorFlow.js runtime.
 const MANIFEST_URL = new URL("./models/manifest.json", import.meta.url);
 const TFJS_MODULE_URL = new URL("../vendor/tfjs.esm.min.js", import.meta.url);
 
 let tfjsModulePromise = null;
+// Cache model instances keyed by asset URL to avoid redundant network/disk reads.
 const modelCache = new Map();
 
 function resolveActiveManifest(manifest) {
@@ -439,6 +441,17 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
     });
     return null;
   }
+
+  logger?.({
+    message: "Resolved scoring strategy",
+    context: {
+      mode: model ? "tfjs" : "weights",
+      version: manifest?.version,
+      hasScalers: Boolean(scalers),
+      hasCalibration: Boolean(calibration),
+    },
+    now,
+  });
 
   return (window, { now: runtimeNow = now } = {}) => {
     const startedAt = Date.now();

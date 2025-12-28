@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
+const { logWarn } = require("./logger");
 
 const DEFAULTS = {
   tsetmcBaseUrl: "https://www.tsetmc.com",
@@ -24,22 +25,30 @@ const DEFAULTS = {
   extensionDistDir: "dist/extension",
 };
 
-function parseIntOrDefault(value, fallback) {
+function parseIntOrDefault(value, fallback, label) {
   const parsed = Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? fallback : parsed;
+  if (Number.isNaN(parsed)) {
+    if (value !== undefined) {
+      logWarn(`Invalid integer for ${label}; using default value.`);
+    }
+    return fallback;
+  }
+  return parsed;
 }
 
-function parseJsonOrDefault(value, fallback) {
+function parseJsonOrDefault(value, fallback, label) {
   if (!value) return fallback;
   try {
     return JSON.parse(value);
   } catch (error) {
+    logWarn(`Invalid JSON for ${label}; using default value.`);
     return fallback;
   }
 }
 
 function loadEnvConfig() {
   const projectRoot = path.resolve(__dirname, "..");
+  // Load .env from project root to provide optional overrides.
   dotenv.config({ path: path.join(projectRoot, ".env") });
 
   return {
@@ -49,27 +58,46 @@ function loadEnvConfig() {
     marketLockEndTime: process.env.MARKET_LOCK_END_TIME || DEFAULTS.marketLockEndTime,
     analysisDeadline: process.env.ANALYSIS_DEADLINE || DEFAULTS.analysisDeadline,
     marketTimezone: process.env.MARKET_TIMEZONE || DEFAULTS.marketTimezone,
-    tradingDays: parseJsonOrDefault(process.env.TRADING_DAYS, DEFAULTS.tradingDays),
+    tradingDays: parseJsonOrDefault(process.env.TRADING_DAYS, DEFAULTS.tradingDays, "TRADING_DAYS"),
     dexieDbName: process.env.DEXIE_DB_NAME || DEFAULTS.dexieDbName,
-    dexieDbVersion: parseIntOrDefault(process.env.DEXIE_DB_VERSION, DEFAULTS.dexieDbVersion),
-    retentionDays: parseIntOrDefault(process.env.RETENTION_DAYS, DEFAULTS.retentionDays),
-    topSwingCount: parseIntOrDefault(process.env.TOP_SWING_COUNT, DEFAULTS.topSwingCount),
+    dexieDbVersion: parseIntOrDefault(
+      process.env.DEXIE_DB_VERSION,
+      DEFAULTS.dexieDbVersion,
+      "DEXIE_DB_VERSION"
+    ),
+    retentionDays: parseIntOrDefault(
+      process.env.RETENTION_DAYS,
+      DEFAULTS.retentionDays,
+      "RETENTION_DAYS"
+    ),
+    topSwingCount: parseIntOrDefault(
+      process.env.TOP_SWING_COUNT,
+      DEFAULTS.topSwingCount,
+      "TOP_SWING_COUNT"
+    ),
     logRetentionDays: DEFAULTS.logRetentionDays,
     navigationReadySelector:
       process.env.NAVIGATION_READY_SELECTOR || DEFAULTS.navigationReadySelector,
     navigationWaitTimeoutMs: parseIntOrDefault(
       process.env.NAVIGATION_WAIT_TIMEOUT_MS,
-      DEFAULTS.navigationWaitTimeoutMs
+      DEFAULTS.navigationWaitTimeoutMs,
+      "NAVIGATION_WAIT_TIMEOUT_MS"
     ),
     navigationPollIntervalMs: parseIntOrDefault(
       process.env.NAVIGATION_POLL_INTERVAL_MS,
-      DEFAULTS.navigationPollIntervalMs
+      DEFAULTS.navigationPollIntervalMs,
+      "NAVIGATION_POLL_INTERVAL_MS"
     ),
     navigationRetryLimit: parseIntOrDefault(
       process.env.NAVIGATION_RETRY_LIMIT,
-      DEFAULTS.navigationRetryLimit
+      DEFAULTS.navigationRetryLimit,
+      "NAVIGATION_RETRY_LIMIT"
     ),
-    parsingSelectors: parseJsonOrDefault(process.env.PARSING_SELECTORS, DEFAULTS.parsingSelectors),
+    parsingSelectors: parseJsonOrDefault(
+      process.env.PARSING_SELECTORS,
+      DEFAULTS.parsingSelectors,
+      "PARSING_SELECTORS"
+    ),
     extensionSrcDir: process.env.EXTENSION_SRC_DIR || DEFAULTS.extensionSrcDir,
     extensionDistDir: process.env.EXTENSION_DIST_DIR || DEFAULTS.extensionDistDir,
   };
@@ -79,6 +107,7 @@ function writeRuntimeConfig(
   config,
   destination = path.resolve(__dirname, "../extension/runtime-config.js")
 ) {
+  // Normalize runtime configuration to keep extension settings deterministic.
   const runtimeConfig = {
     MARKET_TIMEZONE: config.marketTimezone,
     MARKET_OPEN: config.marketLockStartTime,

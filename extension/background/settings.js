@@ -3,15 +3,28 @@ import { getRuntimeConfig } from "../runtime-config.js";
 
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
 
+/**
+ * Retrieves persisted runtime configuration from Chrome storage.
+ *
+ * @returns {Promise<object>} Stored runtime configuration overrides.
+ */
 async function fetchStoredConfig() {
   if (!chromeApi?.storage?.local?.get) return {};
   const data = await chromeApi.storage.local.get(RUNTIME_CONFIG_STORAGE_KEY);
   return data?.[RUNTIME_CONFIG_STORAGE_KEY] || {};
 }
 
+/**
+ * Initializes runtime configuration updates for the background service worker.
+ *
+ * @param {object} [options] - Configuration hooks.
+ * @param {object} [options.logger] - Structured logger for configuration events.
+ * @param {Function} [options.onUpdate] - Callback invoked when config changes.
+ * @returns {Promise<object>} Resolved runtime configuration.
+ */
 export async function initializeRuntimeSettings({ logger, onUpdate } = {}) {
   const stored = await fetchStoredConfig();
-  const merged = applyRuntimeConfigOverrides(stored);
+  const merged = applyRuntimeConfigOverrides(stored, { logger, source: "settings" });
 
   logger?.log?.({
     type: "info",
@@ -24,7 +37,7 @@ export async function initializeRuntimeSettings({ logger, onUpdate } = {}) {
     chromeApi.storage.onChanged.addListener((changes, area) => {
       if (area !== "local" || !changes[RUNTIME_CONFIG_STORAGE_KEY]) return;
       const nextConfig = changes[RUNTIME_CONFIG_STORAGE_KEY].newValue || {};
-      const updated = applyRuntimeConfigOverrides(nextConfig);
+      const updated = applyRuntimeConfigOverrides(nextConfig, { logger, source: "settings" });
       logger?.log?.({
         type: "info",
         message: "Runtime settings updated",

@@ -19,4 +19,4 @@
 
 - **Silent operation:** Collection runs in the background without disrupting normal browsing.
 - **Analysis cadence:** Analysis only runs automatically after a full crawl or at 07:00 if crawling is incomplete; exports remain manual.
-- **Tab lifecycle:** Automation is scoped to `https://tsetmc.com/*` (and subdomains); leaving the site, closing the tab, or switching away halts work immediately and the next visit restarts the full pruning → scrape → forecast sequence.
+- **Tab lifecycle:** Automation is scoped to `https://tsetmc.com/*`; leaving the site, closing the tab, or switching away halts work immediately and the next visit restarts the full pruning → scrape → forecast sequence.

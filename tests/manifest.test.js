@@ -22,6 +22,6 @@ describe("manifest alignment with documentation", () => {
 
   it("requests only required permissions", () => {
     assert.deepStrictEqual(manifest.permissions.sort(), ["scripting", "storage", "tabs"].sort());
-    assert.deepStrictEqual(manifest.host_permissions, ["https://*.tsetmc.com/*"]);
+    assert.deepStrictEqual(manifest.host_permissions, ["https://tsetmc.com/*"]);
   });
 });

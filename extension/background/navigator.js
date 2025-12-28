@@ -50,6 +50,9 @@ export class NavigatorService {
     return this.logger.getLogs();
   }
 
+  /**
+   * Clears any active market-close or analysis-deadline timers.
+   */
   clearTimers() {
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.deadlineTimer) clearTimeout(this.deadlineTimer);
@@ -297,6 +300,12 @@ export class NavigatorService {
     return marketDate;
   }
 
+  /**
+   * Persists analysis status updates to chrome storage for UI visibility.
+   *
+   * @param {object} status - Analysis progress metadata.
+   * @param {Date} [now=new Date()] - Timestamp for status freshness.
+   */
   updateAnalysisStatus(status, now = new Date()) {
     if (!chromeApi?.storage?.local?.set) return;
     chromeApi.storage.local.set({ analysisStatus: { ...status, updatedAt: now.toISOString() } });
@@ -593,6 +602,15 @@ export class NavigatorService {
         this.analysisCache.set(row.symbol, row.lastAnalyzedAt);
       }
     });
+    if (persistedCache.length) {
+      this.logger.log({
+        type: "info",
+        message: "Hydrated analysis cache from storage",
+        source: "navigator",
+        context: { restoredCount: this.analysisCache.size },
+        now,
+      });
+    }
     return { snapshots: this.snapshots.length, cache: this.analysisCache.size };
   }
 
@@ -656,12 +674,27 @@ initializeRuntimeSettings({
   onUpdate: (config) => navigatorService.updateConfig(config),
 });
 
+/**
+ * Determine whether a URL matches the supported market host list.
+ *
+ * @param {string} url - Candidate URL to evaluate.
+ * @returns {boolean} True when the URL matches a supported host.
+ */
 function isMarketHost(url) {
   return typeof url === "string" && MARKET_HOST_PATTERN.test(url);
 }
 
+/**
+ * Attach chrome tab listeners to manage the background crawl lifecycle.
+ */
 function attachTabListeners() {
   if (!chromeApi?.tabs || attachTabListeners.initialized) return;
+  navigatorService.logger.log({
+    type: "info",
+    message: "Attaching tab listeners",
+    source: "navigator",
+    context: { hasTabsApi: Boolean(chromeApi?.tabs) },
+  });
 
   const handleTabActivation = async (activeInfo) => {
     try {

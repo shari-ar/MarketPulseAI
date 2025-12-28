@@ -223,6 +223,7 @@ function computeZScores(featureRows, featureNames) {
     const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
     const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
     const std = variance > 0 ? Math.sqrt(variance) : 1;
+    // Persist per-feature normalization stats to make z-score generation deterministic.
     stats[name] = { mean, std };
   });
 
@@ -310,6 +311,18 @@ export function buildFeatureWindow(window, { scalers, logger, now = new Date() }
 
   const zRows = computeZScores(rows, BASE_FEATURE_ORDER);
   const scaledRows = zRows.map((row) => applyScalers(row, scalers));
+
+  if (scalers) {
+    logger?.({
+      type: "debug",
+      message: "Applied feature scalers",
+      context: {
+        symbol: filled[filled.length - 1]?.id,
+        scalerCount: Object.keys(scalers).length,
+      },
+      now,
+    });
+  }
 
   logger?.({
     type: "debug",

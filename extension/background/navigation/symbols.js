@@ -15,6 +15,7 @@ function extractSymbolsFromDom() {
     if (url) urls.set(id, url);
   };
 
+  // Prefer explicit data attributes when available since they are more stable than link scraping.
   document.querySelectorAll("[data-symbol-id], [data-ins-code]").forEach((node) => {
     const id = node.getAttribute("data-symbol-id") || node.getAttribute("data-ins-code");
     addSymbol(id);
@@ -45,7 +46,19 @@ function extractSymbolsFromDom() {
  * @returns {Promise<Array<{id: string, url?: string}>>} Normalized symbol list.
  */
 export async function collectSymbolsFromTab(tabId, { logger, now = new Date() } = {}) {
-  const symbols = await executeParser(tabId, extractSymbolsFromDom);
+  let symbols = [];
+  try {
+    symbols = await executeParser(tabId, extractSymbolsFromDom);
+  } catch (error) {
+    logger?.log({
+      type: "warning",
+      message: "Failed to collect symbols from tab",
+      source: "navigator",
+      context: { tabId, error: error?.message },
+      now,
+    });
+    return [];
+  }
   const normalized = Array.isArray(symbols) ? symbols.filter((symbol) => symbol?.id) : [];
   logger?.log({
     type: "debug",

@@ -23,6 +23,7 @@ async function executeInTab(tabId, func, args = []) {
     throw new Error("Chrome scripting API unavailable");
   }
 
+  // Chrome returns an array of execution results; we surface the first result for convenience.
   const [result] = await chromeApi.scripting.executeScript({
     target: { tabId },
     func,
@@ -81,7 +82,16 @@ export async function waitForSelector(
       },
       [selector]
     );
-    if (found) return true;
+    if (found) {
+      logger?.log({
+        type: "debug",
+        message: "Selector ready",
+        source: "navigator",
+        context: { tabId, selector, durationMs: Date.now() - startedAt },
+        now,
+      });
+      return true;
+    }
     await sleep(pollIntervalMs);
   }
   logger?.log({

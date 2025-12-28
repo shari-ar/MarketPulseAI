@@ -46,6 +46,14 @@ export async function initializeRuntimeSettings({ logger, onUpdate } = {}) {
       });
       onUpdate?.(updated);
     });
+  } else {
+    // Emit a debug signal when change listeners are unavailable (tests or non-extension envs).
+    logger?.log?.({
+      type: "debug",
+      message: "Runtime settings change listener unavailable",
+      source: "settings",
+      context: { hasStorageApi: Boolean(chromeApi?.storage) },
+    });
   }
 
   onUpdate?.(merged);

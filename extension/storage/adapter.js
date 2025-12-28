@@ -81,7 +81,16 @@ class MemoryAdapter {
   }
 
   updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
+    const previous = this.config;
     this.config = getRuntimeConfig(config);
+    // Capture runtime config changes for observability in non-persisted environments.
+    this.logger?.log?.({
+      type: "debug",
+      message: "Updated storage runtime config (memory)",
+      source: "storage",
+      context: { previousDb: previous?.DB_NAME, nextDb: this.config.DB_NAME },
+      now: new Date(),
+    });
   }
 
   async addSnapshots(records = []) {
@@ -127,7 +136,20 @@ class MemoryAdapter {
       logger: this.logger,
       config: this.config,
     });
-    return { removed: before - this.snapshots.length, remaining: this.snapshots.length };
+    const removed = before - this.snapshots.length;
+    // Emit retention metrics for observability in memory-backed environments.
+    this.logger?.log?.({
+      type: "debug",
+      message: "Pruned snapshots in memory",
+      source: "storage",
+      context: {
+        removed,
+        remaining: this.snapshots.length,
+        retentionDays: this.config.RETENTION_DAYS,
+      },
+      now,
+    });
+    return { removed, remaining: this.snapshots.length };
   }
 
   async saveLog(entry) {
@@ -142,7 +164,16 @@ class MemoryAdapter {
   async pruneLogs(now = new Date()) {
     const before = this.logs.length;
     this.logs = pruneLogs(this.logs, { now });
-    return { removed: before - this.logs.length, remaining: this.logs.length };
+    const removed = before - this.logs.length;
+    // Emit retention metrics for in-memory log storage.
+    this.logger?.log?.({
+      type: "debug",
+      message: "Pruned logs in memory",
+      source: "storage",
+      context: { removed, remaining: this.logs.length },
+      now,
+    });
+    return { removed, remaining: this.logs.length };
   }
 
   async updateAnalysisCache(symbols = [], lastAnalyzedAt) {
@@ -179,6 +210,7 @@ class DexieAdapter extends MemoryAdapter {
   }
 
   updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
+    const previous = this.config;
     const nextConfig = getRuntimeConfig(config);
     const shouldReset = nextConfig.DB_NAME !== this.config.DB_NAME;
     this.config = nextConfig;
@@ -188,6 +220,18 @@ class DexieAdapter extends MemoryAdapter {
       this.db = new Dexie(this.config.DB_NAME);
       this.db.version(DB_VERSION).stores(getSchemaDefinition());
     }
+    // Track configuration changes and database reinitialization for diagnostics.
+    this.logger?.log?.({
+      type: "debug",
+      message: "Updated storage runtime config (IndexedDB)",
+      source: "storage",
+      context: {
+        previousDb: previous?.DB_NAME,
+        nextDb: this.config.DB_NAME,
+        reinitialized: shouldReset,
+      },
+      now: new Date(),
+    });
   }
 
   async addSnapshots(records = []) {
@@ -232,7 +276,16 @@ class DexieAdapter extends MemoryAdapter {
       await this.db[SNAPSHOT_TABLE].clear();
       await this.db[SNAPSHOT_TABLE].bulkPut(pruned);
     }
-    return { removed: all.length - pruned.length, remaining: pruned.length };
+    const removed = all.length - pruned.length;
+    // Record retention results for persisted snapshots to aid troubleshooting.
+    this.logger?.log?.({
+      type: "debug",
+      message: "Pruned snapshots in IndexedDB",
+      source: "storage",
+      context: { removed, remaining: pruned.length, retentionDays: this.config.RETENTION_DAYS },
+      now,
+    });
+    return { removed, remaining: pruned.length };
   }
 
   async saveLog(entry) {
@@ -252,7 +305,16 @@ class DexieAdapter extends MemoryAdapter {
       await this.db[LOG_TABLE].clear();
       await this.db[LOG_TABLE].bulkPut(pruned);
     }
-    return { removed: all.length - pruned.length, remaining: pruned.length };
+    const removed = all.length - pruned.length;
+    // Record retention results for persisted logs to aid troubleshooting.
+    this.logger?.log?.({
+      type: "debug",
+      message: "Pruned logs in IndexedDB",
+      source: "storage",
+      context: { removed, remaining: pruned.length },
+      now,
+    });
+    return { removed, remaining: pruned.length };
   }
 
   async updateAnalysisCache(symbols = [], lastAnalyzedAt) {

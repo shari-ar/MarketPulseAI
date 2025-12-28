@@ -102,6 +102,16 @@ export async function crawlSymbols({
   onSnapshot,
 } = {}) {
   const runtimeConfig = buildCrawlerConfig(config);
+  if (!symbols.length) {
+    logger?.log({
+      type: "debug",
+      message: "No symbols queued for crawl",
+      source: "navigator",
+      context: { tabId },
+      now: new Date(),
+    });
+    return;
+  }
   const queue = symbols.slice();
   const retryQueue = [];
   logger?.log({
@@ -163,6 +173,7 @@ export async function crawlSymbols({
 
   if (!retryQueue.length) return;
 
+  // Retry failures in bounded passes to avoid infinite loops on unstable symbols.
   const retries = runtimeConfig.NAVIGATION_RETRY_LIMIT;
   for (let attempt = 0; attempt < retries; attempt += 1) {
     if (signal?.aborted) throw new Error("Crawl aborted");

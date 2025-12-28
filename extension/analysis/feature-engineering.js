@@ -109,6 +109,14 @@ function isValidNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+/**
+ * Protects ratio calculations against invalid inputs or division by zero.
+ *
+ * @param {number} numerator - Numerator value.
+ * @param {number} denominator - Denominator value.
+ * @param {number} [fallback=0] - Default to use when inputs are invalid.
+ * @returns {number} Safe ratio value.
+ */
 function safeDivide(numerator, denominator, fallback = 0) {
   if (!isValidNumber(numerator) || !isValidNumber(denominator) || denominator === 0) {
     return fallback;
@@ -117,12 +125,24 @@ function safeDivide(numerator, denominator, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+/**
+ * Orders an input window in ascending chronological order.
+ *
+ * @param {Array<object>} window - Raw window of snapshots.
+ * @returns {Array<object>} Chronologically sorted window.
+ */
 function sortWindowAscending(window) {
   return window
     .slice()
     .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
 }
 
+/**
+ * Backfills missing values within a window to enforce continuity in feature rows.
+ *
+ * @param {Array<object>} window - Sorted window of snapshots.
+ * @returns {Array<object>|null} Filled window or null when required fields are missing.
+ */
 function backfillWindow(window) {
   const filled = window.map((entry) => ({ ...entry }));
   const lastValid = {};
@@ -167,6 +187,14 @@ function computeEngineeredFeatures(entry, previous) {
   };
 }
 
+/**
+ * Generates pairwise ratio features for a set of fields.
+ *
+ * @param {object} entry - Snapshot row with raw numeric fields.
+ * @param {string[]} fields - Field names to cross.
+ * @param {string[]} ratioNames - Output field names aligned with field pairs.
+ * @returns {object} Ratio feature map.
+ */
 function computeCrossRatios(entry, fields, ratioNames) {
   const ratios = {};
   let index = 0;
@@ -181,6 +209,13 @@ function computeCrossRatios(entry, fields, ratioNames) {
   return ratios;
 }
 
+/**
+ * Standardizes feature columns using the mean and standard deviation per column.
+ *
+ * @param {Array<object>} featureRows - Raw feature rows.
+ * @param {string[]} featureNames - Feature names to normalize.
+ * @returns {Array<object>} Feature rows with appended z-score values.
+ */
 function computeZScores(featureRows, featureNames) {
   const stats = {};
   featureNames.forEach((name) => {
@@ -201,6 +236,13 @@ function computeZScores(featureRows, featureNames) {
   });
 }
 
+/**
+ * Applies pretrained scaling metadata to feature rows when available.
+ *
+ * @param {object} featureRow - Feature row to scale.
+ * @param {object} scalers - Per-feature scaler definitions.
+ * @returns {object} Scaled feature row.
+ */
 function applyScalers(featureRow, scalers) {
   if (!scalers) return featureRow;
   const normalized = { ...featureRow };
@@ -215,11 +257,41 @@ function applyScalers(featureRow, scalers) {
   return normalized;
 }
 
-export function buildFeatureWindow(window, { scalers } = {}) {
-  if (!Array.isArray(window) || window.length < 7) return null;
+/**
+ * Builds a standardized feature window for scoring by filling gaps, generating
+ * engineered features, and applying scaling metadata when provided.
+ *
+ * @param {Array<object>} window - Raw snapshot window.
+ * @param {object} [options] - Feature generation options.
+ * @param {object} [options.scalers] - Optional scaler metadata.
+ * @param {Function} [options.logger] - Optional logger callback.
+ * @param {Date} [options.now=new Date()] - Clock used for logging.
+ * @returns {{rows: Array<object>, latest: object} | null} Feature window or null when incomplete.
+ */
+export function buildFeatureWindow(window, { scalers, logger, now = new Date() } = {}) {
+  if (!Array.isArray(window) || window.length < 7) {
+    logger?.({
+      type: "debug",
+      message: "Feature window skipped due to insufficient history",
+      context: { windowSize: Array.isArray(window) ? window.length : 0 },
+      now,
+    });
+    return null;
+  }
   const ordered = sortWindowAscending(window);
   const filled = backfillWindow(ordered);
-  if (!filled) return null;
+  if (!filled) {
+    logger?.({
+      type: "warning",
+      message: "Feature window skipped due to incomplete fields",
+      context: {
+        symbol: window?.[window.length - 1]?.id || window?.[0]?.id,
+        windowSize: window.length,
+      },
+      now,
+    });
+    return null;
+  }
 
   const rows = filled.map((entry, index) => {
     const previous = index === 0 ? entry : filled[index - 1];
@@ -239,12 +311,29 @@ export function buildFeatureWindow(window, { scalers } = {}) {
   const zRows = computeZScores(rows, BASE_FEATURE_ORDER);
   const scaledRows = zRows.map((row) => applyScalers(row, scalers));
 
+  logger?.({
+    type: "debug",
+    message: "Built feature window",
+    context: {
+      symbol: filled[filled.length - 1]?.id,
+      rowCount: scaledRows.length,
+    },
+    now,
+  });
+
   return {
     rows: scaledRows,
     latest: filled[filled.length - 1],
   };
 }
 
+/**
+ * Aggregates feature rows into a single averaged feature vector.
+ *
+ * @param {Array<object>} rows - Feature rows within the window.
+ * @param {string[]} [featureNames=FEATURE_ORDER] - Feature columns to aggregate.
+ * @returns {object|null} Averaged feature map or null if no rows are available.
+ */
 export function aggregateFeatureRows(rows = [], featureNames = FEATURE_ORDER) {
   if (!rows.length) return null;
   const totals = {};

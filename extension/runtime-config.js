@@ -14,7 +14,7 @@ export const DEFAULT_RUNTIME_CONFIG = {
   TRADING_DAYS: [6, 0, 1, 2, 3],
   RETENTION_DAYS: 7,
   TOP_SWING_COUNT: 5,
-  SYMBOL_URL_TEMPLATE: "https://tsetmc.com/ins/?i={symbol}",
+  SYMBOL_URL_TEMPLATE: "https://tsetmc.com/instInfo/{symbol}",
   NAVIGATION_READY_SELECTOR: "body",
   NAVIGATION_WAIT_TIMEOUT_MS: 15000,
   NAVIGATION_POLL_INTERVAL_MS: 250,

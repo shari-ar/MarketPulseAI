@@ -21,12 +21,16 @@ function extractSymbolsFromDom() {
     addSymbol(id);
   });
 
-  const linkSelector = 'a[href*="tsetmc.com/ins"], a[href*="/ins/?i="]';
+  const linkSelector =
+    'a[href*="tsetmc.com/instInfo/"], a[href*="/instInfo/"], a[href*="tsetmc.com/ins"], a[href*="/ins/?i="]';
   document.querySelectorAll(linkSelector).forEach((link) => {
     const href = link.getAttribute("href");
     if (!href) return;
     const resolved = new URL(href, window.location.href);
-    const id = resolved.searchParams.get("i");
+    const id =
+      resolved.searchParams.get("i") ||
+      resolved.pathname.match(/\/instInfo\/(\d+)/)?.[1] ||
+      resolved.pathname.match(/\/ins\/(\d+)/)?.[1];
     addSymbol(id, resolved.toString());
   });
 

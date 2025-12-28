@@ -5,7 +5,7 @@
   "description": "Tooling and automation for the MarketPulseAI browser extension.",
   "scripts": {
     "lint": "eslint extension --ext .js",
-    "test": "node --test",
+    "test": "node --test tests",
     "build": "node scripts/build-extension.js",
     "lint:test:build": "npm run lint && npm run test && npm run build",
     "format": "prettier --write .",

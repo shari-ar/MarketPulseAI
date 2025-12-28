@@ -14,6 +14,14 @@ import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../runtime-config.js";
 
 const hasIndexedDb = typeof indexedDB !== "undefined";
 
+/**
+ * Coerce an arbitrary object into a whitelisted schema shape by dropping
+ * undefined keys that are not present in the target record definition.
+ *
+ * @param {object} record - Raw record to sanitize.
+ * @param {object} shape - Allowed field map for the record type.
+ * @returns {object} Sanitized record containing only known keys.
+ */
 function sanitizeRecord(record, shape) {
   const normalized = {};
   Object.keys(shape).forEach((key) => {
@@ -22,10 +30,20 @@ function sanitizeRecord(record, shape) {
   return normalized;
 }
 
+/**
+ * Stable key used to deduplicate snapshots across storage backends.
+ *
+ * @param {object} record - Snapshot record with id and dateTime.
+ * @returns {string} Composite identifier for the snapshot row.
+ */
 function snapshotKey(record) {
   return `${record.id}-${record.dateTime}`;
 }
 
+/**
+ * In-memory adapter that mirrors the Dexie storage interface.
+ * Useful for unit tests and environments without IndexedDB.
+ */
 class MemoryAdapter {
   constructor(config = DEFAULT_RUNTIME_CONFIG) {
     this.config = getRuntimeConfig(config);
@@ -100,6 +118,9 @@ class MemoryAdapter {
   }
 }
 
+/**
+ * Dexie-backed adapter for persistence in the extension IndexedDB.
+ */
 class DexieAdapter extends MemoryAdapter {
   constructor(config = DEFAULT_RUNTIME_CONFIG) {
     super(config);
@@ -181,6 +202,12 @@ class DexieAdapter extends MemoryAdapter {
   }
 }
 
+/**
+ * Select the optimal storage adapter based on IndexedDB availability.
+ *
+ * @param {object} config - Runtime configuration overrides.
+ * @returns {MemoryAdapter|DexieAdapter} Storage adapter instance.
+ */
 export function createStorageAdapter(config = DEFAULT_RUNTIME_CONFIG) {
   if (hasIndexedDb) return new DexieAdapter(config);
   return new MemoryAdapter(config);

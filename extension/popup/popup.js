@@ -292,6 +292,11 @@ function setupUi() {
     event.preventDefault();
     const normalized = readSettingsForm();
     await persistPopupRuntimeSettings(normalized);
+    logPopupEvent({
+      type: "info",
+      message: "Submitted runtime settings update",
+      context: { keys: Object.keys(normalized) },
+    });
   });
 
   settingsReset?.addEventListener("click", async () => {

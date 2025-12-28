@@ -152,6 +152,12 @@ async function loadModel(manifest, logger, now, tf) {
   const modelUrl = buildAssetUrl(manifest, "modelPath");
   if (!modelUrl) return null;
   if (modelCache.has(modelUrl.toString())) {
+    logger?.({
+      type: "debug",
+      message: "Reusing cached TensorFlow.js model",
+      context: { url: modelUrl.toString() },
+      now,
+    });
     return modelCache.get(modelUrl.toString());
   }
 
@@ -175,6 +181,12 @@ async function loadModelFromMemory(manifest, logger, now, tf) {
 
   const cacheKey = `memory:${modelUrl.toString()}:${weightsUrl.toString()}`;
   if (modelCache.has(cacheKey)) {
+    logger?.({
+      type: "debug",
+      message: "Reusing cached TensorFlow.js in-memory model",
+      context: { url: modelUrl.toString() },
+      now,
+    });
     return modelCache.get(cacheKey);
   }
 

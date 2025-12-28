@@ -177,18 +177,60 @@ function hydrateSettingsForm(config) {
   setInputValue("#setting-log-debug", config.LOG_RETENTION_DAYS?.debug);
 }
 
+/**
+ * Hydrates cached snapshot rows from local storage for merge workflows.
+ *
+ * @returns {Promise<Array<object>>} Normalized snapshot collection.
+ */
 async function hydrateExistingSnapshots() {
-  const snapshots = await storage.getSnapshots();
-  return Array.isArray(snapshots) ? snapshots : [];
+  try {
+    const snapshots = await storage.getSnapshots();
+    const normalized = Array.isArray(snapshots) ? snapshots : [];
+    logPopupEvent({
+      type: "debug",
+      message: "Loaded cached snapshots for import merge",
+      context: { count: normalized.length },
+    });
+    return normalized;
+  } catch (error) {
+    logPopupEvent({
+      type: "warning",
+      message: "Failed to load cached snapshots",
+      context: { error: error?.message },
+    });
+    return [];
+  }
 }
 
+/**
+ * Persists newly imported rows while skipping duplicates already in storage.
+ *
+ * @param {Array<object>} rows - Incoming snapshot rows.
+ * @returns {Promise<{inserted: number}>} Inserted row count.
+ */
 async function persistImportedRows(rows = []) {
   const existing = await hydrateExistingSnapshots();
   const existingKeys = new Set(existing.map((row) => `${row.id}-${row.dateTime}`));
   const freshRows = rows.filter((row) => !existingKeys.has(`${row.id}-${row.dateTime}`));
-  if (!freshRows.length) return { inserted: 0 };
-  await storage.addSnapshots(freshRows);
-  return { inserted: freshRows.length };
+  if (!freshRows.length) {
+    return { inserted: 0 };
+  }
+  try {
+    await storage.addSnapshots(freshRows);
+    logPopupEvent({
+      type: "info",
+      message: "Persisted imported snapshots",
+      context: { insertedCount: freshRows.length },
+    });
+    return { inserted: freshRows.length };
+  } catch (error) {
+    logPopupEvent({
+      type: "warning",
+      message: "Failed to persist imported snapshots",
+      context: { error: error?.message, attemptedCount: freshRows.length },
+    });
+    throw error;
+  }
 }
 
 /**

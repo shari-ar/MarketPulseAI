@@ -39,10 +39,26 @@ function withSnapshotDefaults(snapshot) {
  * @param {AbortSignal} params.signal - Abort signal for cancellation.
  * @returns {Promise<object>} Parsed snapshot with schema defaults.
  */
-async function attemptParse({ tabId, symbol, config, signal }) {
+async function attemptParse({ tabId, symbol, config, signal, logger }) {
   const url = buildUrl(symbol, config);
-  if (!url) throw new Error("Missing symbol URL");
+  if (!url) {
+    logger?.log({
+      type: "warning",
+      message: "Missing symbol URL; skipping snapshot",
+      source: "navigator",
+      context: { symbol: symbol?.id },
+      now: new Date(),
+    });
+    throw new Error("Missing symbol URL");
+  }
 
+  logger?.log({
+    type: "debug",
+    message: "Navigating to symbol page",
+    source: "navigator",
+    context: { symbol: symbol.id, url },
+    now: new Date(),
+  });
   await navigateTo(tabId, url);
   await waitForSelector(tabId, config.NAVIGATION_READY_SELECTOR, {
     timeoutMs: config.NAVIGATION_WAIT_TIMEOUT_MS,
@@ -50,6 +66,7 @@ async function attemptParse({ tabId, symbol, config, signal }) {
     signal,
   });
 
+  // Stamp a shared timestamp so downstream processing stays in sync.
   const nowIso = new Date().toISOString();
   const parsed = await executeParser(tabId, parseTopBoxSnapshot, [
     {
@@ -59,6 +76,13 @@ async function attemptParse({ tabId, symbol, config, signal }) {
     },
   ]);
 
+  logger?.log({
+    type: "debug",
+    message: "Parsed snapshot payload",
+    source: "navigator",
+    context: { symbol: parsed?.id || symbol.id },
+    now: new Date(),
+  });
   return withSnapshotDefaults({ ...parsed, id: parsed?.id || symbol.id, dateTime: nowIso });
 }
 
@@ -104,7 +128,13 @@ export async function crawlSymbols({
 
     const symbol = queue.shift();
     try {
-      const snapshot = await attemptParse({ tabId, symbol, config: runtimeConfig, signal });
+      const snapshot = await attemptParse({
+        tabId,
+        symbol,
+        config: runtimeConfig,
+        signal,
+        logger,
+      });
       if (snapshot && snapshot.id) {
         await onSnapshot?.(snapshot);
         logger?.log({
@@ -142,7 +172,13 @@ export async function crawlSymbols({
     const remaining = retryQueue.splice(0, retryQueue.length);
     for (const symbol of remaining) {
       try {
-        const snapshot = await attemptParse({ tabId, symbol, config: runtimeConfig, signal });
+        const snapshot = await attemptParse({
+          tabId,
+          symbol,
+          config: runtimeConfig,
+          signal,
+          logger,
+        });
         if (snapshot && snapshot.id) {
           await onSnapshot?.(snapshot);
           logger?.log({

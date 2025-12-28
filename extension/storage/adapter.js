@@ -133,6 +133,7 @@ class DexieAdapter extends MemoryAdapter {
     const shouldReset = nextConfig.DB_NAME !== this.config.DB_NAME;
     this.config = nextConfig;
     if (shouldReset) {
+      // Rebuild the Dexie instance when the configured database name changes.
       this.db.close();
       this.db = new Dexie(this.config.DB_NAME);
       this.db.version(DB_VERSION).stores(getSchemaDefinition());
@@ -209,7 +210,10 @@ class DexieAdapter extends MemoryAdapter {
  * @returns {MemoryAdapter|DexieAdapter} Storage adapter instance.
  */
 export function createStorageAdapter(config = DEFAULT_RUNTIME_CONFIG) {
-  if (hasIndexedDb) return new DexieAdapter(config);
+  if (hasIndexedDb) {
+    // Prefer persisted storage whenever IndexedDB is available.
+    return new DexieAdapter(config);
+  }
   return new MemoryAdapter(config);
 }
 

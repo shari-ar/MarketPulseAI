@@ -15,6 +15,28 @@ import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../runtime-config.js";
 const hasIndexedDb = typeof indexedDB !== "undefined";
 
 /**
+ * Normalize adapter arguments so callers can pass either a raw config object
+ * or an options object that includes a logger.
+ *
+ * @param {object} [configOrOptions=DEFAULT_RUNTIME_CONFIG] - Config or options wrapper.
+ * @returns {{config: object, logger: object|null}} Normalized adapter options.
+ */
+function resolveAdapterOptions(configOrOptions = DEFAULT_RUNTIME_CONFIG) {
+  if (
+    configOrOptions &&
+    typeof configOrOptions === "object" &&
+    ("config" in configOrOptions || "logger" in configOrOptions)
+  ) {
+    return {
+      config: configOrOptions.config ?? DEFAULT_RUNTIME_CONFIG,
+      logger: configOrOptions.logger ?? null,
+    };
+  }
+
+  return { config: configOrOptions ?? DEFAULT_RUNTIME_CONFIG, logger: null };
+}
+
+/**
  * Coerce an arbitrary object into a whitelisted schema shape by dropping
  * undefined keys that are not present in the target record definition.
  *
@@ -45,11 +67,17 @@ function snapshotKey(record) {
  * Useful for unit tests and environments without IndexedDB.
  */
 class MemoryAdapter {
-  constructor(config = DEFAULT_RUNTIME_CONFIG) {
+  constructor(configOrOptions = DEFAULT_RUNTIME_CONFIG) {
+    const { config, logger } = resolveAdapterOptions(configOrOptions);
     this.config = getRuntimeConfig(config);
+    this.logger = logger;
     this.snapshots = [];
     this.logs = [];
     this.analysisCache = new Map();
+  }
+
+  setLogger(logger) {
+    this.logger = logger;
   }
 
   updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
@@ -59,6 +87,13 @@ class MemoryAdapter {
   async addSnapshots(records = []) {
     const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
     this.snapshots.push(...sanitized);
+    this.logger?.log?.({
+      type: "debug",
+      message: "Stored snapshots in memory",
+      source: "storage",
+      context: { insertedCount: sanitized.length, total: this.snapshots.length },
+      now: new Date(),
+    });
     return { inserted: sanitized.length };
   }
 
@@ -70,6 +105,13 @@ class MemoryAdapter {
       byKey.set(snapshotKey(record), record);
     });
     this.snapshots = Array.from(byKey.values());
+    this.logger?.log?.({
+      type: "debug",
+      message: "Upserted snapshots in memory",
+      source: "storage",
+      context: { upsertedCount: sanitized.length, total: this.snapshots.length },
+      now: new Date(),
+    });
     return { upserted: sanitized.length, total: this.snapshots.length };
   }
 
@@ -82,6 +124,7 @@ class MemoryAdapter {
     this.snapshots = pruneSnapshots(this.snapshots, {
       now,
       retentionDays: this.config.RETENTION_DAYS,
+      logger: this.logger,
       config: this.config,
     });
     return { removed: before - this.snapshots.length, remaining: this.snapshots.length };
@@ -107,6 +150,13 @@ class MemoryAdapter {
       if (!symbol) return;
       this.analysisCache.set(String(symbol), lastAnalyzedAt);
     });
+    this.logger?.log?.({
+      type: "debug",
+      message: "Updated analysis cache in memory",
+      source: "storage",
+      context: { updatedCount: symbols.length, total: this.analysisCache.size },
+      now: new Date(),
+    });
     return { updated: symbols.length };
   }
 
@@ -122,8 +172,8 @@ class MemoryAdapter {
  * Dexie-backed adapter for persistence in the extension IndexedDB.
  */
 class DexieAdapter extends MemoryAdapter {
-  constructor(config = DEFAULT_RUNTIME_CONFIG) {
-    super(config);
+  constructor(configOrOptions = DEFAULT_RUNTIME_CONFIG) {
+    super(configOrOptions);
     this.db = new Dexie(this.config.DB_NAME);
     this.db.version(DB_VERSION).stores(getSchemaDefinition());
   }
@@ -143,12 +193,26 @@ class DexieAdapter extends MemoryAdapter {
   async addSnapshots(records = []) {
     const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
     await this.db[SNAPSHOT_TABLE].bulkPut(sanitized);
+    this.logger?.log?.({
+      type: "debug",
+      message: "Stored snapshots in IndexedDB",
+      source: "storage",
+      context: { insertedCount: sanitized.length },
+      now: new Date(),
+    });
     return { inserted: sanitized.length };
   }
 
   async upsertSnapshots(records = []) {
     const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
     await this.db[SNAPSHOT_TABLE].bulkPut(sanitized);
+    this.logger?.log?.({
+      type: "debug",
+      message: "Upserted snapshots in IndexedDB",
+      source: "storage",
+      context: { upsertedCount: sanitized.length },
+      now: new Date(),
+    });
     return { upserted: sanitized.length };
   }
 
@@ -161,6 +225,7 @@ class DexieAdapter extends MemoryAdapter {
     const pruned = pruneSnapshots(all, {
       now,
       retentionDays: this.config.RETENTION_DAYS,
+      logger: this.logger,
       config: this.config,
     });
     if (pruned.length !== all.length) {
@@ -195,6 +260,13 @@ class DexieAdapter extends MemoryAdapter {
       .filter(Boolean)
       .map((symbol) => sanitizeRecord({ symbol, lastAnalyzedAt }, ANALYSIS_CACHE_FIELDS));
     if (rows.length) await this.db[ANALYSIS_CACHE_TABLE].bulkPut(rows);
+    this.logger?.log?.({
+      type: "debug",
+      message: "Updated analysis cache in IndexedDB",
+      source: "storage",
+      context: { updatedCount: rows.length },
+      now: new Date(),
+    });
     return { updated: rows.length };
   }
 
@@ -206,15 +278,18 @@ class DexieAdapter extends MemoryAdapter {
 /**
  * Select the optimal storage adapter based on IndexedDB availability.
  *
- * @param {object} config - Runtime configuration overrides.
+ * @param {object} config - Runtime configuration overrides or options wrapper.
+ * @param {object} [config.logger] - Optional structured logger for storage operations.
+ * @param {object} [config.config] - Runtime configuration overrides when passing an options wrapper.
  * @returns {MemoryAdapter|DexieAdapter} Storage adapter instance.
  */
 export function createStorageAdapter(config = DEFAULT_RUNTIME_CONFIG) {
+  const { config: resolvedConfig, logger } = resolveAdapterOptions(config);
   if (hasIndexedDb) {
     // Prefer persisted storage whenever IndexedDB is available.
-    return new DexieAdapter(config);
+    return new DexieAdapter({ config: resolvedConfig, logger });
   }
-  return new MemoryAdapter(config);
+  return new MemoryAdapter({ config: resolvedConfig, logger });
 }
 
 export const storageAdapter = createStorageAdapter();

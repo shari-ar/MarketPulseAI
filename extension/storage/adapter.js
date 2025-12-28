@@ -81,7 +81,16 @@ class MemoryAdapter {
   }
 
   updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
+    const previous = this.config;
     this.config = getRuntimeConfig(config);
+    // Capture runtime config changes for observability in non-persisted environments.
+    this.logger?.log?.({
+      type: "debug",
+      message: "Updated storage runtime config (memory)",
+      source: "storage",
+      context: { previousDb: previous?.DB_NAME, nextDb: this.config.DB_NAME },
+      now: new Date(),
+    });
   }
 
   async addSnapshots(records = []) {
@@ -201,6 +210,7 @@ class DexieAdapter extends MemoryAdapter {
   }
 
   updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
+    const previous = this.config;
     const nextConfig = getRuntimeConfig(config);
     const shouldReset = nextConfig.DB_NAME !== this.config.DB_NAME;
     this.config = nextConfig;
@@ -210,6 +220,18 @@ class DexieAdapter extends MemoryAdapter {
       this.db = new Dexie(this.config.DB_NAME);
       this.db.version(DB_VERSION).stores(getSchemaDefinition());
     }
+    // Track configuration changes and database reinitialization for diagnostics.
+    this.logger?.log?.({
+      type: "debug",
+      message: "Updated storage runtime config (IndexedDB)",
+      source: "storage",
+      context: {
+        previousDb: previous?.DB_NAME,
+        nextDb: this.config.DB_NAME,
+        reinitialized: shouldReset,
+      },
+      now: new Date(),
+    });
   }
 
   async addSnapshots(records = []) {

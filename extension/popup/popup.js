@@ -97,6 +97,17 @@ function renderRankings(rows = []) {
   });
 }
 
+/**
+ * Centralized ranking helper to ensure popup logs capture ranking activity.
+ *
+ * @param {Array<object>} rows - Candidate rows to rank.
+ * @param {Date} [now=new Date()] - Timestamp for log entries.
+ * @returns {Array<object>} Ranked rows.
+ */
+function rankRows(rows = [], now = new Date()) {
+  return rankSwingResults(rows, undefined, { logger: logPopupEvent, now });
+}
+
 // Normalize imported headers so schema checks stay resilient to Excel cell formatting.
 function normalizeHeaderRow(row = []) {
   return row.map((cell) => String(cell ?? "").trim());
@@ -304,7 +315,7 @@ function setupUi() {
       const beforeCount = latestRows.length;
       latestRows = mergeImportedRows(latestRows, rows);
       const { inserted } = await persistImportedRows(rows);
-      const ranked = rankSwingResults(latestRows);
+      const ranked = rankRows(latestRows);
       renderRankings(ranked);
       if (chromeApi?.storage?.local?.set) {
         chromeApi.storage.local.set({ rankedResults: ranked });
@@ -364,7 +375,7 @@ function setupUi() {
       ["rankedResults", "analysisStatus"],
       ({ rankedResults = [], analysisStatus }) => {
         latestRows = rankedResults;
-        renderRankings(rankSwingResults(rankedResults));
+        renderRankings(rankRows(rankedResults));
         latestAnalysisStatus = analysisStatus || null;
         updateAnalysisModal(analysisStatus);
         logPopupEvent({
@@ -382,7 +393,7 @@ function setupUi() {
       }
       if (changes.rankedResults) {
         latestRows = changes.rankedResults.newValue || [];
-        renderRankings(rankSwingResults(latestRows));
+        renderRankings(rankRows(latestRows));
       }
     });
   }
@@ -399,7 +410,7 @@ function setupUi() {
       runtimeConfig = config;
       storage.updateConfig?.(config);
       hydrateSettingsForm(runtimeConfig);
-      renderRankings(rankSwingResults(latestRows));
+      renderRankings(rankRows(latestRows));
     },
   });
 

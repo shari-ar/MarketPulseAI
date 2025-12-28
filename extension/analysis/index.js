@@ -178,7 +178,7 @@ export async function runSwingAnalysis(
   const scoredSymbols = scored.map((entry) => entry.id).filter(Boolean);
   const decoratedSnapshots = applyScoresToSnapshots(snapshots, scored);
   const rankableSnapshots = selectRankableSnapshots(scored, decoratedSnapshots);
-  const ranked = rankSwingResults(rankableSnapshots);
+  const ranked = rankSwingResults(rankableSnapshots, undefined, { logger: logAnalysisEvent, now });
 
   logAnalysisEvent({
     message: "Ranked swing opportunities",

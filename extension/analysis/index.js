@@ -202,11 +202,17 @@ const isDedicatedWorker =
   self instanceof DedicatedWorkerScope;
 
 if (isDedicatedWorker) {
+  // Dedicated worker listener mirrors the background analysis API contract.
   self.onmessage = async (event) => {
     const { type, payload } = event.data || {};
     if (type !== "analyze") return;
 
     try {
+      logAnalysisEvent({
+        message: "Worker received analysis request",
+        context: { snapshotCount: payload?.snapshots?.length ?? 0 },
+        now: payload?.now ? new Date(payload.now) : new Date(),
+      });
       const result = await runSwingAnalysis(payload.snapshots, {
         now: payload.now ? new Date(payload.now) : new Date(),
         analysisCache: new Map(payload.analysisCache || []),
@@ -214,8 +220,19 @@ if (isDedicatedWorker) {
           self.postMessage({ type: "progress", payload: { progress } });
         },
       });
+      logAnalysisEvent({
+        message: "Worker completed analysis request",
+        context: { rankedCount: result?.ranked?.length ?? 0 },
+        now: result?.analyzedAt ? new Date(result.analyzedAt) : new Date(),
+      });
       self.postMessage({ type: "complete", payload: result });
     } catch (error) {
+      logAnalysisEvent({
+        type: "error",
+        message: "Worker analysis failed",
+        context: { error: error?.message },
+        now: new Date(),
+      });
       self.postMessage({
         type: "error",
         payload: { message: error?.message || "Unknown analysis error" },

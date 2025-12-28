@@ -1,4 +1,4 @@
-import Dexie from "dexie";
+import Dexie from "../vendor/dexie.mjs";
 import {
   ANALYSIS_CACHE_FIELDS,
   ANALYSIS_CACHE_TABLE,

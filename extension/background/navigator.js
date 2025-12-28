@@ -27,6 +27,8 @@ export class NavigatorService {
     this.config = getRuntimeConfig(config);
     this.logger = logger instanceof LoggingService ? logger : new LoggingService({ config });
     this.storage = storage;
+    // Route storage adapter telemetry into the structured log stream.
+    this.storage?.setLogger?.(storageLogger);
     this.snapshots = [];
     this.expectedSymbols = new Set();
     this.symbolQueue = [];

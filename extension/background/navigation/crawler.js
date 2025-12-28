@@ -37,6 +37,7 @@ function withSnapshotDefaults(snapshot) {
  * @param {{id: string, url?: string}} params.symbol - Symbol descriptor.
  * @param {object} params.config - Runtime configuration.
  * @param {AbortSignal} params.signal - Abort signal for cancellation.
+ * @param {import("../logger.js").LoggingService} [params.logger] - Structured logger.
  * @returns {Promise<object>} Parsed snapshot with schema defaults.
  */
 async function attemptParse({ tabId, symbol, config, signal, logger }) {
@@ -60,14 +61,17 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
     now: new Date(),
   });
   await navigateTo(tabId, url);
+  const now = new Date();
   await waitForSelector(tabId, config.NAVIGATION_READY_SELECTOR, {
     timeoutMs: config.NAVIGATION_WAIT_TIMEOUT_MS,
     pollIntervalMs: config.NAVIGATION_POLL_INTERVAL_MS,
     signal,
+    logger,
+    now,
   });
 
   // Stamp a shared timestamp so downstream processing stays in sync.
-  const nowIso = new Date().toISOString();
+  const nowIso = now.toISOString();
   const parsed = await executeParser(tabId, parseTopBoxSnapshot, [
     {
       selectors: config.PARSING_SELECTORS,

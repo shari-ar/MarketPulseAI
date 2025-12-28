@@ -195,6 +195,13 @@ export class NavigatorService {
 
   async refreshSymbolPlan(now = new Date()) {
     if (this.symbolRefresh || this.activeTabId === null) return;
+    this.logger.log({
+      type: "debug",
+      message: "Refreshing symbol plan",
+      source: "navigator",
+      context: { tabId: this.activeTabId },
+      now,
+    });
     this.symbolRefresh = collectSymbolsFromTab(this.activeTabId, {
       logger: this.logger,
       now,
@@ -477,8 +484,27 @@ export class NavigatorService {
   }
 
   async startCrawl() {
-    if (!this.symbolQueue.length || this.crawlTask || this.activeTabId === null) return;
-    if (!shouldCollect(new Date(), this.config)) return;
+    if (!this.symbolQueue.length || this.crawlTask || this.activeTabId === null) {
+      this.logger.log({
+        type: "debug",
+        message: "Skipping crawl start",
+        source: "navigator",
+        context: {
+          queuedSymbols: this.symbolQueue.length,
+          hasActiveTask: Boolean(this.crawlTask),
+          tabId: this.activeTabId,
+        },
+      });
+      return;
+    }
+    if (!shouldCollect(new Date(), this.config)) {
+      this.logger.log({
+        type: "debug",
+        message: "Crawl blocked outside collection window",
+        source: "navigator",
+      });
+      return;
+    }
 
     this.crawlController = new AbortController();
     const signal = this.crawlController.signal;

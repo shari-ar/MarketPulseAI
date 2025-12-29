@@ -39,6 +39,7 @@ export const DEFAULT_SELECTORS = {
 export function parseTopBoxSnapshot({ selectors, symbol, nowIso }) {
   const localSelectors = selectors || {};
   const fields = {
+    ...DEFAULT_SELECTORS,
     ...localSelectors,
   };
 

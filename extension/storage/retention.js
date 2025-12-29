@@ -1,6 +1,24 @@
 import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../runtime-config.js";
 import { marketDateFromIso } from "../background/time.js";
 
+function formatSystemTimestamp(date = new Date()) {
+  const pad = (value, length = 2) => String(value).padStart(length, "0");
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hour = pad(date.getHours());
+  const minute = pad(date.getMinutes());
+  const second = pad(date.getSeconds());
+  const millisecond = pad(date.getMilliseconds(), 3);
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absOffset = Math.abs(offsetMinutes);
+  const offsetHours = pad(Math.floor(absOffset / 60));
+  const offsetMins = pad(absOffset % 60);
+
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}.${millisecond}${sign}${offsetHours}:${offsetMins}`;
+}
+
 /**
  * Calculates whole days between two ISO-like dates.
  * Using floor keeps retention windows consistent with market-day pruning.
@@ -116,9 +134,9 @@ export function buildLogEntry(
   { type, message, context = {}, source = "navigation", ttlDays },
   now = new Date()
 ) {
-  const createdAt = now.toISOString();
+  const createdAt = formatSystemTimestamp(now);
   const expiresAt = ttlDays
-    ? new Date(now.getTime() + ttlDays * 24 * 60 * 60 * 1000).toISOString()
+    ? formatSystemTimestamp(new Date(now.getTime() + ttlDays * 24 * 60 * 60 * 1000))
     : null;
   return { type, message, context, source, createdAt, expiresAt };
 }

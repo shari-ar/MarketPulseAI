@@ -14,6 +14,7 @@ const NUMERIC_KEYS = new Set([
   "NAVIGATION_WAIT_TIMEOUT_MS",
   "NAVIGATION_POLL_INTERVAL_MS",
   "NAVIGATION_RETRY_LIMIT",
+  "NAVIGATION_RETRY_DELAY_MS",
 ]);
 
 // Keys that expect non-empty string values for runtime configuration overrides.

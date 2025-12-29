@@ -4,6 +4,10 @@ import { navigateTo, waitForSelector, executeParser } from "./helpers.js";
 import { DEFAULT_SELECTORS, parseTopBoxSnapshot } from "../parsing/top-box.js";
 import { SNAPSHOT_FIELDS } from "../../storage/schema.js";
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Builds a symbol-specific URL from config templates or a precomputed URL.
  *
@@ -175,6 +179,7 @@ export async function crawlSymbols({
 
   // Retry failures in bounded passes to avoid infinite loops on unstable symbols.
   const retries = runtimeConfig.NAVIGATION_RETRY_LIMIT;
+  const retryDelayMs = runtimeConfig.NAVIGATION_RETRY_DELAY_MS;
   for (let attempt = 0; attempt < retries; attempt += 1) {
     if (signal?.aborted) throw new Error("Crawl aborted");
     logger?.log({
@@ -186,6 +191,9 @@ export async function crawlSymbols({
     });
     const remaining = retryQueue.splice(0, retryQueue.length);
     for (const symbol of remaining) {
+      if (retryDelayMs > 0) {
+        await sleep(retryDelayMs);
+      }
       try {
         const snapshot = await attemptParse({
           tabId,

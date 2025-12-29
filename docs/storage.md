@@ -72,14 +72,14 @@
 - **Purpose:** Persists structured diagnostics, enabling retention policies by severity.
 - **Columns:**
 
-| Field       | Description                                                  |
-| ----------- | ------------------------------------------------------------ |
-| `type`      | Log level (e.g., `error`, `warning`, `info`, `debug`).       |
-| `message`   | Human-readable text describing the event.                    |
-| `context`   | JSON-serializable payload for symbol ids, stack traces, etc. |
-| `createdAt` | ISO timestamp of when the entry was recorded.                |
-| `expiresAt` | ISO timestamp derived from the per-type retention window.    |
-| `source`    | Component emitting the log (e.g., `navigation`, `analysis`). |
+| Field       | Description                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| `type`      | Log level (e.g., `error`, `warning`, `info`, `debug`).                                   |
+| `message`   | Human-readable text describing the event.                                                |
+| `context`   | JSON-serializable payload for symbol ids, stack traces, etc.                             |
+| `createdAt` | ISO timestamp (system timezone, with offset) of when the entry was recorded.             |
+| `expiresAt` | ISO timestamp (system timezone, with offset) derived from the per-type retention window. |
+| `source`    | Component emitting the log (e.g., `navigation`, `analysis`).                             |
 
 ## Migrations
 

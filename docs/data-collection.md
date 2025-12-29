@@ -10,6 +10,7 @@
 ## Scraping Approach
 
 - **Navigation helpers:** Background scripts steer the browser through symbol pages, waiting for critical DOM nodes before parsing.
+- **Retry pacing:** Failed navigations are retried up to 10 times with a 1-second delay between attempts to reduce transient errors.
 - **Parsing:** DOM selectors capture top-box metrics including prices, volumes, trade counts, and investor breakdowns.
 - **Validation:** Inputs are sanitized and normalized before persistence to prevent malformed records from reaching IndexedDB.
 

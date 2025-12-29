@@ -7,6 +7,7 @@
 - **Data retention:** Default window keeps the last 7 days of snapshots; users can increase or reduce this in settings.
 - **Log retention:** Logs are stored in IndexedDB with per-type retention windows exposed in settings—e.g., defaults of 30 days for errors, 7 days for warnings, and 3 days for informational entries. Each type can be tuned independently to match team audit needs.
 - **Top-swing list size:** The extension displays the top 5 swing candidates on the popup, and this default count is shown in settings alongside other adjustable values.
+- **Navigation retries:** Failed symbol crawls retry up to 10 times with a 1-second delay between attempts.
 
 All of these values are presented as defaults; users can update them in the extension settings to match their preferred schedule or naming scheme.
 

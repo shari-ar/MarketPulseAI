@@ -20,7 +20,8 @@ const DEFAULTS = {
   navigationReadySelector: "body",
   navigationWaitTimeoutMs: 15000,
   navigationPollIntervalMs: 250,
-  navigationRetryLimit: 2,
+  navigationRetryLimit: 10,
+  navigationRetryDelayMs: 1000,
   parsingSelectors: null,
   extensionSrcDir: "extension",
   extensionDistDir: "dist/extension",
@@ -43,6 +44,7 @@ const OVERRIDE_KEYS = [
   "NAVIGATION_WAIT_TIMEOUT_MS",
   "NAVIGATION_POLL_INTERVAL_MS",
   "NAVIGATION_RETRY_LIMIT",
+  "NAVIGATION_RETRY_DELAY_MS",
   "PARSING_SELECTORS",
   "EXTENSION_SRC_DIR",
   "EXTENSION_DIST_DIR",
@@ -154,6 +156,11 @@ function loadEnvConfig() {
       DEFAULTS.navigationRetryLimit,
       "NAVIGATION_RETRY_LIMIT"
     ),
+    navigationRetryDelayMs: parseIntOrDefault(
+      process.env.NAVIGATION_RETRY_DELAY_MS,
+      DEFAULTS.navigationRetryDelayMs,
+      "NAVIGATION_RETRY_DELAY_MS"
+    ),
     parsingSelectors: parseJsonOrDefault(
       process.env.PARSING_SELECTORS,
       DEFAULTS.parsingSelectors,
@@ -188,6 +195,7 @@ function writeRuntimeConfig(
     NAVIGATION_WAIT_TIMEOUT_MS: config.navigationWaitTimeoutMs,
     NAVIGATION_POLL_INTERVAL_MS: config.navigationPollIntervalMs,
     NAVIGATION_RETRY_LIMIT: config.navigationRetryLimit,
+    NAVIGATION_RETRY_DELAY_MS: config.navigationRetryDelayMs,
     PARSING_SELECTORS: config.parsingSelectors || undefined,
     LOG_RETENTION_DAYS: config.logRetentionDays || DEFAULTS.logRetentionDays,
   };

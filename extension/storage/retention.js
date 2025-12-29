@@ -11,6 +11,10 @@ function formatSystemTimestamp(date = new Date()) {
   const second = pad(date.getSeconds());
   const millisecond = pad(date.getMilliseconds(), 3);
   const offsetMinutes = -date.getTimezoneOffset();
+  if (offsetMinutes === 0) {
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}.${millisecond}Z`;
+  }
+
   const sign = offsetMinutes >= 0 ? "+" : "-";
   const absOffset = Math.abs(offsetMinutes);
   const offsetHours = pad(Math.floor(absOffset / 60));

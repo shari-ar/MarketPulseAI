@@ -330,9 +330,27 @@ export function buildFeatureWindow(window, { scalers, logger, now = new Date() }
 
     return row;
   });
+  logger?.({
+    type: "debug",
+    message: "Computed engineered feature rows",
+    context: { symbol: filled[filled.length - 1]?.id, rowCount: rows.length },
+    now,
+  });
 
   const zRows = computeZScores(rows, BASE_FEATURE_ORDER);
+  logger?.({
+    type: "debug",
+    message: "Computed z-scores for feature rows",
+    context: { symbol: filled[filled.length - 1]?.id, rowCount: zRows.length },
+    now,
+  });
   const scaledRows = zRows.map((row) => applyScalers(row, scalers));
+  logger?.({
+    type: "debug",
+    message: "Scaled feature rows",
+    context: { symbol: filled[filled.length - 1]?.id, rowCount: scaledRows.length },
+    now,
+  });
   logger?.({
     type: "debug",
     message: "Generated z-score features",
@@ -348,6 +366,13 @@ export function buildFeatureWindow(window, { scalers, logger, now = new Date() }
         symbol: filled[filled.length - 1]?.id,
         scalerCount: Object.keys(scalers).length,
       },
+      now,
+    });
+  } else {
+    logger?.({
+      type: "debug",
+      message: "No scalers applied to feature window",
+      context: { symbol: filled[filled.length - 1]?.id },
       now,
     });
   }

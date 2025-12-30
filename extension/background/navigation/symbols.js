@@ -60,6 +60,13 @@ export async function collectSymbolsFromTab(tabId, { logger, now = new Date() } 
   });
   try {
     symbols = await executeParser(tabId, extractSymbolsFromDom, [], { logger, now });
+    logger?.log({
+      type: "debug",
+      message: "Executed symbol extraction parser",
+      source: "navigator",
+      context: { tabId, rawCount: Array.isArray(symbols) ? symbols.length : 0 },
+      now,
+    });
   } catch (error) {
     logger?.log({
       type: "warning",
@@ -71,6 +78,7 @@ export async function collectSymbolsFromTab(tabId, { logger, now = new Date() } 
     return [];
   }
   const normalized = Array.isArray(symbols) ? symbols.filter((symbol) => symbol?.id) : [];
+  const withUrls = normalized.filter((symbol) => symbol?.url).length;
   logger?.log({
     type: "debug",
     message: "Normalized collected symbols",
@@ -80,10 +88,26 @@ export async function collectSymbolsFromTab(tabId, { logger, now = new Date() } 
   });
   logger?.log({
     type: "debug",
+    message: "Captured symbol URL coverage",
+    source: "navigator",
+    context: { tabId, urlCount: withUrls, total: normalized.length },
+    now,
+  });
+  logger?.log({
+    type: "debug",
     message: "Collected symbols from active tab",
     source: "navigator",
     context: { tabId, count: normalized.length },
     now,
   });
+  if (!normalized.length) {
+    logger?.log({
+      type: "debug",
+      message: "No symbols returned from tab parser",
+      source: "navigator",
+      context: { tabId },
+      now,
+    });
+  }
   return normalized;
 }

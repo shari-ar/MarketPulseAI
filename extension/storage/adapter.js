@@ -78,6 +78,13 @@ class MemoryAdapter {
 
   setLogger(logger) {
     this.logger = logger;
+    this.logger?.log?.({
+      type: "debug",
+      message: "Storage logger attached",
+      source: "storage",
+      context: { adapter: "memory" },
+      now: new Date(),
+    });
   }
 
   updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
@@ -235,6 +242,13 @@ class DexieAdapter extends MemoryAdapter {
     super(configOrOptions);
     this.db = new Dexie(this.config.DB_NAME);
     this.db.version(DB_VERSION).stores(getSchemaDefinition());
+    this.logger?.log?.({
+      type: "debug",
+      message: "Initialized IndexedDB adapter",
+      source: "storage",
+      context: { dbName: this.config.DB_NAME, version: DB_VERSION },
+      now: new Date(),
+    });
   }
 
   updateConfig(config = DEFAULT_RUNTIME_CONFIG) {
@@ -296,7 +310,15 @@ class DexieAdapter extends MemoryAdapter {
       context: {},
       now: new Date(),
     });
-    return this.db[SNAPSHOT_TABLE].toArray();
+    const rows = await this.db[SNAPSHOT_TABLE].toArray();
+    this.logger?.log?.({
+      type: "debug",
+      message: "IndexedDB snapshots loaded",
+      source: "storage",
+      context: { count: rows.length },
+      now: new Date(),
+    });
+    return rows;
   }
 
   async pruneSnapshots(now = new Date()) {
@@ -344,7 +366,15 @@ class DexieAdapter extends MemoryAdapter {
       context: {},
       now: new Date(),
     });
-    return this.db[LOG_TABLE].toArray();
+    const rows = await this.db[LOG_TABLE].toArray();
+    this.logger?.log?.({
+      type: "debug",
+      message: "IndexedDB logs loaded",
+      source: "storage",
+      context: { count: rows.length },
+      now: new Date(),
+    });
+    return rows;
   }
 
   async pruneLogs(now = new Date()) {
@@ -389,7 +419,15 @@ class DexieAdapter extends MemoryAdapter {
       context: {},
       now: new Date(),
     });
-    return this.db[ANALYSIS_CACHE_TABLE].toArray();
+    const rows = await this.db[ANALYSIS_CACHE_TABLE].toArray();
+    this.logger?.log?.({
+      type: "debug",
+      message: "IndexedDB analysis cache loaded",
+      source: "storage",
+      context: { count: rows.length },
+      now: new Date(),
+    });
+    return rows;
   }
 }
 
@@ -404,9 +442,23 @@ class DexieAdapter extends MemoryAdapter {
 export function createStorageAdapter(config = DEFAULT_RUNTIME_CONFIG) {
   const { config: resolvedConfig, logger } = resolveAdapterOptions(config);
   if (hasIndexedDb) {
+    logger?.log?.({
+      type: "debug",
+      message: "Creating IndexedDB storage adapter",
+      source: "storage",
+      context: { dbName: resolvedConfig.DB_NAME },
+      now: new Date(),
+    });
     // Prefer persisted storage whenever IndexedDB is available.
     return new DexieAdapter({ config: resolvedConfig, logger });
   }
+  logger?.log?.({
+    type: "debug",
+    message: "Creating in-memory storage adapter",
+    source: "storage",
+    context: { dbName: resolvedConfig.DB_NAME },
+    now: new Date(),
+  });
   return new MemoryAdapter({ config: resolvedConfig, logger });
 }
 

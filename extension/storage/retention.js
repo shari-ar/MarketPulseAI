@@ -80,6 +80,13 @@ export function pruneSnapshots(
     if (!recordDate) return false;
     return daysBetween(recordDate, today) < retentionDays;
   });
+  logger?.log?.({
+    type: "debug",
+    message: "Snapshot retention filter applied",
+    source: "storage",
+    context: { remaining: pruned.length, removed: before - pruned.length },
+    now,
+  });
 
   const removed = before - pruned.length;
   if (logger) {
@@ -125,6 +132,13 @@ export function pruneLogs(records = [], { now = new Date(), logger } = {}) {
     const expires = entry?.expiresAt ? new Date(entry.expiresAt).getTime() : null;
     if (!expires) return true;
     return expires > nowTs;
+  });
+  logger?.log?.({
+    type: "debug",
+    message: "Log retention filter applied",
+    source: "storage",
+    context: { remaining: filtered.length, removed: before - filtered.length },
+    now,
   });
 
   const removed = before - filtered.length;

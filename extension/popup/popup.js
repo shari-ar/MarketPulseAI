@@ -20,6 +20,11 @@ let latestAnalysisStatus = null;
  * individual records have missing properties.
  */
 export function buildExportWorkbook(rows = []) {
+  logPopupEvent({
+    type: "debug",
+    message: "Building export workbook",
+    context: { rowCount: rows.length, columnCount: COLUMN_ORDER.length },
+  });
   const data = [COLUMN_ORDER];
   rows.forEach((row) => {
     data.push(COLUMN_ORDER.map((key) => row[key] ?? null));
@@ -28,6 +33,11 @@ export function buildExportWorkbook(rows = []) {
   const worksheet = utils.aoa_to_sheet(data);
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, "rankings");
+  logPopupEvent({
+    type: "debug",
+    message: "Export workbook ready",
+    context: { sheetCount: workbook.SheetNames.length },
+  });
   return workbook;
 }
 
@@ -45,6 +55,15 @@ export function mergeImportedRows(existing = [], incoming = []) {
       merged.push(row);
       byKey.add(key);
     }
+  });
+  logPopupEvent({
+    type: "debug",
+    message: "Merged imported rows with cache",
+    context: {
+      existingCount: existing.length,
+      incomingCount: incoming.length,
+      mergedCount: merged.length,
+    },
   });
   return merged;
 }
@@ -120,14 +139,26 @@ function rankRows(rows = [], now = new Date()) {
 
 // Normalize imported headers so schema checks stay resilient to Excel cell formatting.
 function normalizeHeaderRow(row = []) {
-  return row.map((cell) => String(cell ?? "").trim());
+  const normalized = row.map((cell) => String(cell ?? "").trim());
+  logPopupEvent({
+    type: "debug",
+    message: "Normalized header row",
+    context: { cellCount: normalized.length },
+  });
+  return normalized;
 }
 
 // Enforce strict column parity with the export schema.
 function hasMatchingHeaders(headerRow = []) {
   if (!Array.isArray(headerRow)) return false;
   if (headerRow.length !== COLUMN_ORDER.length) return false;
-  return headerRow.every((header, index) => header === COLUMN_ORDER[index]);
+  const matches = headerRow.every((header, index) => header === COLUMN_ORDER[index]);
+  logPopupEvent({
+    type: "debug",
+    message: "Validated import headers",
+    context: { matches, expectedCount: COLUMN_ORDER.length },
+  });
+  return matches;
 }
 
 function updateAnalysisModal(status) {
@@ -255,6 +286,11 @@ async function persistImportedRows(rows = []) {
   const existingKeys = new Set(existing.map((row) => `${row.id}-${row.dateTime}`));
   const freshRows = rows.filter((row) => !existingKeys.has(`${row.id}-${row.dateTime}`));
   if (!freshRows.length) {
+    logPopupEvent({
+      type: "debug",
+      message: "No new rows to persist after import",
+      context: { incomingCount: rows.length, existingCount: existing.length },
+    });
     return { inserted: 0 };
   }
   try {
@@ -297,6 +333,11 @@ function exportCurrentRows(rows) {
   });
   writeFile(workbook, `marketpulseai-${timestamp}.xlsx`);
   logPopupEvent({
+    type: "debug",
+    message: "Triggered export workbook download",
+    context: { rowCount: rows.length, timestamp },
+  });
+  logPopupEvent({
     type: "info",
     message: "Exported ranking workbook",
     context: { rowCount: rows.length, timestamp, analysisStatus: latestAnalysisStatus?.state },
@@ -314,6 +355,17 @@ function setupUi() {
   const importFile = document.getElementById("import-file");
   const settingsForm = document.getElementById("settings-form");
   const settingsReset = document.getElementById("settings-reset");
+  logPopupEvent({
+    type: "debug",
+    message: "Resolved popup UI elements",
+    context: {
+      hasExport: Boolean(exportBtn),
+      hasImport: Boolean(importBtn),
+      hasFile: Boolean(importFile),
+      hasSettingsForm: Boolean(settingsForm),
+      hasSettingsReset: Boolean(settingsReset),
+    },
+  });
 
   let latestRows = [];
 
@@ -343,6 +395,11 @@ function setupUi() {
       const buffer = await file.arrayBuffer();
       const workbook = read(buffer, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      logPopupEvent({
+        type: "debug",
+        message: "Loaded import workbook",
+        context: { sheetCount: workbook.SheetNames.length },
+      });
       const [headerRow = []] = utils.sheet_to_json(sheet, { header: 1, blankrows: false });
       const normalizedHeader = normalizeHeaderRow(headerRow);
       logPopupEvent({

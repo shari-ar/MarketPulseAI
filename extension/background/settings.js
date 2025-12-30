@@ -24,7 +24,19 @@ async function fetchStoredConfig() {
  */
 export async function initializeRuntimeSettings({ logger, onUpdate } = {}) {
   const stored = await fetchStoredConfig();
+  logger?.log?.({
+    type: "debug",
+    message: "Fetched stored runtime config",
+    source: "settings",
+    context: { keyCount: Object.keys(stored).length },
+  });
   const merged = applyRuntimeConfigOverrides(stored, { logger, source: "settings" });
+  logger?.log?.({
+    type: "debug",
+    message: "Applied stored runtime config overrides",
+    source: "settings",
+    context: { mergedKeys: Object.keys(merged).length },
+  });
 
   logger?.log?.({
     type: "info",
@@ -36,6 +48,12 @@ export async function initializeRuntimeSettings({ logger, onUpdate } = {}) {
   if (chromeApi?.storage?.onChanged) {
     chromeApi.storage.onChanged.addListener((changes, area) => {
       if (area !== "local" || !changes[RUNTIME_CONFIG_STORAGE_KEY]) return;
+      logger?.log?.({
+        type: "debug",
+        message: "Observed runtime config storage change",
+        source: "settings",
+        context: { area },
+      });
       const nextConfig = changes[RUNTIME_CONFIG_STORAGE_KEY].newValue || {};
       const updated = applyRuntimeConfigOverrides(nextConfig, { logger, source: "settings" });
       logger?.log?.({

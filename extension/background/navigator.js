@@ -44,6 +44,17 @@ export class NavigatorService {
     this.closeTimer = null;
     this.deadlineTimer = null;
     this.symbolRefresh = null;
+    this.logger.log({
+      type: "debug",
+      message: "Navigator service initialized",
+      source: "navigator",
+      context: {
+        dbName: this.config.DB_NAME,
+        retentionDays: this.config.RETENTION_DAYS,
+        marketTimezone: this.config.MARKET_TIMEZONE,
+      },
+      now: new Date(),
+    });
   }
 
   get logs() {
@@ -105,6 +116,17 @@ export class NavigatorService {
 
   scheduleDailyTasks(now = new Date()) {
     this.clearTimers();
+    this.logger.log({
+      type: "debug",
+      message: "Calculating market timers",
+      source: "navigator",
+      context: {
+        marketOpen: this.config.MARKET_OPEN,
+        marketClose: this.config.MARKET_CLOSE,
+        analysisDeadline: this.config.ANALYSIS_DEADLINE,
+      },
+      now,
+    });
     const closeDelay = getDelayUntilMarketTime(now, this.config.MARKET_CLOSE, this.config, {
       requireTradingDay: true,
     });
@@ -121,6 +143,14 @@ export class NavigatorService {
         now,
       });
       this.closeTimer = setTimeout(() => this.handleMarketClose(), closeDelay);
+    } else {
+      this.logger.log({
+        type: "debug",
+        message: "Skipping market close timer",
+        source: "navigator",
+        context: { reason: "outside-trading-day" },
+        now,
+      });
     }
     if (deadlineDelay !== null) {
       this.logger.log({
@@ -131,6 +161,14 @@ export class NavigatorService {
         now,
       });
       this.deadlineTimer = setTimeout(() => this.handleAnalysisDeadline(), deadlineDelay);
+    } else {
+      this.logger.log({
+        type: "debug",
+        message: "Skipping analysis deadline timer",
+        source: "navigator",
+        context: { reason: "outside-trading-day" },
+        now,
+      });
     }
 
     this.logger.log({
@@ -160,6 +198,15 @@ export class NavigatorService {
       });
       return;
     }
+    if (this.crawlController) {
+      this.logger.log({
+        type: "debug",
+        message: "Aborting crawl controller",
+        source: "navigator",
+        context: { reason },
+        now,
+      });
+    }
     if (this.crawlController) this.crawlController.abort();
     this.crawlController = null;
     this.crawlTask = null;
@@ -173,6 +220,13 @@ export class NavigatorService {
   }
 
   handleMarketClose(now = new Date()) {
+    this.logger.log({
+      type: "debug",
+      message: "Market close handler triggered",
+      source: "navigator",
+      context: { timestamp: now.toISOString() },
+      now,
+    });
     this.logger.log({
       type: "info",
       message: "Market close reached; starting daily retention sweep",
@@ -204,6 +258,13 @@ export class NavigatorService {
     });
     this.haltCrawl("analysis-deadline", now);
     this.crawlComplete = true;
+    this.logger.log({
+      type: "debug",
+      message: "Marked crawl complete at analysis deadline",
+      source: "navigator",
+      context: { expectedRemaining: this.expectedSymbols.size },
+      now,
+    });
     await this.runAnalysisIfDue(now, "deadline");
     this.scheduleDailyTasks(now);
   }
@@ -225,6 +286,13 @@ export class NavigatorService {
       now,
     });
     const marketDate = marketDateFromIso(now.toISOString(), this.config);
+    this.logger.log({
+      type: "debug",
+      message: "Computed market date for symbol planning",
+      source: "navigator",
+      context: { marketDate },
+      now,
+    });
     const latestBySymbol = new Map();
     this.snapshots.forEach((snapshot) => {
       if (!snapshot?.id || !snapshot?.dateTime) return;
@@ -233,9 +301,23 @@ export class NavigatorService {
         latestBySymbol.set(snapshot.id, snapshot.dateTime);
       }
     });
+    this.logger.log({
+      type: "debug",
+      message: "Computed latest snapshot per symbol",
+      source: "navigator",
+      context: { knownSymbols: latestBySymbol.size },
+      now,
+    });
     const missing = normalized.filter((entry) => {
       const latest = latestBySymbol.get(entry.id);
       return !latest || marketDateFromIso(latest, this.config) !== marketDate;
+    });
+    this.logger.log({
+      type: "debug",
+      message: "Identified missing symbols for crawl",
+      source: "navigator",
+      context: { missingCount: missing.length },
+      now,
     });
 
     missing.sort((a, b) => {
@@ -299,6 +381,13 @@ export class NavigatorService {
       now,
     })
       .then((symbols) => {
+        this.logger.log({
+          type: "debug",
+          message: "Collected symbols from tab",
+          source: "navigator",
+          context: { symbolCount: symbols.length },
+          now,
+        });
         if (!symbols.length) {
           this.logger.log({
             type: "warning",
@@ -366,6 +455,13 @@ export class NavigatorService {
       });
       return marketDate;
     }
+    this.logger.log({
+      type: "debug",
+      message: "Starting retention sweep",
+      source: "navigator",
+      context: { marketDate },
+      now,
+    });
 
     const snapshotCountBefore = this.snapshots.length;
     const logCountBefore = this.logs.length;
@@ -422,7 +518,16 @@ export class NavigatorService {
    * @param {Date} [now=new Date()] - Timestamp for status freshness.
    */
   updateAnalysisStatus(status, now = new Date()) {
-    if (!chromeApi?.storage?.local?.set) return;
+    if (!chromeApi?.storage?.local?.set) {
+      this.logger.log({
+        type: "debug",
+        message: "Skipping analysis status update; storage unavailable",
+        source: "navigator",
+        context: { state: status?.state, progress: status?.progress },
+        now,
+      });
+      return;
+    }
     this.logger.log({
       type: "debug",
       message: "Updating analysis status",
@@ -434,6 +539,13 @@ export class NavigatorService {
   }
 
   async runAnalysisIfDue(now = new Date(), reason = "scheduled") {
+    this.logger.log({
+      type: "debug",
+      message: "Evaluating whether analysis should run",
+      source: "navigator",
+      context: { reason, crawlComplete: this.crawlComplete },
+      now,
+    });
     if (this.analysisRunning) {
       this.logger.log({
         type: "info",
@@ -634,6 +746,13 @@ export class NavigatorService {
 
     if (!this.expectedSymbols.size) {
       this.crawlComplete = true;
+      this.logger.log({
+        type: "debug",
+        message: "All expected symbols collected",
+        source: "navigator",
+        context: { acceptedCount: acceptedSnapshots.length },
+        now,
+      });
     }
 
     await this.runAnalysisIfDue(now, this.crawlComplete ? "crawl-complete" : "scheduled");
@@ -658,6 +777,13 @@ export class NavigatorService {
       });
       return;
     }
+    this.logger.log({
+      type: "debug",
+      message: "Starting collection session",
+      source: "navigator",
+      context: { tabId },
+      now,
+    });
     this.activeTabId = tabId;
     this.logger.log({
       type: "info",
@@ -703,6 +829,13 @@ export class NavigatorService {
       return;
     }
     const now = new Date();
+    this.logger.log({
+      type: "debug",
+      message: "Preparing crawl payload",
+      source: "navigator",
+      context: { tabId: this.activeTabId, queuedSymbols: this.symbolQueue.length },
+      now,
+    });
     if (!shouldCollect(now, this.config)) {
       this.logger.log({
         type: "debug",
@@ -773,6 +906,13 @@ export class NavigatorService {
         });
         await this.runAnalysisIfDue(new Date(), "crawl-complete");
       });
+    this.logger.log({
+      type: "debug",
+      message: "Crawl task enqueued",
+      source: "navigator",
+      context: { tabId: this.activeTabId, queuedSymbols: this.symbolQueue.length },
+      now,
+    });
   }
 
   /**
@@ -798,6 +938,13 @@ export class NavigatorService {
     this.expectedSymbols.clear();
     this.crawlComplete = false;
     this.symbolQueue = [];
+    this.logger.log({
+      type: "debug",
+      message: "Reset session state",
+      source: "navigator",
+      context: { reason, tabId },
+      now,
+    });
     this.clearTimers();
     this.haltCrawl(reason, now);
     this.logger.log({
@@ -824,6 +971,13 @@ export class NavigatorService {
         retentionDays: this.config.RETENTION_DAYS,
         logger: storageLogger,
         config: this.config,
+      });
+      this.logger.log({
+        type: "debug",
+        message: "Applied retention to hydrated snapshots",
+        source: "navigator",
+        context: { retainedCount: this.snapshots.length },
+        now,
       });
       this.logger.log({
         type: "info",
@@ -853,6 +1007,14 @@ export class NavigatorService {
         message: "Hydrated analysis cache from storage",
         source: "navigator",
         context: { restoredCount: this.analysisCache.size },
+        now,
+      });
+    } else {
+      this.logger.log({
+        type: "debug",
+        message: "No analysis cache entries found in storage",
+        source: "navigator",
+        context: {},
         now,
       });
     }
@@ -915,9 +1077,24 @@ export class NavigatorService {
         context: { count: scoredSnapshots.length },
         now,
       });
+    } else {
+      this.logger.log({
+        type: "debug",
+        message: "No scored snapshots to persist",
+        source: "navigator",
+        context: { totalSnapshots: this.analysisResult.snapshots.length },
+        now,
+      });
     }
 
     if (chromeApi?.storage?.local?.set) {
+      this.logger.log({
+        type: "debug",
+        message: "Caching ranked results in chrome storage",
+        source: "navigator",
+        context: { rankedCount: ranked?.length ?? 0 },
+        now,
+      });
       chromeApi.storage.local.set({ rankedResults: ranked }, () => {
         if (chromeApi.runtime?.lastError) {
           this.logger.log({

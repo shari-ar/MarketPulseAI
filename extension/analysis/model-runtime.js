@@ -79,6 +79,12 @@ export async function loadModelManifest({ logger, now = new Date() } = {}) {
     context: { url: MANIFEST_URL.toString() },
     now,
   });
+  logger?.({
+    type: "debug",
+    message: "Resolving runtime environment for manifest",
+    context: { isNode: typeof window === "undefined" },
+    now,
+  });
   try {
     const manifest = await loadJsonAsset(MANIFEST_URL);
     const resolved = resolveActiveManifest(manifest);
@@ -182,6 +188,12 @@ async function loadModel(manifest, logger, now, tf) {
   const startedAt = Date.now();
   const modelPromise = tf.loadLayersModel(modelUrl.toString());
   modelCache.set(modelUrl.toString(), modelPromise);
+  logger?.({
+    type: "debug",
+    message: "Cached TensorFlow.js model promise",
+    context: { url: modelUrl.toString() },
+    now,
+  });
   const model = await modelPromise;
 
   logger?.({
@@ -218,6 +230,12 @@ async function loadModelFromMemory(manifest, logger, now, tf) {
   const modelPromise = Promise.all([loadJsonAsset(modelUrl), loadTextAsset(weightsUrl)]).then(
     ([modelJson, weightsBase64]) => {
       const weightSpecs = modelJson?.weightsManifest?.[0]?.weights || [];
+      logger?.({
+        type: "debug",
+        message: "Decoded base64 weight specs",
+        context: { weightCount: weightSpecs.length },
+        now,
+      });
       const weightData = decodeBase64WeightData(weightsBase64.trim());
       if (!weightData) throw new Error("Invalid base64 weight data");
       const ioHandler = tf.io.fromMemory(modelJson.modelTopology, weightSpecs, weightData);
@@ -226,6 +244,12 @@ async function loadModelFromMemory(manifest, logger, now, tf) {
   );
 
   modelCache.set(cacheKey, modelPromise);
+  logger?.({
+    type: "debug",
+    message: "Cached TensorFlow.js in-memory model promise",
+    context: { cacheKey },
+    now,
+  });
   const model = await modelPromise;
   logger?.({
     message: "Loaded TensorFlow.js model from base64 weights",
@@ -249,7 +273,13 @@ async function loadScalers(manifest, logger, now) {
     const scalers = await loadJsonAsset(scalersUrl);
     logger?.({
       message: "Loaded feature scalers",
-      context: { durationMs: Date.now() - startedAt },
+      context: { durationMs: Date.now() - startedAt, count: scalers?.length ?? null },
+      now,
+    });
+    logger?.({
+      type: "debug",
+      message: "Scaler asset loaded",
+      context: { hasScalers: Boolean(scalers) },
       now,
     });
     return scalers;
@@ -278,7 +308,13 @@ async function loadWeights(manifest, logger, now) {
     const weights = await loadJsonAsset(weightsUrl);
     logger?.({
       message: "Loaded model weights",
-      context: { durationMs: Date.now() - startedAt },
+      context: { durationMs: Date.now() - startedAt, hasWeights: Boolean(weights) },
+      now,
+    });
+    logger?.({
+      type: "debug",
+      message: "Weights asset loaded",
+      context: { keys: weights ? Object.keys(weights).length : 0 },
       now,
     });
     return weights;
@@ -315,7 +351,13 @@ async function loadCalibration(manifest, logger, now) {
     const calibration = await loadJsonAsset(calibrationUrl);
     logger?.({
       message: "Loaded model calibration",
-      context: { durationMs: Date.now() - startedAt },
+      context: { durationMs: Date.now() - startedAt, hasCalibration: Boolean(calibration) },
+      now,
+    });
+    logger?.({
+      type: "debug",
+      message: "Calibration asset loaded",
+      context: { version: manifest?.version },
       now,
     });
     return calibration;
@@ -379,6 +421,12 @@ function scoreWindowWithWeights(window, manifest, assets, now, logger) {
 
   const aggregated = aggregateFeatureRows(featureWindow.rows, FEATURE_ORDER);
   if (!aggregated) return null;
+  logger?.({
+    type: "debug",
+    message: "Aggregated feature rows for weights",
+    context: { symbol: featureWindow.latest?.id },
+    now,
+  });
 
   const percentScore =
     dotProduct(aggregated, assets.weights?.swingPercent?.weights) +
@@ -433,6 +481,12 @@ function scoreWindowWithTfjs(window, manifest, assets, now, logger) {
 
   const calibration = assets.calibration || manifest?.calibration;
   const inputData = buildModelInput(featureWindow.rows);
+  logger?.({
+    type: "debug",
+    message: "Prepared TensorFlow.js input tensor",
+    context: { symbol: featureWindow.latest?.id, rowCount: featureWindow.rows.length },
+    now,
+  });
   const input = assets.tf.tensor([inputData], undefined, "float32");
 
   const output = assets.model.predict(input);
@@ -481,11 +535,27 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
     context: { version: manifest?.version, hasModel: Boolean(manifest?.modelPath) },
     now,
   });
+  logger?.({
+    type: "debug",
+    message: "Starting asset load for scoring strategy",
+    context: { version: manifest?.version },
+    now,
+  });
   const [scalers, weights, calibration] = await Promise.all([
     loadScalers(manifest, logger, now),
     loadWeights(manifest, logger, now),
     loadCalibration(manifest, logger, now),
   ]);
+  logger?.({
+    type: "debug",
+    message: "Asset load complete for scoring strategy",
+    context: {
+      hasScalers: Boolean(scalers),
+      hasWeights: Boolean(weights),
+      hasCalibration: Boolean(calibration),
+    },
+    now,
+  });
 
   let model = null;
   let tf = null;
@@ -502,6 +572,12 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
       });
     } else {
       tf = tfResult.module;
+      logger?.({
+        type: "debug",
+        message: "TensorFlow.js runtime loaded",
+        context: { version: manifest?.version },
+        now,
+      });
       const modelResult = await (
         manifest?.weightsBase64Path
           ? loadModelFromMemory(manifest, logger, now, tf)
@@ -518,6 +594,12 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
         });
       } else {
         model = modelResult.loaded;
+        logger?.({
+          type: "debug",
+          message: "TensorFlow.js model ready for scoring",
+          context: { version: manifest?.version },
+          now,
+        });
       }
     }
   }
@@ -556,6 +638,12 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
 
   return (window, { now: runtimeNow = now } = {}) => {
     const startedAt = Date.now();
+    logger?.({
+      type: "debug",
+      message: "Scoring window using resolved strategy",
+      context: { symbol: window?.[0]?.id, mode: model ? "tfjs" : "weights" },
+      now: runtimeNow,
+    });
     const result = model
       ? scoreWindowWithTfjs(
           window,

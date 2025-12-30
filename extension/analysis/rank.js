@@ -35,9 +35,21 @@ function emitRankingLog(logger, payload) {
  */
 export function rankSwingResults(records = [], limit = 5, { logger, now = new Date() } = {}) {
   const max = resolveLimit(limit);
+  emitRankingLog(logger, {
+    type: "debug",
+    message: "Ranking swing results",
+    context: { inputCount: records.length, limit: Number.isFinite(max) ? max : null },
+    now,
+  });
   const sortable = records
     .filter((row) => typeof row.predictedSwingProbability === "number")
     .map((row) => ({ ...row }));
+  emitRankingLog(logger, {
+    type: "debug",
+    message: "Filtered rankable swing results",
+    context: { filteredCount: sortable.length },
+    now,
+  });
 
   sortable.sort((a, b) => {
     // Prioritize confidence first so the list favors swings we believe in the most.
@@ -46,6 +58,12 @@ export function rankSwingResults(records = [], limit = 5, { logger, now = new Da
     }
     // Fall back to magnitude to surface larger potential moves when confidence ties.
     return (b.predictedSwingPercent || 0) - (a.predictedSwingPercent || 0);
+  });
+  emitRankingLog(logger, {
+    type: "debug",
+    message: "Sorted swing results",
+    context: { sortedCount: sortable.length },
+    now,
   });
 
   const ranked = Number.isFinite(max) ? sortable.slice(0, max) : sortable;

@@ -105,6 +105,7 @@ export async function runSwingAnalysis(
 ) {
   const snapshotCount = snapshots.length;
   const symbolCount = new Set(snapshots.map((snapshot) => snapshot.id)).size;
+  const analysisStart = Date.now();
 
   logAnalysisEvent({
     type: "debug",
@@ -125,6 +126,15 @@ export async function runSwingAnalysis(
     context: { windowCount: windows.length },
     now,
   });
+  logAnalysisEvent({
+    type: "debug",
+    message: "Captured window build metrics",
+    context: {
+      totalSnapshots: snapshotCount,
+      windowsPerSymbolAvg: windows.length ? windows.length / symbolCount : 0,
+    },
+    now,
+  });
   const freshWindows = filterFreshWindows(windows, analysisCache);
   logAnalysisEvent({
     type: "debug",
@@ -133,6 +143,12 @@ export async function runSwingAnalysis(
     now,
   });
   const analyzedSymbols = freshWindows.map((window) => window[0]?.id).filter(Boolean);
+  logAnalysisEvent({
+    type: "debug",
+    message: "Prepared analyzed symbol list",
+    context: { analyzedCount: analyzedSymbols.length },
+    now,
+  });
 
   logAnalysisEvent({
     message: "Built analysis windows",
@@ -171,6 +187,12 @@ export async function runSwingAnalysis(
     });
     return { ranked: [], analyzedAt: now.toISOString(), snapshots, analyzedSymbols: [] };
   }
+  logAnalysisEvent({
+    type: "debug",
+    message: "Model assets resolved for scoring",
+    context: { manifestId: manifest?.id ?? null },
+    now,
+  });
 
   const scoringStartedAt = Date.now();
   const scored = [];
@@ -193,6 +215,12 @@ export async function runSwingAnalysis(
     }
 
     const scoredEntry = scoreWindow(window, { now });
+    logAnalysisEvent({
+      type: "debug",
+      message: "Score window returned entry",
+      context: { symbol: window[0]?.id, hasScore: Boolean(scoredEntry) },
+      now,
+    });
     if (!scoredEntry) continue;
     scored.push({ ...scoredEntry, window });
 
@@ -219,6 +247,12 @@ export async function runSwingAnalysis(
   const rankableSnapshots = selectRankableSnapshots(scored, decoratedSnapshots);
   logAnalysisEvent({
     type: "debug",
+    message: "Applied scores to snapshots",
+    context: { scoredSymbols: scoredSymbols.length, decoratedCount: decoratedSnapshots.length },
+    now,
+  });
+  logAnalysisEvent({
+    type: "debug",
     message: "Prepared snapshots for ranking",
     context: {
       scoredSymbols: scoredSymbols.length,
@@ -232,6 +266,12 @@ export async function runSwingAnalysis(
   logAnalysisEvent({
     message: "Ranked swing opportunities",
     context: { rankedCount: ranked.length },
+    now,
+  });
+  logAnalysisEvent({
+    type: "debug",
+    message: "Completed swing analysis pipeline",
+    context: { durationMs: Date.now() - analysisStart },
     now,
   });
 

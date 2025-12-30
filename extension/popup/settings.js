@@ -24,6 +24,11 @@ async function fetchStoredConfig() {
  */
 export async function initializePopupRuntimeSettings({ onUpdate } = {}) {
   const stored = await fetchStoredConfig();
+  logPopupEvent({
+    type: "debug",
+    message: "Fetched popup runtime settings from storage",
+    context: { keyCount: Object.keys(stored).length },
+  });
   const merged = applyRuntimeConfigOverrides(stored, { logger: popupLogger, source: "popup" });
   popupLogger.updateConfig?.(merged);
 
@@ -36,6 +41,11 @@ export async function initializePopupRuntimeSettings({ onUpdate } = {}) {
   if (chromeApi?.storage?.onChanged) {
     chromeApi.storage.onChanged.addListener((changes, area) => {
       if (area !== "local" || !changes[RUNTIME_CONFIG_STORAGE_KEY]) return;
+      logPopupEvent({
+        type: "debug",
+        message: "Observed popup runtime settings change",
+        context: { area },
+      });
       const nextConfig = changes[RUNTIME_CONFIG_STORAGE_KEY].newValue || {};
       const updated = applyRuntimeConfigOverrides(nextConfig, {
         logger: popupLogger,
@@ -63,9 +73,24 @@ export async function initializePopupRuntimeSettings({ onUpdate } = {}) {
  */
 export async function persistPopupRuntimeSettings(config) {
   if (!chromeApi?.storage?.local?.set) {
+    logPopupEvent({
+      type: "debug",
+      message: "Popup runtime settings persist skipped; storage unavailable",
+      context: { keyCount: Object.keys(config || {}).length },
+    });
     return { stored: false };
   }
+  logPopupEvent({
+    type: "debug",
+    message: "Persisting popup runtime settings",
+    context: { keyCount: Object.keys(config || {}).length },
+  });
   await chromeApi.storage.local.set({ [RUNTIME_CONFIG_STORAGE_KEY]: config });
+  logPopupEvent({
+    type: "debug",
+    message: "Popup runtime settings persisted",
+    context: { keyCount: Object.keys(config || {}).length },
+  });
   logPopupEvent({
     type: "info",
     message: "Saved runtime settings",

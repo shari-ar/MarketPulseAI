@@ -163,17 +163,31 @@ export function pruneLogs(records = [], { now = new Date(), logger } = {}) {
  * @param {string} params.message - Human-readable description.
  * @param {object} [params.context={}] - Structured metadata.
  * @param {string} [params.source="navigation"] - Originating module.
+ * @param {string} [params.pageUrl] - URL of the page where the log occurred.
  * @param {number} [params.ttlDays] - Days until automatic expiry.
  * @param {Date} [now=new Date()] - Clock used for deterministic tests.
  * @returns {object} Log entry ready for persistence.
  */
 export function buildLogEntry(
-  { type, message, context = {}, source = "navigation", ttlDays },
+  { type, message, context = {}, source = "navigation", ttlDays, pageUrl },
   now = new Date()
 ) {
   const createdAt = formatSystemTimestamp(now);
   const expiresAt = ttlDays
     ? formatSystemTimestamp(new Date(now.getTime() + ttlDays * 24 * 60 * 60 * 1000))
     : null;
-  return { type, message, context, source, createdAt, expiresAt };
+  const resolvedPageUrl = pageUrl ?? context?.pageUrl ?? context?.url ?? context?.tabUrl ?? null;
+  const normalizedContext =
+    resolvedPageUrl && context?.pageUrl !== resolvedPageUrl
+      ? { ...context, pageUrl: resolvedPageUrl }
+      : context;
+  return {
+    type,
+    message,
+    context: normalizedContext,
+    source,
+    createdAt,
+    expiresAt,
+    pageUrl: resolvedPageUrl,
+  };
 }

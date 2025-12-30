@@ -69,6 +69,7 @@ export const LOG_FIELDS = {
   source: "string",
   createdAt: "string",
   expiresAt: "string",
+  pageUrl: "string",
 };
 
 /**

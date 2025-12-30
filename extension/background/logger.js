@@ -26,15 +26,24 @@ export class LoggingService {
    * @param {string} params.message - Human-readable summary.
    * @param {object} [params.context={}] - Structured metadata payload.
    * @param {string} [params.source="navigation"] - Originating module name.
+   * @param {string} [params.pageUrl] - URL of the page where the log occurred.
    * @param {number} [params.ttlDays] - Optional TTL override in days.
    * @param {Date} [params.now=new Date()] - Clock used for deterministic tests.
    * @returns {object} Newly created log entry.
    */
-  log({ type = "info", message, context = {}, source = "navigation", ttlDays, now = new Date() }) {
+  log({
+    type = "info",
+    message,
+    context = {},
+    source = "navigation",
+    pageUrl,
+    ttlDays,
+    now = new Date(),
+  }) {
     const normalizedType = LOG_LEVELS.includes(type) ? type : "info";
     const retentionDays = ttlDays ?? this.config.LOG_RETENTION_DAYS?.[normalizedType];
     const entry = buildLogEntry(
-      { type: normalizedType, message, context, source, ttlDays: retentionDays },
+      { type: normalizedType, message, context, source, ttlDays: retentionDays, pageUrl },
       now
     );
     this.logs.push(entry);

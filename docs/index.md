@@ -55,6 +55,6 @@ More detail lives in [Scheduling](scheduling.md) and [Diagnostics](diagnostics.m
 
 - **Set up locally:** Follow [Developer Setup](dev-setup.md) to install dependencies and run the extension in a Chromium browser.
 - **Run checks:** Use [Testing](testing.md) for guidance on Jest tests, linting expectations, and manual verification steps.
-- **Validate outputs:** After scraping, confirm `topBoxSnapshots` entries exist in IndexedDB; after analysis, ensure the progress modal completes without errors; after export, open the `.xlsx` to verify column fidelity; after import, confirm only previously missing rows were added.
+- **Validate outputs:** After scraping, confirm `stocks` entries exist in IndexedDB; after analysis, ensure the progress modal completes without errors; after export, open the `.xlsx` to verify column fidelity; after import, confirm only previously missing rows were added.
 
 Use this page as your anchor for navigating the documentation and aligning implementation choices with MarketPulseAI's privacy-first, on-device principles.

@@ -4,7 +4,7 @@
  */
 export const DB_NAME = "marketpulseai";
 export const DB_VERSION = 1;
-export const SNAPSHOT_TABLE = "topBoxSnapshots";
+export const SNAPSHOT_TABLE = "stocks";
 export const ANALYSIS_CACHE_TABLE = "analysisCache";
 export const LOG_TABLE = "logs";
 

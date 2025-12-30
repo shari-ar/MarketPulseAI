@@ -20,14 +20,14 @@
 
 ## Model Training and Inference
 
-- **Training pipeline:** Build seven-day sliding windows from `topBoxSnapshots`, compute engineered ratios and returns, Z-score using training-set statistics, and train the TCN with Huber loss and Adam (cosine decay, early stopping). Calibrate the probability head with Platt scaling; clip forecasts to [-50%, 50%] (percent) and [0.01, 0.99] (probability) before display.
+- **Training pipeline:** Build seven-day sliding windows from `stocks`, compute engineered ratios and returns, Z-score using training-set statistics, and train the TCN with Huber loss and Adam (cosine decay, early stopping). Calibrate the probability head with Platt scaling; clip forecasts to [-50%, 50%] (percent) and [0.01, 0.99] (probability) before display.
 - **Inference workflow:** Require seven recent snapshots, rebuild engineered features with stored scalers, and batch TF.js scoring inside the analysis worker. Apply saved calibration parameters, persist full-precision scores to the latest snapshot, and round for UI/export rendering. If assets fail to load, skip inference and keep scores null.
 - **Ranking rules:** Symbols sort by `predictedSwingProbability`; `predictedSwingPercent` appears alongside for magnitude context, with the top five highlighted by default.
 - **Artifact versioning:** Bundle TF.js model JSON/weights, scalers, and calibration params under `analysis/models/` as `swing-tcn-<yyyy-mm-dd>-v<N>`. Keep the latest two versions for rollback and point the active manifest entry to the chosen tag.
 
 ## Storage and Configuration
 
-- **Database contract:** IndexedDB via Dexie named `marketpulseai` with tables `topBoxSnapshots` (composite key `[id+dateTime]`), `analysisCache` (`symbol`, `lastAnalyzedAt`), and `logs` (auto-increment `id`, per-type retention windows).
+- **Database contract:** IndexedDB via Dexie named `marketpulseai` with tables `stocks` (composite key `[id+dateTime]`), `analysisCache` (`symbol`, `lastAnalyzedAt`), and `logs` (auto-increment `id`, per-type retention windows).
 - **Versioning:** Fixed schema with reinstall-based upgrades instead of migrations.
 - **Retention:** Keep seven days of history by default; older rows are purged when the daily window opens.
 - **User defaults:** Settings expose editable defaults for the market-open blackout window (09:00–13:00 IRST on Saturday–Wednesday), retention days (7), top swing list size (5), etc.
@@ -37,7 +37,7 @@
 1. **Prune and gate:** Enforce a blackout during the configured open hours (default 09:00–13:00 IRST, Saturday–Wednesday) with navigation, writes, and analysis paused; at market close delete snapshots older than the retention window, trim expired logs, and allow crawling only within the close-to-07:00 window that bridges from Wednesday into Saturday across the weekend.
 2. **Select targets:** Queue symbols missing a snapshot for the current market date so each one is captured once per day.
 3. **Navigate and parse:** Background helpers move through symbol pages, wait for required selectors, extract top-box metrics, and validate inputs.
-4. **Persist:** Write sanitized records to `topBoxSnapshots` and update `analysisCache` when analysis completes.
+4. **Persist:** Write sanitized records to `stocks` and update `analysisCache` when analysis completes.
 5. **Retry and cutoff:** Re-queue failed pages; if crawling remains incomplete at 07:00, stop collection and proceed to analysis with available data.
 
 ## Data Flow Summary

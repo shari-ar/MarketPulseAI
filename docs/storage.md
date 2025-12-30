@@ -6,11 +6,11 @@
 - **Database name:** `marketpulseai`.
 - **Schema version:** Single fixed version; migrations are not tracked. Fresh installs pick up schema changes.
 - **Retention:** Only the most recent N days of snapshots are kept (default **7**). Records older than the window are purged daily before new data is saved.
-- **Import merge rule:** Excel imports append only records whose composite `[id + dateTime]` key does not already exist in `topBoxSnapshots`; existing rows remain untouched.
+- **Import merge rule:** Excel imports append only records whose composite `[id + dateTime]` key does not already exist in `stocks`; existing rows remain untouched.
 
 ## Tables
 
-### `topBoxSnapshots`
+### `stocks`
 
 - **Primary key:** Compound `[id + dateTime]`.
 - **Secondary indexes:** `id`, `dateTime`, `status`.

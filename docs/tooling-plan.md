@@ -45,7 +45,7 @@ This plan outlines the end-to-end tooling and platform choices that keep MarketP
   - Snapshot-based tests for popup table rendering to protect export fidelity.
 - **Runtime diagnostics:**
   - Background logs are structured, written to IndexedDB, and pruned at the 13:00 daily kickoff according to per-type retention windows configured in settings.
-  - IndexedDB sanity check: verify `topBoxSnapshots` writes per symbol per session before analysis runs.
+  - IndexedDB sanity check: verify `stocks` writes per symbol per session before analysis runs.
 
 ## Observability for Analysis
 

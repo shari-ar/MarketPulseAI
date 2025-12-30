@@ -2,7 +2,7 @@ import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../../runtime-config.j
 import { shouldCollect } from "../scheduling.js";
 import { navigateTo, waitForSelector, executeParser } from "./helpers.js";
 import { DEFAULT_SELECTORS, parseTopBoxSnapshot } from "../parsing/top-box.js";
-import { SNAPSHOT_FIELDS } from "../../storage/schema.js";
+import { STOCKS_FIELDS } from "../../storage/schema.js";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -29,7 +29,7 @@ function buildUrl(symbol, config) {
  * @returns {object} Snapshot aligned with schema defaults.
  */
 function withSnapshotDefaults(snapshot) {
-  const base = Object.fromEntries(Object.keys(SNAPSHOT_FIELDS).map((key) => [key, null]));
+  const base = Object.fromEntries(Object.keys(STOCKS_FIELDS).map((key) => [key, null]));
   return { ...base, ...snapshot };
 }
 

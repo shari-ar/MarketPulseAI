@@ -1,7 +1,7 @@
 import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../runtime-config.js";
 import { shouldCollect, shouldPause, shouldRunAnalysis } from "./scheduling.js";
 import { getDelayUntilMarketTime, marketDateFromIso } from "./time.js";
-import { pruneSnapshots } from "../storage/retention.js";
+import { pruneStocks } from "../storage/retention.js";
 import { validateSnapshot } from "../storage/schema.js";
 import { storageLogger } from "../storage/logger.js";
 import { runSwingAnalysisWithWorker } from "../analysis/runner.js";
@@ -466,13 +466,13 @@ export class NavigatorService {
     const snapshotCountBefore = this.snapshots.length;
     const logCountBefore = this.logs.length;
 
-    this.snapshots = pruneSnapshots(this.snapshots, {
+    this.snapshots = pruneStocks(this.snapshots, {
       now,
       retentionDays: this.config.RETENTION_DAYS,
       logger: storageLogger,
       config: this.config,
     });
-    this.storage?.pruneSnapshots?.(now).catch((error) =>
+    this.storage?.pruneStocks?.(now).catch((error) =>
       this.logger.log({
         type: "warning",
         message: "Failed to prune persisted snapshots",
@@ -721,7 +721,7 @@ export class NavigatorService {
       now,
     });
     if (acceptedSnapshots.length) {
-      await this.storage?.addSnapshots?.(acceptedSnapshots).catch((error) =>
+      await this.storage?.addStocks?.(acceptedSnapshots).catch((error) =>
         this.logger.log({
           type: "warning",
           message: "Failed to persist snapshots",
@@ -957,7 +957,7 @@ export class NavigatorService {
   }
 
   async hydrateFromStorage(now = new Date()) {
-    const persistedSnapshots = (await this.storage?.getSnapshots?.()) || [];
+    const persistedSnapshots = (await this.storage?.getStocks?.()) || [];
     this.logger.log({
       type: "debug",
       message: "Hydrating snapshots from storage",
@@ -966,7 +966,7 @@ export class NavigatorService {
       now,
     });
     if (persistedSnapshots.length) {
-      this.snapshots = pruneSnapshots(persistedSnapshots, {
+      this.snapshots = pruneStocks(persistedSnapshots, {
         now,
         retentionDays: this.config.RETENTION_DAYS,
         logger: storageLogger,
@@ -1061,7 +1061,7 @@ export class NavigatorService {
         Number.isFinite(snapshot?.predictedSwingPercent)
     );
     if (scoredSnapshots.length) {
-      this.storage?.upsertSnapshots?.(scoredSnapshots).catch((error) =>
+      this.storage?.upsertStocks?.(scoredSnapshots).catch((error) =>
         this.logger.log({
           type: "warning",
           message: "Failed to persist scored snapshots",

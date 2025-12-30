@@ -7,13 +7,13 @@ describe("storage schema", () => {
 
     assert.strictEqual(schema.DB_NAME, "marketpulseai");
     assert.strictEqual(schema.DB_VERSION, 1);
-    assert.strictEqual(schema.SNAPSHOT_TABLE, "stocks");
+    assert.strictEqual(schema.STOCKS_TABLE, "stocks");
     assert.strictEqual(schema.ANALYSIS_CACHE_TABLE, "analysisCache");
     assert.strictEqual(schema.LOG_TABLE, "logs");
 
-    const snapshotKeys = Object.keys(schema.SNAPSHOT_FIELDS);
-    assert.ok(snapshotKeys.includes("predictedSwingPercent"));
-    assert.ok(snapshotKeys.includes("predictedSwingProbability"));
+    const stockKeys = Object.keys(schema.STOCKS_FIELDS);
+    assert.ok(stockKeys.includes("predictedSwingPercent"));
+    assert.ok(stockKeys.includes("predictedSwingProbability"));
 
     assert.deepStrictEqual(Object.keys(schema.ANALYSIS_CACHE_FIELDS), ["symbol", "lastAnalyzedAt"]);
     assert.deepStrictEqual(Object.keys(schema.LOG_FIELDS), [

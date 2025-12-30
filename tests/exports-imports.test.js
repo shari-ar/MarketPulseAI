@@ -9,20 +9,36 @@ describe("Excel exports and imports", () => {
   it("exports columns matching the popup table", async () => {
     const { buildExportWorkbook } = await import("../extension/popup/popup.js");
 
-    const workbook = buildExportWorkbook([
-      {
-        id: "AAA",
-        dateTime: "2024-01-01T00:00:00Z",
-        symbolName: "AAA Co",
-        symbolAbbreviation: "AAA",
-        predictedSwingPercent: 2.5,
-        predictedSwingProbability: 0.65,
-      },
-    ]);
+    const workbook = buildExportWorkbook({
+      stocks: [
+        {
+          id: "AAA",
+          dateTime: "2024-01-01T00:00:00Z",
+          symbolName: "AAA Co",
+          symbolAbbreviation: "AAA",
+          predictedSwingPercent: 2.5,
+          predictedSwingProbability: 0.65,
+        },
+      ],
+      analysisCache: [{ symbol: "AAA", lastAnalyzedAt: "2024-01-02T00:00:00Z" }],
+      logs: [
+        {
+          id: 1,
+          type: "info",
+          message: "Snapshot saved",
+          context: { source: "test" },
+          source: "popup",
+          createdAt: "2024-01-01T00:00:00Z",
+          expiresAt: "2024-01-02T00:00:00Z",
+          pageUrl: "http://example.com",
+        },
+      ],
+    });
 
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const header = workbookHeader(sheet);
     assert.deepStrictEqual(header, ["id", "dateTime", "symbolName"]);
+    assert.deepStrictEqual(workbook.SheetNames, ["stocks", "analysisCache", "logs"]);
   });
 
   it("merges imported rows without overwriting existing records", async () => {

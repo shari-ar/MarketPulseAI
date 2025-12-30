@@ -5,11 +5,11 @@ import {
   DB_VERSION,
   LOG_FIELDS,
   LOG_TABLE,
-  SNAPSHOT_FIELDS,
-  SNAPSHOT_TABLE,
+  STOCKS_FIELDS,
+  STOCKS_TABLE,
   getSchemaDefinition,
 } from "./schema.js";
-import { pruneLogs, pruneSnapshots } from "./retention.js";
+import { pruneLogs, pruneStocks } from "./retention.js";
 import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../runtime-config.js";
 
 const hasIndexedDb = typeof indexedDB !== "undefined";
@@ -53,12 +53,12 @@ function sanitizeRecord(record, shape) {
 }
 
 /**
- * Stable key used to deduplicate snapshots across storage backends.
+ * Stable key used to deduplicate stocks across storage backends.
  *
- * @param {object} record - Snapshot record with id and dateTime.
- * @returns {string} Composite identifier for the snapshot row.
+ * @param {object} record - Stock record with id and dateTime.
+ * @returns {string} Composite identifier for the stock row.
  */
-function snapshotKey(record) {
+function stockKey(record) {
   return `${record.id}-${record.dateTime}`;
 }
 
@@ -71,7 +71,7 @@ class MemoryAdapter {
     const { config, logger } = resolveAdapterOptions(configOrOptions);
     this.config = getRuntimeConfig(config);
     this.logger = logger;
-    this.snapshots = [];
+    this.stocks = [];
     this.logs = [];
     this.analysisCache = new Map();
   }
@@ -100,70 +100,70 @@ class MemoryAdapter {
     });
   }
 
-  async addSnapshots(records = []) {
-    const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
-    this.snapshots.push(...sanitized);
+  async addStocks(records = []) {
+    const sanitized = records.map((record) => sanitizeRecord(record, STOCKS_FIELDS));
+    this.stocks.push(...sanitized);
     this.logger?.log?.({
       type: "debug",
-      message: "Stored snapshots in memory",
+      message: "Stored stocks in memory",
       source: "storage",
-      context: { insertedCount: sanitized.length, total: this.snapshots.length },
+      context: { insertedCount: sanitized.length, total: this.stocks.length },
       now: new Date(),
     });
     return { inserted: sanitized.length };
   }
 
-  async upsertSnapshots(records = []) {
-    const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
-    const byKey = new Map(this.snapshots.map((snapshot) => [snapshotKey(snapshot), snapshot]));
+  async upsertStocks(records = []) {
+    const sanitized = records.map((record) => sanitizeRecord(record, STOCKS_FIELDS));
+    const byKey = new Map(this.stocks.map((stock) => [stockKey(stock), stock]));
     sanitized.forEach((record) => {
       if (!record.id || !record.dateTime) return;
-      byKey.set(snapshotKey(record), record);
+      byKey.set(stockKey(record), record);
     });
-    this.snapshots = Array.from(byKey.values());
+    this.stocks = Array.from(byKey.values());
     this.logger?.log?.({
       type: "debug",
-      message: "Upserted snapshots in memory",
+      message: "Upserted stocks in memory",
       source: "storage",
-      context: { upsertedCount: sanitized.length, total: this.snapshots.length },
+      context: { upsertedCount: sanitized.length, total: this.stocks.length },
       now: new Date(),
     });
-    return { upserted: sanitized.length, total: this.snapshots.length };
+    return { upserted: sanitized.length, total: this.stocks.length };
   }
 
-  async getSnapshots() {
+  async getStocks() {
     this.logger?.log?.({
       type: "debug",
-      message: "Fetched snapshots from memory",
+      message: "Fetched stocks from memory",
       source: "storage",
-      context: { count: this.snapshots.length },
+      context: { count: this.stocks.length },
       now: new Date(),
     });
-    return [...this.snapshots];
+    return [...this.stocks];
   }
 
-  async pruneSnapshots(now = new Date()) {
-    const before = this.snapshots.length;
-    this.snapshots = pruneSnapshots(this.snapshots, {
+  async pruneStocks(now = new Date()) {
+    const before = this.stocks.length;
+    this.stocks = pruneStocks(this.stocks, {
       now,
       retentionDays: this.config.RETENTION_DAYS,
       logger: this.logger,
       config: this.config,
     });
-    const removed = before - this.snapshots.length;
+    const removed = before - this.stocks.length;
     // Emit retention metrics for observability in memory-backed environments.
     this.logger?.log?.({
       type: "debug",
-      message: "Pruned snapshots in memory",
+      message: "Pruned stocks in memory",
       source: "storage",
       context: {
         removed,
-        remaining: this.snapshots.length,
+        remaining: this.stocks.length,
         retentionDays: this.config.RETENTION_DAYS,
       },
       now,
     });
-    return { removed, remaining: this.snapshots.length };
+    return { removed, remaining: this.stocks.length };
   }
 
   async saveLog(entry) {
@@ -276,12 +276,12 @@ class DexieAdapter extends MemoryAdapter {
     });
   }
 
-  async addSnapshots(records = []) {
-    const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
-    await this.db[SNAPSHOT_TABLE].bulkPut(sanitized);
+  async addStocks(records = []) {
+    const sanitized = records.map((record) => sanitizeRecord(record, STOCKS_FIELDS));
+    await this.db[STOCKS_TABLE].bulkPut(sanitized);
     this.logger?.log?.({
       type: "debug",
-      message: "Stored snapshots in IndexedDB",
+      message: "Stored stocks in IndexedDB",
       source: "storage",
       context: { insertedCount: sanitized.length },
       now: new Date(),
@@ -289,12 +289,12 @@ class DexieAdapter extends MemoryAdapter {
     return { inserted: sanitized.length };
   }
 
-  async upsertSnapshots(records = []) {
-    const sanitized = records.map((record) => sanitizeRecord(record, SNAPSHOT_FIELDS));
-    await this.db[SNAPSHOT_TABLE].bulkPut(sanitized);
+  async upsertStocks(records = []) {
+    const sanitized = records.map((record) => sanitizeRecord(record, STOCKS_FIELDS));
+    await this.db[STOCKS_TABLE].bulkPut(sanitized);
     this.logger?.log?.({
       type: "debug",
-      message: "Upserted snapshots in IndexedDB",
+      message: "Upserted stocks in IndexedDB",
       source: "storage",
       context: { upsertedCount: sanitized.length },
       now: new Date(),
@@ -302,18 +302,18 @@ class DexieAdapter extends MemoryAdapter {
     return { upserted: sanitized.length };
   }
 
-  async getSnapshots() {
+  async getStocks() {
     this.logger?.log?.({
       type: "debug",
-      message: "Fetched snapshots from IndexedDB",
+      message: "Fetched stocks from IndexedDB",
       source: "storage",
       context: {},
       now: new Date(),
     });
-    const rows = await this.db[SNAPSHOT_TABLE].toArray();
+    const rows = await this.db[STOCKS_TABLE].toArray();
     this.logger?.log?.({
       type: "debug",
-      message: "IndexedDB snapshots loaded",
+      message: "IndexedDB stocks loaded",
       source: "storage",
       context: { count: rows.length },
       now: new Date(),
@@ -321,23 +321,23 @@ class DexieAdapter extends MemoryAdapter {
     return rows;
   }
 
-  async pruneSnapshots(now = new Date()) {
-    const all = await this.getSnapshots();
-    const pruned = pruneSnapshots(all, {
+  async pruneStocks(now = new Date()) {
+    const all = await this.getStocks();
+    const pruned = pruneStocks(all, {
       now,
       retentionDays: this.config.RETENTION_DAYS,
       logger: this.logger,
       config: this.config,
     });
     if (pruned.length !== all.length) {
-      await this.db[SNAPSHOT_TABLE].clear();
-      await this.db[SNAPSHOT_TABLE].bulkPut(pruned);
+      await this.db[STOCKS_TABLE].clear();
+      await this.db[STOCKS_TABLE].bulkPut(pruned);
     }
     const removed = all.length - pruned.length;
-    // Record retention results for persisted snapshots to aid troubleshooting.
+    // Record retention results for persisted stocks to aid troubleshooting.
     this.logger?.log?.({
       type: "debug",
-      message: "Pruned snapshots in IndexedDB",
+      message: "Pruned stocks in IndexedDB",
       source: "storage",
       context: { removed, remaining: pruned.length, retentionDays: this.config.RETENTION_DAYS },
       now,

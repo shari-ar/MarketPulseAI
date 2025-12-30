@@ -4,7 +4,7 @@
  */
 export const DB_NAME = "marketpulseai";
 export const DB_VERSION = 1;
-export const SNAPSHOT_TABLE = "stocks";
+export const STOCKS_TABLE = "stocks";
 export const ANALYSIS_CACHE_TABLE = "analysisCache";
 export const LOG_TABLE = "logs";
 
@@ -12,7 +12,7 @@ export const LOG_TABLE = "logs";
  * Schema definition for raw market snapshots captured by the navigator.
  * Types align with worker scoring expectations to avoid casting on read.
  */
-export const SNAPSHOT_FIELDS = {
+export const STOCKS_FIELDS = {
   id: "string",
   dateTime: "string",
   symbolName: "string",
@@ -77,7 +77,7 @@ export const LOG_FIELDS = {
  */
 export function getSchemaDefinition() {
   return {
-    [SNAPSHOT_TABLE]: "[id+dateTime], id, dateTime, status",
+    [STOCKS_TABLE]: "[id+dateTime], id, dateTime, status",
     [ANALYSIS_CACHE_TABLE]: "symbol, lastAnalyzedAt",
     [LOG_TABLE]: "++id, type, createdAt, expiresAt, source",
   };
@@ -93,7 +93,7 @@ export function getSchemaDefinition() {
  * @returns {boolean} True when all declared fields are present.
  */
 export function validateSnapshot(snapshot = {}, { logger } = {}) {
-  const missingFields = Object.keys(SNAPSHOT_FIELDS).filter((key) => !(key in snapshot));
+  const missingFields = Object.keys(STOCKS_FIELDS).filter((key) => !(key in snapshot));
 
   if (missingFields.length && logger) {
     logger.log({

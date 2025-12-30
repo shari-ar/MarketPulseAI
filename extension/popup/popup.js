@@ -1,13 +1,22 @@
 import { read, utils, writeFile } from "./xlsx-loader.js";
 import { rankSwingResults } from "../analysis/rank.js";
-import { SNAPSHOT_FIELDS } from "../storage/schema.js";
+import {
+  ANALYSIS_CACHE_FIELDS,
+  ANALYSIS_CACHE_TABLE,
+  LOG_FIELDS,
+  LOG_TABLE,
+  STOCKS_FIELDS,
+  STOCKS_TABLE,
+} from "../storage/schema.js";
 import { getRuntimeConfig } from "../runtime-config.js";
 import { normalizeRuntimeConfig, RUNTIME_CONFIG_STORAGE_KEY } from "../runtime-settings.js";
 import { logPopupEvent, popupLogger } from "./logger.js";
 import { createStorageAdapter } from "../storage/adapter.js";
 import { initializePopupRuntimeSettings, persistPopupRuntimeSettings } from "./settings.js";
 
-const COLUMN_ORDER = Object.keys(SNAPSHOT_FIELDS);
+const COLUMN_ORDER = Object.keys(STOCKS_FIELDS);
+const ANALYSIS_CACHE_COLUMNS = Object.keys(ANALYSIS_CACHE_FIELDS);
+const LOG_COLUMNS = Object.keys(LOG_FIELDS);
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
 let runtimeConfig = getRuntimeConfig();
 const storage = createStorageAdapter();
@@ -16,23 +25,35 @@ let latestAnalysisStatus = null;
 // Excel workbook creation and import/export helpers for the popup UI.
 /**
  * Build an Excel workbook representing the provided ranking rows using the
- * snapshot schema column ordering. Null placeholders keep cells aligned when
+ * stock schema column ordering. Null placeholders keep cells aligned when
  * individual records have missing properties.
  */
-export function buildExportWorkbook(rows = []) {
+function buildWorksheet(columns, rows) {
+  const data = [columns];
+  rows.forEach((row) => {
+    data.push(columns.map((key) => row?.[key] ?? null));
+  });
+  return utils.aoa_to_sheet(data);
+}
+
+export function buildExportWorkbook({ stocks = [], analysisCache = [], logs = [] } = {}) {
   logPopupEvent({
     type: "debug",
     message: "Building export workbook",
-    context: { rowCount: rows.length, columnCount: COLUMN_ORDER.length },
+    context: {
+      stockCount: stocks.length,
+      analysisCacheCount: analysisCache.length,
+      logCount: logs.length,
+    },
   });
-  const data = [COLUMN_ORDER];
-  rows.forEach((row) => {
-    data.push(COLUMN_ORDER.map((key) => row[key] ?? null));
-  });
-
-  const worksheet = utils.aoa_to_sheet(data);
   const workbook = utils.book_new();
-  utils.book_append_sheet(workbook, worksheet, "rankings");
+  utils.book_append_sheet(workbook, buildWorksheet(COLUMN_ORDER, stocks), STOCKS_TABLE);
+  utils.book_append_sheet(
+    workbook,
+    buildWorksheet(ANALYSIS_CACHE_COLUMNS, analysisCache),
+    ANALYSIS_CACHE_TABLE
+  );
+  utils.book_append_sheet(workbook, buildWorksheet(LOG_COLUMNS, logs), LOG_TABLE);
   logPopupEvent({
     type: "debug",
     message: "Export workbook ready",
@@ -44,7 +65,7 @@ export function buildExportWorkbook(rows = []) {
 /**
  * Deduplicate imported rows before merging them into the existing ranking
  * collection. Records are keyed by id + timestamp to avoid double-counting the
- * same snapshot when users re-import exports.
+ * same stock record when users re-import exports.
  */
 export function mergeImportedRows(existing = [], incoming = []) {
   const byKey = new Set(existing.map((row) => `${row.id}-${row.dateTime}`));
@@ -251,24 +272,24 @@ function hydrateSettingsForm(config) {
 }
 
 /**
- * Hydrates cached snapshot rows from local storage for merge workflows.
+ * Hydrates cached stock rows from local storage for merge workflows.
  *
- * @returns {Promise<Array<object>>} Normalized snapshot collection.
+ * @returns {Promise<Array<object>>} Normalized stock collection.
  */
 async function hydrateExistingSnapshots() {
   try {
-    const snapshots = await storage.getSnapshots();
-    const normalized = Array.isArray(snapshots) ? snapshots : [];
+    const stocks = await storage.getStocks();
+    const normalized = Array.isArray(stocks) ? stocks : [];
     logPopupEvent({
       type: "debug",
-      message: "Loaded cached snapshots for import merge",
+      message: "Loaded cached stocks for import merge",
       context: { count: normalized.length },
     });
     return normalized;
   } catch (error) {
     logPopupEvent({
       type: "warning",
-      message: "Failed to load cached snapshots",
+      message: "Failed to load cached stocks",
       context: { error: error?.message },
     });
     return [];
@@ -278,7 +299,7 @@ async function hydrateExistingSnapshots() {
 /**
  * Persists newly imported rows while skipping duplicates already in storage.
  *
- * @param {Array<object>} rows - Incoming snapshot rows.
+ * @param {Array<object>} rows - Incoming stock rows.
  * @returns {Promise<{inserted: number}>} Inserted row count.
  */
 async function persistImportedRows(rows = []) {
@@ -294,17 +315,17 @@ async function persistImportedRows(rows = []) {
     return { inserted: 0 };
   }
   try {
-    await storage.addSnapshots(freshRows);
+    await storage.addStocks(freshRows);
     logPopupEvent({
       type: "info",
-      message: "Persisted imported snapshots",
+      message: "Persisted imported stocks",
       context: { insertedCount: freshRows.length },
     });
     return { inserted: freshRows.length };
   } catch (error) {
     logPopupEvent({
       type: "warning",
-      message: "Failed to persist imported snapshots",
+      message: "Failed to persist imported stocks",
       context: { error: error?.message, attemptedCount: freshRows.length },
     });
     throw error;
@@ -323,24 +344,45 @@ function resolveExportTimestamp(status) {
   return new Date().toISOString();
 }
 
-function exportCurrentRows(rows) {
-  const workbook = buildExportWorkbook(rows);
+async function exportDatabaseTables() {
+  const [stocks, analysisCache, logs] = await Promise.all([
+    storage.getStocks(),
+    storage.getAnalysisCache(),
+    storage.getLogs(),
+  ]);
+  const workbook = buildExportWorkbook({ stocks, analysisCache, logs });
   const timestamp = resolveExportTimestamp(latestAnalysisStatus).replace(/[:.]/g, "-");
   logPopupEvent({
     type: "debug",
     message: "Preparing export workbook",
-    context: { rowCount: rows.length, timestamp },
+    context: {
+      stockCount: stocks.length,
+      analysisCacheCount: analysisCache.length,
+      logCount: logs.length,
+      timestamp,
+    },
   });
   writeFile(workbook, `marketpulseai-${timestamp}.xlsx`);
   logPopupEvent({
     type: "debug",
     message: "Triggered export workbook download",
-    context: { rowCount: rows.length, timestamp },
+    context: {
+      stockCount: stocks.length,
+      analysisCacheCount: analysisCache.length,
+      logCount: logs.length,
+      timestamp,
+    },
   });
   logPopupEvent({
     type: "info",
-    message: "Exported ranking workbook",
-    context: { rowCount: rows.length, timestamp, analysisStatus: latestAnalysisStatus?.state },
+    message: "Exported database workbook",
+    context: {
+      stockCount: stocks.length,
+      analysisCacheCount: analysisCache.length,
+      logCount: logs.length,
+      timestamp,
+      analysisStatus: latestAnalysisStatus?.state,
+    },
   });
 }
 
@@ -369,13 +411,13 @@ function setupUi() {
 
   let latestRows = [];
 
-  const handleExport = () => {
+  const handleExport = async () => {
     logPopupEvent({
       type: "debug",
       message: "Export button clicked",
       context: { currentRows: latestRows.length },
     });
-    exportCurrentRows(latestRows);
+    await exportDatabaseTables();
   };
   // Import workflow: validate schema headers, merge rows, persist, and re-rank for display.
   const handleImport = async (event) => {
@@ -394,7 +436,7 @@ function setupUi() {
     try {
       const buffer = await file.arrayBuffer();
       const workbook = read(buffer, { type: "array" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const sheet = workbook.Sheets[STOCKS_TABLE] ?? workbook.Sheets[workbook.SheetNames[0]];
       logPopupEvent({
         type: "debug",
         message: "Loaded import workbook",

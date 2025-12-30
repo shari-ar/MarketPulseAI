@@ -39,18 +39,18 @@ function daysBetween(startDate, endDate) {
 }
 
 /**
- * Removes stale snapshot records beyond the configured retention window.
+ * Removes stale stock records beyond the configured retention window.
  *
- * @param {Array<object>} records - Raw snapshot rows from IndexedDB.
+ * @param {Array<object>} records - Raw stock rows from IndexedDB.
  * @param {object} options
  * @param {Date} [options.now=new Date()] - Clock used for deterministic tests.
  * @param {number} [options.retentionDays=DEFAULT_RUNTIME_CONFIG.RETENTION_DAYS]
- *   Max age for snapshots before pruning.
+ *   Max age for stocks before pruning.
  * @param {import("../background/logger.js").LoggingService} [options.logger]
  *   Structured logger for recording retention outcomes.
- * @returns {Array<object>} Pruned snapshot collection.
+ * @returns {Array<object>} Pruned stock collection.
  */
-export function pruneSnapshots(
+export function pruneStocks(
   records = [],
   {
     now = new Date(),
@@ -65,7 +65,7 @@ export function pruneSnapshots(
 
   logger?.log?.({
     type: "debug",
-    message: "Evaluating snapshot retention",
+    message: "Evaluating stock retention",
     source: "storage",
     context: {
       recordCount: before,
@@ -82,7 +82,7 @@ export function pruneSnapshots(
   });
   logger?.log?.({
     type: "debug",
-    message: "Snapshot retention filter applied",
+    message: "Stock retention filter applied",
     source: "storage",
     context: { remaining: pruned.length, removed: before - pruned.length },
     now,
@@ -92,7 +92,7 @@ export function pruneSnapshots(
   if (logger) {
     logger.log({
       type: "info",
-      message: "Pruned snapshots past retention window",
+      message: "Pruned stocks past retention window",
       source: "storage",
       context: {
         removedCount: removed,

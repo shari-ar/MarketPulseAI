@@ -73,9 +73,21 @@ function loadTensorflowModule() {
 
 export async function loadModelManifest({ logger, now = new Date() } = {}) {
   const startedAt = Date.now();
+  logger?.({
+    type: "debug",
+    message: "Loading model manifest",
+    context: { url: MANIFEST_URL.toString() },
+    now,
+  });
   try {
     const manifest = await loadJsonAsset(MANIFEST_URL);
     const resolved = resolveActiveManifest(manifest);
+    logger?.({
+      type: "debug",
+      message: "Resolved active model manifest",
+      context: { hasManifest: Boolean(manifest), activeVersion: resolved?.version },
+      now,
+    });
     logger?.({
       message: "Loaded model manifest",
       context: {
@@ -161,6 +173,12 @@ async function loadModel(manifest, logger, now, tf) {
     return modelCache.get(modelUrl.toString());
   }
 
+  logger?.({
+    type: "debug",
+    message: "Loading TensorFlow.js model",
+    context: { url: modelUrl.toString() },
+    now,
+  });
   const startedAt = Date.now();
   const modelPromise = tf.loadLayersModel(modelUrl.toString());
   modelCache.set(modelUrl.toString(), modelPromise);
@@ -190,6 +208,12 @@ async function loadModelFromMemory(manifest, logger, now, tf) {
     return modelCache.get(cacheKey);
   }
 
+  logger?.({
+    type: "debug",
+    message: "Loading TensorFlow.js model from base64 weights",
+    context: { modelUrl: modelUrl.toString(), weightsUrl: weightsUrl.toString() },
+    now,
+  });
   const startedAt = Date.now();
   const modelPromise = Promise.all([loadJsonAsset(modelUrl), loadTextAsset(weightsUrl)]).then(
     ([modelJson, weightsBase64]) => {
@@ -215,6 +239,12 @@ async function loadScalers(manifest, logger, now) {
   const scalersUrl = buildAssetUrl(manifest, "scalersPath");
   if (!scalersUrl) return null;
   const startedAt = Date.now();
+  logger?.({
+    type: "debug",
+    message: "Loading feature scalers",
+    context: { url: scalersUrl.toString() },
+    now,
+  });
   try {
     const scalers = await loadJsonAsset(scalersUrl);
     logger?.({
@@ -238,6 +268,12 @@ async function loadWeights(manifest, logger, now) {
   const weightsUrl = buildAssetUrl(manifest, "weightsPath");
   if (!weightsUrl) return null;
   const startedAt = Date.now();
+  logger?.({
+    type: "debug",
+    message: "Loading model weights",
+    context: { url: weightsUrl.toString() },
+    now,
+  });
   try {
     const weights = await loadJsonAsset(weightsUrl);
     logger?.({
@@ -260,9 +296,21 @@ async function loadWeights(manifest, logger, now) {
 async function loadCalibration(manifest, logger, now) {
   const calibrationUrl = buildAssetUrl(manifest, "calibrationPath");
   if (!calibrationUrl) {
+    logger?.({
+      type: "debug",
+      message: "Using inline calibration data",
+      context: { hasInlineCalibration: Boolean(manifest?.calibration) },
+      now,
+    });
     return manifest?.calibration || null;
   }
   const startedAt = Date.now();
+  logger?.({
+    type: "debug",
+    message: "Loading model calibration",
+    context: { url: calibrationUrl.toString() },
+    now,
+  });
   try {
     const calibration = await loadJsonAsset(calibrationUrl);
     logger?.({
@@ -312,6 +360,12 @@ function disposeOutputs(output) {
 }
 
 function scoreWindowWithWeights(window, manifest, assets, now, logger) {
+  logger?.({
+    type: "debug",
+    message: "Scoring window with weights",
+    context: { symbol: window?.[0]?.id, rowCount: window?.length },
+    now,
+  });
   const featureWindow = buildFeatureWindow(window, { scalers: assets.scalers, logger, now });
   if (!featureWindow) {
     logger?.({
@@ -341,6 +395,12 @@ function scoreWindowWithWeights(window, manifest, assets, now, logger) {
     calibration?.probabilityClip || [0.01, 0.99]
   );
 
+  logger?.({
+    type: "debug",
+    message: "Computed weight-based scores",
+    context: { symbol: featureWindow.latest?.id, swingPercent, swingProbability },
+    now,
+  });
   return {
     id: featureWindow.latest?.id,
     dateTime: featureWindow.latest?.dateTime,
@@ -354,6 +414,12 @@ function buildModelInput(windowRows = []) {
 }
 
 function scoreWindowWithTfjs(window, manifest, assets, now, logger) {
+  logger?.({
+    type: "debug",
+    message: "Scoring window with TensorFlow.js",
+    context: { symbol: window?.[0]?.id, rowCount: window?.length },
+    now,
+  });
   const featureWindow = buildFeatureWindow(window, { scalers: assets.scalers, logger, now });
   if (!featureWindow) {
     logger?.({
@@ -384,6 +450,12 @@ function scoreWindowWithTfjs(window, manifest, assets, now, logger) {
     calibration?.probabilityClip || [0.01, 0.99]
   );
 
+  logger?.({
+    type: "debug",
+    message: "Computed TensorFlow.js scores",
+    context: { symbol: featureWindow.latest?.id, swingPercent, swingProbability },
+    now,
+  });
   return {
     id: featureWindow.latest?.id,
     dateTime: featureWindow.latest?.dateTime,
@@ -403,6 +475,12 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
     return null;
   }
 
+  logger?.({
+    type: "debug",
+    message: "Resolving scoring strategy",
+    context: { version: manifest?.version, hasModel: Boolean(manifest?.modelPath) },
+    now,
+  });
   const [scalers, weights, calibration] = await Promise.all([
     loadScalers(manifest, logger, now),
     loadWeights(manifest, logger, now),
@@ -454,6 +532,17 @@ export async function resolveScoringStrategy({ manifest, logger, now = new Date(
     return null;
   }
 
+  logger?.({
+    type: "debug",
+    message: "Assets loaded for scoring strategy",
+    context: {
+      hasModel: Boolean(model),
+      hasWeights: Boolean(weights),
+      hasScalers: Boolean(scalers),
+      hasCalibration: Boolean(calibration),
+    },
+    now,
+  });
   logger?.({
     message: "Resolved scoring strategy",
     context: {

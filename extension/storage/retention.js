@@ -63,6 +63,18 @@ export function pruneSnapshots(
   const today = marketDateFromIso(now.toISOString(), runtimeConfig);
   const before = records.length;
 
+  logger?.log?.({
+    type: "debug",
+    message: "Evaluating snapshot retention",
+    source: "storage",
+    context: {
+      recordCount: before,
+      retentionDays,
+      marketDate: today,
+      timezone: runtimeConfig.MARKET_TIMEZONE,
+    },
+    now,
+  });
   const pruned = records.filter((record) => {
     const recordDate = marketDateFromIso(record.dateTime, runtimeConfig);
     if (!recordDate) return false;
@@ -102,6 +114,13 @@ export function pruneLogs(records = [], { now = new Date(), logger } = {}) {
   const nowTs = now.getTime();
   const before = records.length;
 
+  logger?.log?.({
+    type: "debug",
+    message: "Evaluating log retention",
+    source: "storage",
+    context: { recordCount: before, now: now.toISOString() },
+    now,
+  });
   const filtered = records.filter((entry) => {
     const expires = entry?.expiresAt ? new Date(entry.expiresAt).getTime() : null;
     if (!expires) return true;

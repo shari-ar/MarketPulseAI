@@ -51,8 +51,15 @@ function extractSymbolsFromDom() {
  */
 export async function collectSymbolsFromTab(tabId, { logger, now = new Date() } = {}) {
   let symbols = [];
+  logger?.log({
+    type: "debug",
+    message: "Collecting symbols from tab",
+    source: "navigator",
+    context: { tabId },
+    now,
+  });
   try {
-    symbols = await executeParser(tabId, extractSymbolsFromDom);
+    symbols = await executeParser(tabId, extractSymbolsFromDom, [], { logger, now });
   } catch (error) {
     logger?.log({
       type: "warning",
@@ -64,6 +71,13 @@ export async function collectSymbolsFromTab(tabId, { logger, now = new Date() } 
     return [];
   }
   const normalized = Array.isArray(symbols) ? symbols.filter((symbol) => symbol?.id) : [];
+  logger?.log({
+    type: "debug",
+    message: "Normalized collected symbols",
+    source: "navigator",
+    context: { tabId, rawCount: Array.isArray(symbols) ? symbols.length : 0 },
+    now,
+  });
   logger?.log({
     type: "debug",
     message: "Collected symbols from active tab",

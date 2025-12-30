@@ -125,6 +125,13 @@ class MemoryAdapter {
   }
 
   async getSnapshots() {
+    this.logger?.log?.({
+      type: "debug",
+      message: "Fetched snapshots from memory",
+      source: "storage",
+      context: { count: this.snapshots.length },
+      now: new Date(),
+    });
     return [...this.snapshots];
   }
 
@@ -154,10 +161,24 @@ class MemoryAdapter {
 
   async saveLog(entry) {
     this.logs.push(sanitizeRecord(entry, LOG_FIELDS));
+    this.logger?.log?.({
+      type: "debug",
+      message: "Stored log entry in memory",
+      source: "storage",
+      context: { total: this.logs.length },
+      now: new Date(),
+    });
     return entry;
   }
 
   async getLogs() {
+    this.logger?.log?.({
+      type: "debug",
+      message: "Fetched logs from memory",
+      source: "storage",
+      context: { count: this.logs.length },
+      now: new Date(),
+    });
     return [...this.logs];
   }
 
@@ -192,6 +213,13 @@ class MemoryAdapter {
   }
 
   async getAnalysisCache() {
+    this.logger?.log?.({
+      type: "debug",
+      message: "Fetched analysis cache from memory",
+      source: "storage",
+      context: { count: this.analysisCache.size },
+      now: new Date(),
+    });
     return Array.from(this.analysisCache.entries()).map(([symbol, lastAnalyzedAt]) => ({
       symbol,
       lastAnalyzedAt,
@@ -261,6 +289,13 @@ class DexieAdapter extends MemoryAdapter {
   }
 
   async getSnapshots() {
+    this.logger?.log?.({
+      type: "debug",
+      message: "Fetched snapshots from IndexedDB",
+      source: "storage",
+      context: {},
+      now: new Date(),
+    });
     return this.db[SNAPSHOT_TABLE].toArray();
   }
 
@@ -291,10 +326,24 @@ class DexieAdapter extends MemoryAdapter {
   async saveLog(entry) {
     const sanitized = sanitizeRecord(entry, LOG_FIELDS);
     await this.db[LOG_TABLE].add(sanitized);
+    this.logger?.log?.({
+      type: "debug",
+      message: "Stored log entry in IndexedDB",
+      source: "storage",
+      context: {},
+      now: new Date(),
+    });
     return sanitized;
   }
 
   async getLogs() {
+    this.logger?.log?.({
+      type: "debug",
+      message: "Fetched logs from IndexedDB",
+      source: "storage",
+      context: {},
+      now: new Date(),
+    });
     return this.db[LOG_TABLE].toArray();
   }
 
@@ -333,6 +382,13 @@ class DexieAdapter extends MemoryAdapter {
   }
 
   async getAnalysisCache() {
+    this.logger?.log?.({
+      type: "debug",
+      message: "Fetched analysis cache from IndexedDB",
+      source: "storage",
+      context: {},
+      now: new Date(),
+    });
     return this.db[ANALYSIS_CACHE_TABLE].toArray();
   }
 }

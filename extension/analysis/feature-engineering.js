@@ -270,6 +270,12 @@ function applyScalers(featureRow, scalers) {
  * @returns {{rows: Array<object>, latest: object} | null} Feature window or null when incomplete.
  */
 export function buildFeatureWindow(window, { scalers, logger, now = new Date() } = {}) {
+  logger?.({
+    type: "debug",
+    message: "Building feature window",
+    context: { windowSize: Array.isArray(window) ? window.length : 0 },
+    now,
+  });
   if (!Array.isArray(window) || window.length < 7) {
     logger?.({
       type: "debug",
@@ -280,6 +286,16 @@ export function buildFeatureWindow(window, { scalers, logger, now = new Date() }
     return null;
   }
   const ordered = sortWindowAscending(window);
+  logger?.({
+    type: "debug",
+    message: "Sorted window chronologically",
+    context: {
+      symbol: ordered?.[ordered.length - 1]?.id,
+      first: ordered?.[0]?.dateTime,
+      last: ordered?.[ordered.length - 1]?.dateTime,
+    },
+    now,
+  });
   const filled = backfillWindow(ordered);
   if (!filled) {
     logger?.({
@@ -293,6 +309,12 @@ export function buildFeatureWindow(window, { scalers, logger, now = new Date() }
     });
     return null;
   }
+  logger?.({
+    type: "debug",
+    message: "Backfilled window values",
+    context: { symbol: filled?.[filled.length - 1]?.id, rowCount: filled.length },
+    now,
+  });
 
   const rows = filled.map((entry, index) => {
     const previous = index === 0 ? entry : filled[index - 1];
@@ -311,6 +333,12 @@ export function buildFeatureWindow(window, { scalers, logger, now = new Date() }
 
   const zRows = computeZScores(rows, BASE_FEATURE_ORDER);
   const scaledRows = zRows.map((row) => applyScalers(row, scalers));
+  logger?.({
+    type: "debug",
+    message: "Generated z-score features",
+    context: { symbol: filled[filled.length - 1]?.id, featureCount: BASE_FEATURE_ORDER.length },
+    now,
+  });
 
   if (scalers) {
     logger?.({

@@ -4,7 +4,14 @@ import { logAnalysisEvent } from "./logger.js";
 const chromeApi = typeof globalThis !== "undefined" ? globalThis.chrome : undefined;
 
 function supportsWorker() {
-  return typeof Worker !== "undefined" && Boolean(chromeApi?.runtime?.getURL);
+  const supported = typeof Worker !== "undefined" && Boolean(chromeApi?.runtime?.getURL);
+  logAnalysisEvent({
+    type: "debug",
+    message: "Checked worker availability",
+    context: { supported },
+    now: new Date(),
+  });
+  return supported;
 }
 
 /**
@@ -14,6 +21,12 @@ function supportsWorker() {
  */
 function createWorker() {
   const url = chromeApi.runtime.getURL("analysis/index.js");
+  logAnalysisEvent({
+    type: "debug",
+    message: "Creating analysis worker",
+    context: { url },
+    now: new Date(),
+  });
   return new Worker(url, { type: "module" });
 }
 
@@ -48,6 +61,12 @@ export async function runSwingAnalysisWithWorker({
 
     worker.onmessage = (event) => {
       const { type, payload } = event.data || {};
+      logAnalysisEvent({
+        type: "debug",
+        message: "Received worker message",
+        context: { type },
+        now,
+      });
       if (type === "progress" && onProgress) {
         onProgress(payload.progress);
         return;
@@ -88,6 +107,12 @@ export async function runSwingAnalysisWithWorker({
       reject(error);
     };
 
+    logAnalysisEvent({
+      type: "debug",
+      message: "Posting analysis request to worker",
+      context: { snapshotCount: snapshots.length, cacheSize: analysisCache.size },
+      now,
+    });
     worker.postMessage({
       type: "analyze",
       payload: {

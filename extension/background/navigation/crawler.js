@@ -59,13 +59,21 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
 
   logger?.log({
     type: "debug",
-    message: "Navigating to symbol page",
+    message: "Resolved symbol URL",
     source: "navigator",
     context: { symbol: symbol.id, url },
     now: new Date(),
   });
-  await navigateTo(tabId, url);
+
   const now = new Date();
+  logger?.log({
+    type: "debug",
+    message: "Navigating to symbol page",
+    source: "navigator",
+    context: { symbol: symbol.id, url },
+    now,
+  });
+  await navigateTo(tabId, url, { logger, now });
   await waitForSelector(tabId, config.NAVIGATION_READY_SELECTOR, {
     timeoutMs: config.NAVIGATION_WAIT_TIMEOUT_MS,
     pollIntervalMs: config.NAVIGATION_POLL_INTERVAL_MS,
@@ -76,13 +84,18 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
 
   // Stamp a shared timestamp so downstream processing stays in sync.
   const nowIso = now.toISOString();
-  const parsed = await executeParser(tabId, parseTopBoxSnapshot, [
-    {
-      selectors: config.PARSING_SELECTORS,
-      symbol: symbol.id,
-      nowIso,
-    },
-  ]);
+  const parsed = await executeParser(
+    tabId,
+    parseTopBoxSnapshot,
+    [
+      {
+        selectors: config.PARSING_SELECTORS,
+        symbol: symbol.id,
+        nowIso,
+      },
+    ],
+    { logger, now }
+  );
 
   logger?.log({
     type: "debug",
@@ -91,7 +104,19 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
     context: { symbol: parsed?.id || symbol.id },
     now: new Date(),
   });
-  return withSnapshotDefaults({ ...parsed, id: parsed?.id || symbol.id, dateTime: nowIso });
+  const normalized = withSnapshotDefaults({
+    ...parsed,
+    id: parsed?.id || symbol.id,
+    dateTime: nowIso,
+  });
+  logger?.log({
+    type: "debug",
+    message: "Applied snapshot defaults",
+    source: "navigator",
+    context: { symbol: normalized?.id },
+    now: new Date(),
+  });
+  return normalized;
 }
 
 /**
@@ -106,6 +131,18 @@ export async function crawlSymbols({
   onSnapshot,
 } = {}) {
   const runtimeConfig = buildCrawlerConfig(config);
+  logger?.log({
+    type: "debug",
+    message: "Initialized crawler config",
+    source: "navigator",
+    context: {
+      tabId,
+      retryLimit: runtimeConfig.NAVIGATION_RETRY_LIMIT,
+      readySelector: runtimeConfig.NAVIGATION_READY_SELECTOR,
+      selectorsConfigured: Object.keys(runtimeConfig.PARSING_SELECTORS || {}).length,
+    },
+    now: new Date(),
+  });
   if (!symbols.length) {
     logger?.log({
       type: "debug",
@@ -118,6 +155,13 @@ export async function crawlSymbols({
   }
   const queue = symbols.slice();
   const retryQueue = [];
+  logger?.log({
+    type: "debug",
+    message: "Prepared crawl queues",
+    source: "navigator",
+    context: { queued: queue.length, retries: retryQueue.length },
+    now: new Date(),
+  });
   logger?.log({
     type: "info",
     message: "Starting symbol crawl",
@@ -145,6 +189,13 @@ export async function crawlSymbols({
     }
 
     const symbol = queue.shift();
+    logger?.log({
+      type: "debug",
+      message: "Dequeued symbol for crawl",
+      source: "navigator",
+      context: { symbol: symbol?.id, remaining: queue.length },
+      now,
+    });
     try {
       const snapshot = await attemptParse({
         tabId,
@@ -160,6 +211,13 @@ export async function crawlSymbols({
           message: "Captured symbol snapshot",
           source: "navigator",
           context: { symbol: snapshot.id },
+          now,
+        });
+        logger?.log({
+          type: "debug",
+          message: "Snapshot emitted to handler",
+          source: "navigator",
+          context: { symbol: snapshot.id, dateTime: snapshot.dateTime },
           now,
         });
       }
@@ -182,6 +240,13 @@ export async function crawlSymbols({
   const retryDelayMs = runtimeConfig.NAVIGATION_RETRY_DELAY_MS;
   for (let attempt = 0; attempt < retries; attempt += 1) {
     if (signal?.aborted) throw new Error("Crawl aborted");
+    logger?.log({
+      type: "debug",
+      message: "Preparing retry batch",
+      source: "navigator",
+      context: { attempt: attempt + 1, queued: retryQueue.length },
+      now: new Date(),
+    });
     logger?.log({
       type: "debug",
       message: "Starting crawl retry pass",

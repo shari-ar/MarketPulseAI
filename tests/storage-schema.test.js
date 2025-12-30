@@ -24,6 +24,7 @@ describe("storage schema", () => {
       "source",
       "createdAt",
       "expiresAt",
+      "pageUrl",
     ]);
 
     const definition = schema.getSchemaDefinition();

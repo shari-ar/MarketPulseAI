@@ -16,5 +16,5 @@
 
 ## Persistence
 
-- **Dexie.js schema:** Snapshots are stored under the `topBoxSnapshots` table with composite key `[id+dateTime]` for fast lookups.
+- **Dexie.js schema:** Snapshots are stored under the `stocks` table with composite key `[id+dateTime]` for fast lookups.
 - **Analysis cache:** A lightweight cache tracks the last analyzed timestamp per symbol to avoid redundant computation.

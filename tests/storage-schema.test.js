@@ -7,7 +7,7 @@ describe("storage schema", () => {
 
     assert.strictEqual(schema.DB_NAME, "marketpulseai");
     assert.strictEqual(schema.DB_VERSION, 1);
-    assert.strictEqual(schema.SNAPSHOT_TABLE, "topBoxSnapshots");
+    assert.strictEqual(schema.SNAPSHOT_TABLE, "stocks");
     assert.strictEqual(schema.ANALYSIS_CACHE_TABLE, "analysisCache");
     assert.strictEqual(schema.LOG_TABLE, "logs");
 
@@ -28,7 +28,7 @@ describe("storage schema", () => {
     ]);
 
     const definition = schema.getSchemaDefinition();
-    assert.ok(definition.topBoxSnapshots.includes("[id+dateTime]"));
+    assert.ok(definition.stocks.includes("[id+dateTime]"));
     assert.ok(definition.analysisCache.includes("symbol"));
     assert.ok(definition.logs.includes("++id"));
   });

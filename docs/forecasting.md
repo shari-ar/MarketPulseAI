@@ -8,7 +8,7 @@
 
 ## Feature Set
 
-Each training example is built from the last seven snapshots per symbol. The raw columns are sourced from `topBoxSnapshots` and ordered by `dateTime` before aggregation:
+Each training example is built from the last seven snapshots per symbol. The raw columns are sourced from `stocks` and ordered by `dateTime` before aggregation:
 
 - Price and range: `primeCost`, `open`, `close`, `high`, `low`, `allowedHigh`, `allowedLow`.
 - Liquidity and activity: `tradingVolume`, `tradingValue`, `tradesCount`, `baseVolume`, `averageMonthlyVolume`.
@@ -42,7 +42,7 @@ Engineered features add stability and capture short-term momentum:
 
 ## Training Pipeline
 
-1. **Dataset construction:** Build sliding windows of seven consecutive days per symbol from historical `topBoxSnapshots`; the label for each window is the swing percent computed from day eight (`tomorrowHigh`, `todayPrimeCost`).
+1. **Dataset construction:** Build sliding windows of seven consecutive days per symbol from historical `stocks`; the label for each window is the swing percent computed from day eight (`tomorrowHigh`, `todayPrimeCost`).
 2. **Splits:** Time-based split (e.g., 70/15/15 for train/validation/test) to prevent leakage across periods or symbols.
 3. **Preprocessing:** Sort by `dateTime`, compute engineered features, apply Z-score scaling per feature using training-set statistics, and persist those scalers alongside the model.
 4. **Loss and optimization:** Huber loss to dampen outliers, Adam optimizer with learning-rate decay, and early stopping on validation MAE.
@@ -54,7 +54,7 @@ Engineered features add stability and capture short-term momentum:
 ## Inference Workflow
 
 1. **Eligibility check:** Require at least seven recent snapshots after retention pruning; otherwise skip forecasting for that symbol.
-2. **Window assembly:** Pull the last seven `topBoxSnapshots` rows, order by `dateTime`, and rebuild engineered features using the stored scalers.
+2. **Window assembly:** Pull the last seven `stocks` rows, order by `dateTime`, and rebuild engineered features using the stored scalers.
 3. **TensorFlow.js scoring:** Load the TCN assets in the analysis worker, run a single forward pass, and write the resulting values to `predictedSwingPercent` and `predictedSwingProbability` on the most recent row.
 4. **Calibration application:** Apply the stored Platt scaling parameters to the raw probability head output before persistence.
 5. **Post-processing:** Clip swing percent to [-50%, 50%] and swing probability to [0.01, 0.99]; round both to three decimals for display while storing full precision for exports.

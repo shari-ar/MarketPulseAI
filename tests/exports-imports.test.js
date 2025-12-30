@@ -10,7 +10,7 @@ describe("Excel exports and imports", () => {
     const { buildExportWorkbook } = await import("../extension/popup/popup.js");
 
     const workbook = buildExportWorkbook({
-      snapshots: [
+      stocks: [
         {
           id: "AAA",
           dateTime: "2024-01-01T00:00:00Z",
@@ -38,7 +38,7 @@ describe("Excel exports and imports", () => {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const header = workbookHeader(sheet);
     assert.deepStrictEqual(header, ["id", "dateTime", "symbolName"]);
-    assert.deepStrictEqual(workbook.SheetNames, ["topBoxSnapshots", "analysisCache", "logs"]);
+    assert.deepStrictEqual(workbook.SheetNames, ["stocks", "analysisCache", "logs"]);
   });
 
   it("merges imported rows without overwriting existing records", async () => {

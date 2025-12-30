@@ -36,18 +36,18 @@ function buildWorksheet(columns, rows) {
   return utils.aoa_to_sheet(data);
 }
 
-export function buildExportWorkbook({ snapshots = [], analysisCache = [], logs = [] } = {}) {
+export function buildExportWorkbook({ stocks = [], analysisCache = [], logs = [] } = {}) {
   logPopupEvent({
     type: "debug",
     message: "Building export workbook",
     context: {
-      snapshotCount: snapshots.length,
+      stockCount: stocks.length,
       analysisCacheCount: analysisCache.length,
       logCount: logs.length,
     },
   });
   const workbook = utils.book_new();
-  utils.book_append_sheet(workbook, buildWorksheet(COLUMN_ORDER, snapshots), SNAPSHOT_TABLE);
+  utils.book_append_sheet(workbook, buildWorksheet(COLUMN_ORDER, stocks), SNAPSHOT_TABLE);
   utils.book_append_sheet(
     workbook,
     buildWorksheet(ANALYSIS_CACHE_COLUMNS, analysisCache),
@@ -345,18 +345,18 @@ function resolveExportTimestamp(status) {
 }
 
 async function exportDatabaseTables() {
-  const [snapshots, analysisCache, logs] = await Promise.all([
+  const [stocks, analysisCache, logs] = await Promise.all([
     storage.getSnapshots(),
     storage.getAnalysisCache(),
     storage.getLogs(),
   ]);
-  const workbook = buildExportWorkbook({ snapshots, analysisCache, logs });
+  const workbook = buildExportWorkbook({ stocks, analysisCache, logs });
   const timestamp = resolveExportTimestamp(latestAnalysisStatus).replace(/[:.]/g, "-");
   logPopupEvent({
     type: "debug",
     message: "Preparing export workbook",
     context: {
-      snapshotCount: snapshots.length,
+      stockCount: stocks.length,
       analysisCacheCount: analysisCache.length,
       logCount: logs.length,
       timestamp,
@@ -367,7 +367,7 @@ async function exportDatabaseTables() {
     type: "debug",
     message: "Triggered export workbook download",
     context: {
-      snapshotCount: snapshots.length,
+      stockCount: stocks.length,
       analysisCacheCount: analysisCache.length,
       logCount: logs.length,
       timestamp,
@@ -377,7 +377,7 @@ async function exportDatabaseTables() {
     type: "info",
     message: "Exported database workbook",
     context: {
-      snapshotCount: snapshots.length,
+      stockCount: stocks.length,
       analysisCacheCount: analysisCache.length,
       logCount: logs.length,
       timestamp,

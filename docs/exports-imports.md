@@ -4,10 +4,9 @@
 
 - **Manual trigger only:** Analysis runs automatically, but exports are created only when the user explicitly invokes them.
 - **SheetJS pipeline via popup:** The export popup is the surface that invokes SheetJS to convert local IndexedDB content into an `.xlsx` file without server calls.
-- **Three-table export:** The export workbook includes one worksheet per IndexedDB table, covering all three tables in the database rather than only the visible rankings view.
+- **Three-table export:** The export workbook includes one worksheet per IndexedDB table, covering all three tables in the database.
 - **Exact table fidelity:** Each worksheet reproduces its source table’s full schema and current rows so the Excel file is a faithful, table-by-table snapshot of the database.
-- **Freshness guarantee:** The exported file always reflects the latest analyzed data available at the moment of export.
-- **File naming:** Exports are timestamped to reflect when the analysis was generated.
+- **File naming:** Exports are timestamped to reflect when the file was downloaded.
 - **QA checklist:** Open the generated `.xlsx` and confirm each sheet matches its corresponding table schema and contents.
 
 ## Imports

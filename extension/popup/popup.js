@@ -78,6 +78,11 @@ function renderTableHeader() {
     th.textContent = column;
     theadRow.appendChild(th);
   });
+  logPopupEvent({
+    type: "debug",
+    message: "Rendered rankings table header",
+    context: { columnCount: COLUMN_ORDER.length },
+  });
 }
 
 function renderRankings(rows = []) {
@@ -94,6 +99,11 @@ function renderRankings(rows = []) {
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
+  });
+  logPopupEvent({
+    type: "debug",
+    message: "Rendered rankings table",
+    context: { rowCount: rows.length, highlightCount: runtimeConfig.TOP_SWING_COUNT },
   });
 }
 
@@ -129,6 +139,11 @@ function updateAnalysisModal(status) {
 
   if (!status || status.state === "complete") {
     modal.classList.add("hidden");
+    logPopupEvent({
+      type: "debug",
+      message: "Analysis modal hidden",
+      context: { state: status?.state ?? "complete" },
+    });
     return;
   }
 
@@ -139,6 +154,11 @@ function updateAnalysisModal(status) {
     status.state === "error"
       ? `Analysis failed: ${status.error || "Unknown error"}`
       : `Analysis running (${progressPercent}%)`;
+  logPopupEvent({
+    type: "debug",
+    message: "Analysis modal updated",
+    context: { state: status.state, progress: status.progress },
+  });
 }
 
 function getInputValue(selector) {
@@ -170,7 +190,13 @@ function readSettingsForm() {
       debug: getInputValue("#setting-log-debug"),
     },
   };
-  return normalizeRuntimeConfig(raw);
+  const normalized = normalizeRuntimeConfig(raw);
+  logPopupEvent({
+    type: "debug",
+    message: "Read settings form",
+    context: { keys: Object.keys(normalized) },
+  });
+  return normalized;
 }
 
 function hydrateSettingsForm(config) {
@@ -186,6 +212,11 @@ function hydrateSettingsForm(config) {
   setInputValue("#setting-log-warning", config.LOG_RETENTION_DAYS?.warning);
   setInputValue("#setting-log-info", config.LOG_RETENTION_DAYS?.info);
   setInputValue("#setting-log-debug", config.LOG_RETENTION_DAYS?.debug);
+  logPopupEvent({
+    type: "debug",
+    message: "Hydrated settings form",
+    context: { dbName: config.DB_NAME, timezone: config.MARKET_TIMEZONE },
+  });
 }
 
 /**
@@ -259,6 +290,11 @@ function resolveExportTimestamp(status) {
 function exportCurrentRows(rows) {
   const workbook = buildExportWorkbook(rows);
   const timestamp = resolveExportTimestamp(latestAnalysisStatus).replace(/[:.]/g, "-");
+  logPopupEvent({
+    type: "debug",
+    message: "Preparing export workbook",
+    context: { rowCount: rows.length, timestamp },
+  });
   writeFile(workbook, `marketpulseai-${timestamp}.xlsx`);
   logPopupEvent({
     type: "info",
@@ -281,11 +317,23 @@ function setupUi() {
 
   let latestRows = [];
 
-  const handleExport = () => exportCurrentRows(latestRows);
+  const handleExport = () => {
+    logPopupEvent({
+      type: "debug",
+      message: "Export button clicked",
+      context: { currentRows: latestRows.length },
+    });
+    exportCurrentRows(latestRows);
+  };
   // Import workflow: validate schema headers, merge rows, persist, and re-rank for display.
   const handleImport = async (event) => {
     const [file] = event.target.files || [];
     if (!file) return;
+    logPopupEvent({
+      type: "debug",
+      message: "Import file selected",
+      context: { filename: file.name, sizeBytes: file.size },
+    });
     logPopupEvent({
       type: "info",
       message: "Starting ranking import",
@@ -297,6 +345,11 @@ function setupUi() {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const [headerRow = []] = utils.sheet_to_json(sheet, { header: 1, blankrows: false });
       const normalizedHeader = normalizeHeaderRow(headerRow);
+      logPopupEvent({
+        type: "debug",
+        message: "Normalized import header row",
+        context: { headerCount: normalizedHeader.length },
+      });
       if (!hasMatchingHeaders(normalizedHeader)) {
         logPopupEvent({
           type: "error",
@@ -314,6 +367,11 @@ function setupUi() {
       const rows = utils.sheet_to_json(sheet);
       const beforeCount = latestRows.length;
       latestRows = mergeImportedRows(latestRows, rows);
+      logPopupEvent({
+        type: "debug",
+        message: "Merged imported rows",
+        context: { incomingRows: rows.length, beforeCount, afterCount: latestRows.length },
+      });
       const { inserted } = await persistImportedRows(rows);
       const ranked = rankRows(latestRows);
       renderRankings(ranked);
@@ -360,6 +418,11 @@ function setupUi() {
 
   settingsReset?.addEventListener("click", async () => {
     if (!chromeApi?.storage?.local?.remove) return;
+    logPopupEvent({
+      type: "debug",
+      message: "Reset settings clicked",
+      context: {},
+    });
     await chromeApi.storage.local.remove(RUNTIME_CONFIG_STORAGE_KEY);
     logPopupEvent({
       type: "info",
@@ -379,6 +442,11 @@ function setupUi() {
         latestAnalysisStatus = analysisStatus || null;
         updateAnalysisModal(analysisStatus);
         logPopupEvent({
+          type: "debug",
+          message: "Loaded cached analysis status",
+          context: { state: analysisStatus?.state ?? "none" },
+        });
+        logPopupEvent({
           type: "info",
           message: "Hydrated popup from storage",
           context: { cachedRows: rankedResults.length },
@@ -390,10 +458,20 @@ function setupUi() {
       if (changes.analysisStatus) {
         latestAnalysisStatus = changes.analysisStatus.newValue || null;
         updateAnalysisModal(changes.analysisStatus.newValue);
+        logPopupEvent({
+          type: "debug",
+          message: "Analysis status updated from storage",
+          context: { state: changes.analysisStatus.newValue?.state ?? "none" },
+        });
       }
       if (changes.rankedResults) {
         latestRows = changes.rankedResults.newValue || [];
         renderRankings(rankRows(latestRows));
+        logPopupEvent({
+          type: "debug",
+          message: "Ranked results updated from storage",
+          context: { rowCount: latestRows.length },
+        });
       }
     });
   }
@@ -411,6 +489,11 @@ function setupUi() {
       storage.updateConfig?.(config);
       hydrateSettingsForm(runtimeConfig);
       renderRankings(rankRows(latestRows));
+      logPopupEvent({
+        type: "debug",
+        message: "Popup runtime settings updated",
+        context: { dbName: config.DB_NAME },
+      });
     },
   });
 

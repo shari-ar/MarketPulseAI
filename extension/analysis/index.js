@@ -107,13 +107,31 @@ export async function runSwingAnalysis(
   const symbolCount = new Set(snapshots.map((snapshot) => snapshot.id)).size;
 
   logAnalysisEvent({
+    type: "debug",
+    message: "Preparing swing analysis inputs",
+    context: { snapshotCount, symbolCount, cacheSize: analysisCache.size },
+    now,
+  });
+  logAnalysisEvent({
     message: "Started swing analysis",
     context: { snapshotCount, symbolCount },
     now,
   });
 
   const windows = buildWindows(snapshots);
+  logAnalysisEvent({
+    type: "debug",
+    message: "Windowed snapshots for analysis",
+    context: { windowCount: windows.length },
+    now,
+  });
   const freshWindows = filterFreshWindows(windows, analysisCache);
+  logAnalysisEvent({
+    type: "debug",
+    message: "Filtered windows against analysis cache",
+    context: { freshWindowCount: freshWindows.length, cacheSize: analysisCache.size },
+    now,
+  });
   const analyzedSymbols = freshWindows.map((window) => window[0]?.id).filter(Boolean);
 
   logAnalysisEvent({
@@ -136,6 +154,12 @@ export async function runSwingAnalysis(
     return { ranked: [], analyzedAt: now.toISOString(), snapshots, analyzedSymbols: [] };
   }
 
+  logAnalysisEvent({
+    type: "debug",
+    message: "Loading model assets for analysis",
+    context: { windowCount: freshWindows.length },
+    now,
+  });
   const manifest = await loadModelManifest({ logger: logAnalysisEvent, now });
   const scoreWindow = await resolveScoringStrategy({ manifest, logger: logAnalysisEvent, now });
   if (!scoreWindow) {
@@ -152,6 +176,12 @@ export async function runSwingAnalysis(
   const scored = [];
   for (let index = 0; index < freshWindows.length; index += 1) {
     const window = freshWindows[index];
+    logAnalysisEvent({
+      type: "debug",
+      message: "Scoring analysis window",
+      context: { index: index + 1, total: freshWindows.length, symbol: window[0]?.id },
+      now,
+    });
     if (!isWindowScorable(window)) {
       logAnalysisEvent({
         type: "warning",
@@ -166,7 +196,16 @@ export async function runSwingAnalysis(
     if (!scoredEntry) continue;
     scored.push({ ...scoredEntry, window });
 
-    if (onProgress) onProgress((index + 1) / freshWindows.length);
+    if (onProgress) {
+      const progress = (index + 1) / freshWindows.length;
+      onProgress(progress);
+      logAnalysisEvent({
+        type: "debug",
+        message: "Updated analysis progress",
+        context: { progress },
+        now,
+      });
+    }
   }
 
   logAnalysisEvent({
@@ -178,6 +217,16 @@ export async function runSwingAnalysis(
   const scoredSymbols = scored.map((entry) => entry.id).filter(Boolean);
   const decoratedSnapshots = applyScoresToSnapshots(snapshots, scored);
   const rankableSnapshots = selectRankableSnapshots(scored, decoratedSnapshots);
+  logAnalysisEvent({
+    type: "debug",
+    message: "Prepared snapshots for ranking",
+    context: {
+      scoredSymbols: scoredSymbols.length,
+      rankableCount: rankableSnapshots.length,
+      decoratedCount: decoratedSnapshots.length,
+    },
+    now,
+  });
   const ranked = rankSwingResults(rankableSnapshots, undefined, { logger: logAnalysisEvent, now });
 
   logAnalysisEvent({

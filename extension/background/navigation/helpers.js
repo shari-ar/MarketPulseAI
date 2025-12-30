@@ -18,10 +18,18 @@ function sleep(ms) {
  * @param {Array} [args=[]] - Arguments for the injected function.
  * @returns {Promise<*>} Result returned from the injected function.
  */
-async function executeInTab(tabId, func, args = []) {
+async function executeInTab(tabId, func, args = [], { logger, now = new Date(), label } = {}) {
   if (!chromeApi?.scripting?.executeScript) {
     throw new Error("Chrome scripting API unavailable");
   }
+
+  logger?.log?.({
+    type: "debug",
+    message: "Executing script in tab",
+    source: "navigator",
+    context: { tabId, label },
+    now,
+  });
 
   // Chrome returns an array of execution results; we surface the first result for convenience.
   const [result] = await chromeApi.scripting.executeScript({
@@ -39,10 +47,17 @@ async function executeInTab(tabId, func, args = []) {
  * @param {string} url - Destination URL.
  * @returns {Promise<void>} Resolves after the navigation request is issued.
  */
-export async function navigateTo(tabId, url) {
+export async function navigateTo(tabId, url, { logger, now = new Date() } = {}) {
   if (!chromeApi?.tabs?.update) {
     throw new Error("Chrome tabs API unavailable");
   }
+  logger?.log?.({
+    type: "debug",
+    message: "Navigating tab to URL",
+    source: "navigator",
+    context: { tabId, url },
+    now,
+  });
   await chromeApi.tabs.update(tabId, { url });
 }
 
@@ -80,7 +95,8 @@ export async function waitForSelector(
       (targetSelector) => {
         return Boolean(document.querySelector(targetSelector));
       },
-      [selector]
+      [selector],
+      { logger, now, label: "selector-check" }
     );
     if (found) {
       logger?.log({
@@ -112,6 +128,18 @@ export async function waitForSelector(
  * @param {Array} [args=[]] - Arguments passed to the parser.
  * @returns {Promise<*>} Parsed result from the tab.
  */
-export async function executeParser(tabId, parser, args = []) {
-  return executeInTab(tabId, parser, args);
+export async function executeParser(tabId, parser, args = [], { logger, now = new Date() } = {}) {
+  const result = await executeInTab(tabId, parser, args, {
+    logger,
+    now,
+    label: "parser",
+  });
+  logger?.log?.({
+    type: "debug",
+    message: "Executed parser in tab",
+    source: "navigator",
+    context: { tabId, resultCount: Array.isArray(result) ? result.length : null },
+    now,
+  });
+  return result;
 }

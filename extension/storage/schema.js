@@ -106,6 +106,14 @@ export function validateSnapshot(snapshot = {}, { logger } = {}) {
       },
     });
   }
+  if (!missingFields.length && logger) {
+    logger.log({
+      type: "debug",
+      message: "Validated snapshot schema",
+      source: "storage",
+      context: { symbol: snapshot?.id },
+    });
+  }
 
   return missingFields.length === 0;
 }

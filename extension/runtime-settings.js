@@ -121,8 +121,22 @@ export function applyRuntimeConfigOverrides(
   raw = {},
   { logger, source = "settings", now = new Date() } = {}
 ) {
+  logger?.log?.({
+    type: "debug",
+    message: "Normalizing runtime config overrides",
+    source,
+    context: { requestedKeys: Object.keys(raw || {}) },
+    now,
+  });
   const normalized = normalizeRuntimeConfig(raw);
   setStoredRuntimeConfig(normalized);
+  logger?.log?.({
+    type: "debug",
+    message: "Stored runtime config overrides",
+    source,
+    context: { appliedKeys: Object.keys(normalized) },
+    now,
+  });
   if (logger?.log) {
     const requestedKeys = Object.keys(raw || {});
     const appliedKeys = Object.keys(normalized);

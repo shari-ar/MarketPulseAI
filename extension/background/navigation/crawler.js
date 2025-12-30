@@ -64,6 +64,17 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
     context: { symbol: symbol.id, url },
     now: new Date(),
   });
+  logger?.log({
+    type: "debug",
+    message: "Using navigation selectors",
+    source: "navigator",
+    context: {
+      readySelector: config.NAVIGATION_READY_SELECTOR,
+      pollingMs: config.NAVIGATION_POLL_INTERVAL_MS,
+      timeoutMs: config.NAVIGATION_WAIT_TIMEOUT_MS,
+    },
+    now: new Date(),
+  });
 
   const now = new Date();
   logger?.log({
@@ -74,11 +85,25 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
     now,
   });
   await navigateTo(tabId, url, { logger, now });
+  logger?.log({
+    type: "debug",
+    message: "Navigation requested",
+    source: "navigator",
+    context: { symbol: symbol.id, tabId },
+    now,
+  });
   await waitForSelector(tabId, config.NAVIGATION_READY_SELECTOR, {
     timeoutMs: config.NAVIGATION_WAIT_TIMEOUT_MS,
     pollIntervalMs: config.NAVIGATION_POLL_INTERVAL_MS,
     signal,
     logger,
+    now,
+  });
+  logger?.log({
+    type: "debug",
+    message: "Navigation readiness confirmed",
+    source: "navigator",
+    context: { symbol: symbol.id, selector: config.NAVIGATION_READY_SELECTOR },
     now,
   });
 
@@ -96,6 +121,13 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
     ],
     { logger, now }
   );
+  logger?.log({
+    type: "debug",
+    message: "Parser executed for symbol",
+    source: "navigator",
+    context: { symbol: symbol.id, hasResult: Boolean(parsed) },
+    now: new Date(),
+  });
 
   logger?.log({
     type: "debug",
@@ -108,6 +140,13 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
     ...parsed,
     id: parsed?.id || symbol.id,
     dateTime: nowIso,
+  });
+  logger?.log({
+    type: "debug",
+    message: "Normalized snapshot",
+    source: "navigator",
+    context: { symbol: normalized?.id, dateTime: normalized?.dateTime },
+    now: new Date(),
   });
   logger?.log({
     type: "debug",
@@ -173,10 +212,24 @@ export async function crawlSymbols({
     },
     now: new Date(),
   });
+  logger?.log({
+    type: "debug",
+    message: "Entering crawl loop",
+    source: "navigator",
+    context: { queued: queue.length },
+    now: new Date(),
+  });
 
   while (queue.length) {
     if (signal?.aborted) throw new Error("Crawl aborted");
     const now = new Date();
+    logger?.log({
+      type: "debug",
+      message: "Evaluating collection window during crawl",
+      source: "navigator",
+      context: { timestamp: now.toISOString() },
+      now,
+    });
     if (!shouldCollect(now, runtimeConfig)) {
       logger?.log({
         type: "info",
@@ -194,6 +247,13 @@ export async function crawlSymbols({
       message: "Dequeued symbol for crawl",
       source: "navigator",
       context: { symbol: symbol?.id, remaining: queue.length },
+      now,
+    });
+    logger?.log({
+      type: "debug",
+      message: "Attempting parse for symbol",
+      source: "navigator",
+      context: { symbol: symbol?.id },
       now,
     });
     try {
@@ -220,6 +280,21 @@ export async function crawlSymbols({
           context: { symbol: snapshot.id, dateTime: snapshot.dateTime },
           now,
         });
+        logger?.log({
+          type: "debug",
+          message: "Snapshot parsing completed",
+          source: "navigator",
+          context: { symbol: snapshot.id },
+          now,
+        });
+      } else {
+        logger?.log({
+          type: "debug",
+          message: "No snapshot emitted for symbol",
+          source: "navigator",
+          context: { symbol: symbol?.id },
+          now,
+        });
       }
     } catch (error) {
       logger?.log({
@@ -229,11 +304,27 @@ export async function crawlSymbols({
         context: { symbol: symbol?.id, error: error?.message },
         now: new Date(),
       });
+      logger?.log({
+        type: "debug",
+        message: "Queued symbol for retry",
+        source: "navigator",
+        context: { symbol: symbol?.id, retryQueueSize: retryQueue.length + 1 },
+        now: new Date(),
+      });
       retryQueue.push(symbol);
     }
   }
 
-  if (!retryQueue.length) return;
+  if (!retryQueue.length) {
+    logger?.log({
+      type: "debug",
+      message: "Crawl completed without retries",
+      source: "navigator",
+      context: { tabId },
+      now: new Date(),
+    });
+    return;
+  }
 
   // Retry failures in bounded passes to avoid infinite loops on unstable symbols.
   const retries = runtimeConfig.NAVIGATION_RETRY_LIMIT;
@@ -255,6 +346,13 @@ export async function crawlSymbols({
       now: new Date(),
     });
     const remaining = retryQueue.splice(0, retryQueue.length);
+    logger?.log({
+      type: "debug",
+      message: "Retry batch prepared",
+      source: "navigator",
+      context: { attempt: attempt + 1, batchSize: remaining.length },
+      now: new Date(),
+    });
     for (const symbol of remaining) {
       if (retryDelayMs > 0) {
         await sleep(retryDelayMs);
@@ -276,6 +374,13 @@ export async function crawlSymbols({
             context: { symbol: snapshot.id, attempt: attempt + 1 },
             now: new Date(),
           });
+          logger?.log({
+            type: "debug",
+            message: "Retry snapshot emitted to handler",
+            source: "navigator",
+            context: { symbol: snapshot.id, attempt: attempt + 1 },
+            now: new Date(),
+          });
         }
       } catch (error) {
         retryQueue.push(symbol);
@@ -289,6 +394,13 @@ export async function crawlSymbols({
       }
     }
 
+    logger?.log({
+      type: "debug",
+      message: "Retry pass completed",
+      source: "navigator",
+      context: { attempt: attempt + 1, remaining: retryQueue.length },
+      now: new Date(),
+    });
     if (!retryQueue.length) return;
   }
 

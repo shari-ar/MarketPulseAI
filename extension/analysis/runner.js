@@ -47,6 +47,12 @@ export async function runSwingAnalysisWithWorker({
       context: { snapshotCount: snapshots.length },
       now,
     });
+    logAnalysisEvent({
+      type: "debug",
+      message: "Inline analysis selected",
+      context: { cacheSize: analysisCache.size },
+      now,
+    });
     return runSwingAnalysis(snapshots, { now, analysisCache, onProgress });
   }
 
@@ -69,10 +75,22 @@ export async function runSwingAnalysisWithWorker({
       });
       if (type === "progress" && onProgress) {
         onProgress(payload.progress);
+        logAnalysisEvent({
+          type: "debug",
+          message: "Forwarded worker progress update",
+          context: { progress: payload?.progress },
+          now,
+        });
         return;
       }
       if (type === "complete") {
         worker.terminate();
+        logAnalysisEvent({
+          type: "debug",
+          message: "Terminated analysis worker after completion",
+          context: { rankedCount: payload?.ranked?.length ?? 0 },
+          now,
+        });
         logAnalysisEvent({
           type: "info",
           message: "Analysis worker completed",
@@ -87,6 +105,12 @@ export async function runSwingAnalysisWithWorker({
       if (type === "error") {
         worker.terminate();
         logAnalysisEvent({
+          type: "debug",
+          message: "Terminated analysis worker after error",
+          context: { error: payload?.message },
+          now,
+        });
+        logAnalysisEvent({
           type: "error",
           message: "Analysis worker reported an error",
           context: { error: payload?.message },
@@ -98,6 +122,12 @@ export async function runSwingAnalysisWithWorker({
 
     worker.onerror = (error) => {
       worker.terminate();
+      logAnalysisEvent({
+        type: "debug",
+        message: "Worker terminated after crash",
+        context: { error: error?.message },
+        now,
+      });
       logAnalysisEvent({
         type: "error",
         message: "Analysis worker crashed",

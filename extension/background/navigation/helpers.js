@@ -20,6 +20,13 @@ function sleep(ms) {
  */
 async function executeInTab(tabId, func, args = [], { logger, now = new Date(), label } = {}) {
   if (!chromeApi?.scripting?.executeScript) {
+    logger?.log?.({
+      type: "debug",
+      message: "Chrome scripting API unavailable",
+      source: "navigator",
+      context: { tabId, label },
+      now,
+    });
     throw new Error("Chrome scripting API unavailable");
   }
 
@@ -36,6 +43,13 @@ async function executeInTab(tabId, func, args = [], { logger, now = new Date(), 
     target: { tabId },
     func,
     args,
+  });
+  logger?.log?.({
+    type: "debug",
+    message: "Script executed in tab",
+    source: "navigator",
+    context: { tabId, label, hasResult: result?.result !== undefined },
+    now,
   });
   return result?.result;
 }
@@ -59,6 +73,13 @@ export async function navigateTo(tabId, url, { logger, now = new Date() } = {}) 
     now,
   });
   await chromeApi.tabs.update(tabId, { url });
+  logger?.log?.({
+    type: "debug",
+    message: "Tab navigation issued",
+    source: "navigator",
+    context: { tabId, url },
+    now,
+  });
 }
 
 /**
@@ -108,6 +129,13 @@ export async function waitForSelector(
       });
       return true;
     }
+    logger?.log({
+      type: "debug",
+      message: "Selector not yet available",
+      source: "navigator",
+      context: { tabId, selector, elapsedMs: Date.now() - startedAt },
+      now,
+    });
     await sleep(pollIntervalMs);
   }
   logger?.log({
@@ -129,6 +157,13 @@ export async function waitForSelector(
  * @returns {Promise<*>} Parsed result from the tab.
  */
 export async function executeParser(tabId, parser, args = [], { logger, now = new Date() } = {}) {
+  logger?.log?.({
+    type: "debug",
+    message: "Executing parser in tab",
+    source: "navigator",
+    context: { tabId },
+    now,
+  });
   const result = await executeInTab(tabId, parser, args, {
     logger,
     now,

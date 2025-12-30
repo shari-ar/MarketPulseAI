@@ -336,11 +336,7 @@ async function persistImportedRows(rows = []) {
  * Generate and trigger a download of the current ranking rows as an Excel
  * workbook. Files are timestamped to keep user exports distinct.
  */
-function resolveExportTimestamp(status) {
-  if (status?.state === "complete" && status.updatedAt) {
-    const parsed = new Date(status.updatedAt);
-    if (Number.isFinite(parsed.getTime())) return parsed.toISOString();
-  }
+function resolveExportTimestamp() {
   return new Date().toISOString();
 }
 
@@ -351,7 +347,7 @@ async function exportDatabaseTables() {
     storage.getLogs(),
   ]);
   const workbook = buildExportWorkbook({ stocks, analysisCache, logs });
-  const timestamp = resolveExportTimestamp(latestAnalysisStatus).replace(/[:.]/g, "-");
+  const timestamp = resolveExportTimestamp().replace(/[:.]/g, "-");
   logPopupEvent({
     type: "debug",
     message: "Preparing export workbook",

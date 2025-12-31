@@ -1,6 +1,6 @@
 import { DEFAULT_RUNTIME_CONFIG, getRuntimeConfig } from "../../runtime-config.js";
 import { shouldCollect } from "../scheduling.js";
-import { navigateTo, waitForSelector, executeParser } from "./helpers.js";
+import { getTabUrl, navigateTo, waitForSelector, executeParser } from "./helpers.js";
 import { DEFAULT_SELECTORS, parseTopBoxSnapshot } from "../parsing/top-box.js";
 import { STOCKS_FIELDS } from "../../storage/schema.js";
 
@@ -20,6 +20,20 @@ function buildUrl(symbol, config) {
   if (symbol.url) return symbol.url;
   const template = config.SYMBOL_URL_TEMPLATE;
   return template.replace("{symbol}", encodeURIComponent(symbol.id));
+}
+
+function isSameSymbolUrl(currentUrl, targetUrl) {
+  if (!currentUrl || !targetUrl) return false;
+  try {
+    const current = new URL(currentUrl);
+    const target = new URL(targetUrl);
+    return (
+      current.origin === target.origin &&
+      current.pathname.replace(/\/+$/, "") === target.pathname.replace(/\/+$/, "")
+    );
+  } catch (error) {
+    return false;
+  }
 }
 
 /**
@@ -77,19 +91,37 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
   });
 
   const now = new Date();
+  const currentUrl = await getTabUrl(tabId, { logger, now });
+  if (!isSameSymbolUrl(currentUrl, url)) {
+    logger?.log({
+      type: "debug",
+      message: "Navigating to symbol page",
+      source: "navigator",
+      context: { symbol: symbol.id, url },
+      now,
+    });
+    await navigateTo(tabId, url, { logger, now });
+    logger?.log({
+      type: "debug",
+      message: "Navigation requested",
+      source: "navigator",
+      context: { symbol: symbol.id, tabId },
+      now,
+    });
+  } else {
+    logger?.log({
+      type: "debug",
+      message: "Symbol page already loaded",
+      source: "navigator",
+      context: { symbol: symbol.id, url },
+      now,
+    });
+  }
   logger?.log({
     type: "debug",
-    message: "Navigating to symbol page",
+    message: "Waiting for navigation readiness",
     source: "navigator",
-    context: { symbol: symbol.id, url },
-    now,
-  });
-  await navigateTo(tabId, url, { logger, now });
-  logger?.log({
-    type: "debug",
-    message: "Navigation requested",
-    source: "navigator",
-    context: { symbol: symbol.id, tabId },
+    context: { symbol: symbol.id, selector: config.NAVIGATION_READY_SELECTOR },
     now,
   });
   await waitForSelector(tabId, config.NAVIGATION_READY_SELECTOR, {

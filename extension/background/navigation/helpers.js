@@ -83,6 +83,35 @@ export async function navigateTo(tabId, url, { logger, now = new Date() } = {}) 
 }
 
 /**
+ * Reads the current URL for a tab.
+ *
+ * @param {number} tabId - Chrome tab identifier.
+ * @returns {Promise<string|null>} URL string or null if unavailable.
+ */
+export async function getTabUrl(tabId, { logger, now = new Date() } = {}) {
+  if (!chromeApi?.tabs?.get) {
+    throw new Error("Chrome tabs API unavailable");
+  }
+  logger?.log?.({
+    type: "debug",
+    message: "Fetching tab URL",
+    source: "navigator",
+    context: { tabId },
+    now,
+  });
+  const tab = await chromeApi.tabs.get(tabId);
+  const url = tab?.url ?? null;
+  logger?.log?.({
+    type: "debug",
+    message: "Fetched tab URL",
+    source: "navigator",
+    context: { tabId, hasUrl: Boolean(url) },
+    now,
+  });
+  return url;
+}
+
+/**
  * Waits until a selector exists in the tab DOM or the timeout elapses.
  *
  * @param {number} tabId - Chrome tab identifier.

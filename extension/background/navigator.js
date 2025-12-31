@@ -379,6 +379,7 @@ export class NavigatorService {
     this.symbolRefresh = collectSymbolsFromTab(this.activeTabId, {
       logger: this.logger,
       now,
+      config: this.config,
     })
       .then((symbols) => {
         this.logger.log({

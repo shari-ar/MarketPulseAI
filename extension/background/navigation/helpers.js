@@ -156,25 +156,74 @@ export async function waitForSelector(
  * @param {Array} [args=[]] - Arguments passed to the parser.
  * @returns {Promise<*>} Parsed result from the tab.
  */
-export async function executeParser(tabId, parser, args = [], { logger, now = new Date() } = {}) {
-  logger?.log?.({
-    type: "debug",
-    message: "Executing parser in tab",
-    source: "navigator",
-    context: { tabId },
-    now,
-  });
-  const result = await executeInTab(tabId, parser, args, {
-    logger,
-    now,
-    label: "parser",
-  });
-  logger?.log?.({
-    type: "debug",
-    message: "Executed parser in tab",
-    source: "navigator",
-    context: { tabId, resultCount: Array.isArray(result) ? result.length : null },
-    now,
-  });
-  return result;
+export async function executeParser(
+  tabId,
+  parser,
+  args = [],
+  { logger, now = new Date(), label = "parser", retries = 1, retryDelayMs = 0, validateResult } = {}
+) {
+  const isValid =
+    validateResult ??
+    ((result) => {
+      if (result === null || result === undefined) return false;
+      if (Array.isArray(result)) return result.length > 0;
+      if (typeof result === "object") return Object.keys(result).length > 0;
+      return true;
+    });
+
+  let lastError;
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    logger?.log?.({
+      type: "debug",
+      message: "Executing parser in tab",
+      source: "navigator",
+      context: { tabId, label, attempt: attempt + 1, retries },
+      now,
+    });
+    try {
+      const result = await executeInTab(tabId, parser, args, {
+        logger,
+        now,
+        label,
+      });
+      logger?.log?.({
+        type: "debug",
+        message: "Executed parser in tab",
+        source: "navigator",
+        context: {
+          tabId,
+          label,
+          attempt: attempt + 1,
+          resultCount: Array.isArray(result) ? result.length : null,
+        },
+        now,
+      });
+      if (isValid(result)) {
+        return result;
+      }
+      logger?.log?.({
+        type: "debug",
+        message: "Parser result incomplete; retrying",
+        source: "navigator",
+        context: { tabId, label, attempt: attempt + 1 },
+        now,
+      });
+      lastError = new Error("Parser result incomplete");
+    } catch (error) {
+      lastError = error;
+      logger?.log?.({
+        type: "warning",
+        message: "Parser execution failed",
+        source: "navigator",
+        context: { tabId, label, attempt: attempt + 1, error: error?.message },
+        now,
+      });
+    }
+
+    if (attempt < retries - 1 && retryDelayMs > 0) {
+      await sleep(retryDelayMs);
+    }
+  }
+
+  throw lastError || new Error("Parser failed after retries");
 }

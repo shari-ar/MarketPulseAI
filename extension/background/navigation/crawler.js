@@ -157,13 +157,29 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
       label: "top-box-parse",
       retries: config.NAVIGATION_RETRY_LIMIT,
       retryDelayMs: config.NAVIGATION_RETRY_DELAY_MS,
-      validateResult: (result) =>
-        Boolean(
-          result?.symbolName ||
-            result?.symbolAbbreviation ||
-            Number.isFinite(result?.close) ||
-            Number.isFinite(result?.primeCost)
-        ),
+      validateResult: (result) => {
+        const required = {
+          symbolName: Boolean(result?.symbolName),
+          symbolAbbreviation: Boolean(result?.symbolAbbreviation),
+          close: Number.isFinite(result?.close),
+          primeCost: Number.isFinite(result?.primeCost),
+        };
+        const valid = Object.values(required).some(Boolean);
+        if (valid) return { valid: true };
+        return {
+          valid: false,
+          reason: "Missing required snapshot fields",
+          details: {
+            missing: Object.entries(required)
+              .filter(([, present]) => !present)
+              .map(([key]) => key),
+            symbolName: result?.symbolName ?? null,
+            symbolAbbreviation: result?.symbolAbbreviation ?? null,
+            close: Number.isFinite(result?.close) ? result.close : null,
+            primeCost: Number.isFinite(result?.primeCost) ? result.primeCost : null,
+          },
+        };
+      },
     }
   );
   logger?.log({

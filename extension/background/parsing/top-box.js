@@ -1,9 +1,10 @@
 export const DEFAULT_SELECTORS = {
+  symbolHeader: "#MainBox > div.header.bigheader",
   symbolName: "[data-symbol-name], #symbolName, .symbol-name",
   symbolAbbreviation: "[data-symbol-code], #symbolCode, .symbol-code",
-  close: "[data-close], #close, .close",
-  primeCost: "[data-prime-cost], #primeCost, .prime-cost",
-  open: "[data-open], #open, .open",
+  close: "[data-close], #close, .close, #d02",
+  primeCost: "[data-prime-cost], #primeCost, .prime-cost, #d03",
+  open: "[data-open], #open, .open, #d04",
   high: "[data-high], #high, .high",
   low: "[data-low], #low, .low",
   allowedHigh: "[data-allowed-high], #allowedHigh",
@@ -68,19 +69,39 @@ export function parseTopBoxSnapshot({ selectors, symbol, nowIso }) {
     return element ? element.textContent?.trim() : null;
   };
 
+  const getHeaderSpans = (selector) => {
+    if (!selector) return [];
+    const element = document.querySelector(selector);
+    if (!element) return [];
+    return Array.from(element.querySelectorAll("span"))
+      .map((span) => span.textContent?.trim())
+      .filter(Boolean);
+  };
+
   const parseNumber = (selector) => {
     const raw = getText(selector);
     if (!raw) return null;
-    const normalized = normalizeDigits(raw).replace(/,/g, "").replace(/\s/g, "").replace(/%/g, "");
-    const value = Number(normalized);
+    const normalized = normalizeDigits(raw);
+    const match = normalized.match(/-?[\d,]+(?:\.\d+)?/);
+    if (!match) return null;
+    const value = Number(match[0].replace(/,/g, ""));
     return Number.isFinite(value) ? value : null;
   };
 
+  const headerSpans = getHeaderSpans(fields.symbolHeader);
+  const headerSymbolName = headerSpans[0] || null;
+  const headerSymbolAbbreviation = headerSpans[1] || null;
+
   return {
-    id: symbol || getText(fields.symbolAbbreviation) || getText(fields.symbolName),
+    id:
+      symbol ||
+      headerSymbolAbbreviation ||
+      getText(fields.symbolAbbreviation) ||
+      headerSymbolName ||
+      getText(fields.symbolName),
     dateTime: nowIso,
-    symbolName: getText(fields.symbolName),
-    symbolAbbreviation: getText(fields.symbolAbbreviation),
+    symbolName: headerSymbolName || getText(fields.symbolName),
+    symbolAbbreviation: headerSymbolAbbreviation || getText(fields.symbolAbbreviation),
     predictedSwingPercent: null,
     predictedSwingProbability: null,
     close: parseNumber(fields.close),

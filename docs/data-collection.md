@@ -9,8 +9,10 @@
 
 ## Scraping Approach
 
+- **Symbol URLs:** Symbol pages are identified only by `https://tsetmc.com/instInfo/{symbolId}` and the numeric ID at the end of that URL is treated as the symbol identifier.
+- **Symbol discovery:** The crawler builds its symbol list exclusively from the current page URL (when it matches the symbol format) and DOM contents on `tsetmc.com` pages—no external APIs or CDNs are consulted.
 - **Navigation helpers:** Background scripts steer the browser through symbol pages, waiting for critical DOM nodes before parsing.
-- **Retry pacing:** Failed navigations are retried up to 10 times with a 1-second delay between attempts to reduce transient errors.
+- **Retry pacing:** Every DOM read (symbol discovery or snapshot parsing) retries up to 10 times with a 1-second delay between attempts to handle late-loading page content.
 - **Parsing:** DOM selectors capture top-box metrics including prices, volumes, trade counts, and investor breakdowns.
 - **Validation:** Inputs are sanitized and normalized before persistence to prevent malformed records from reaching IndexedDB.
 

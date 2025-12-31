@@ -21,18 +21,19 @@ function extractSymbolsFromDom() {
     addSymbol(id);
   });
 
-  const linkSelector =
-    'a[href*="tsetmc.com/instInfo/"], a[href*="/instInfo/"], a[href*="tsetmc.com/ins"], a[href*="/ins/?i="]';
+  const linkSelector = 'a[href*="tsetmc.com/instInfo/"], a[href*="/instInfo/"]';
   document.querySelectorAll(linkSelector).forEach((link) => {
     const href = link.getAttribute("href");
     if (!href) return;
     const resolved = new URL(href, window.location.href);
-    const id =
-      resolved.searchParams.get("i") ||
-      resolved.pathname.match(/\/instInfo\/(\d+)/)?.[1] ||
-      resolved.pathname.match(/\/ins\/(\d+)/)?.[1];
+    const id = resolved.pathname.match(/\/instInfo\/(\d+)/)?.[1];
     addSymbol(id, resolved.toString());
   });
+
+  const currentPathId = new URL(window.location.href).pathname.match(/\/instInfo\/(\d+)/)?.[1];
+  if (currentPathId) {
+    addSymbol(currentPathId, window.location.href);
+  }
 
   return Array.from(ids).map((id) => ({
     id,
@@ -49,17 +50,26 @@ function extractSymbolsFromDom() {
  * @param {Date} [options.now=new Date()] - Clock used for deterministic tests.
  * @returns {Promise<Array<{id: string, url?: string}>>} Normalized symbol list.
  */
-export async function collectSymbolsFromTab(tabId, { logger, now = new Date() } = {}) {
+export async function collectSymbolsFromTab(tabId, { logger, now = new Date(), config } = {}) {
   let symbols = [];
+  const retryLimit = config?.NAVIGATION_RETRY_LIMIT ?? 1;
+  const retryDelayMs = config?.NAVIGATION_RETRY_DELAY_MS ?? 0;
   logger?.log({
     type: "debug",
     message: "Collecting symbols from tab",
     source: "navigator",
-    context: { tabId },
+    context: { tabId, retryLimit, retryDelayMs },
     now,
   });
   try {
-    symbols = await executeParser(tabId, extractSymbolsFromDom, [], { logger, now });
+    symbols = await executeParser(tabId, extractSymbolsFromDom, [], {
+      logger,
+      now,
+      label: "symbol-extraction",
+      retries: retryLimit,
+      retryDelayMs,
+      validateResult: (result) => Array.isArray(result) && result.length > 0,
+    });
     logger?.log({
       type: "debug",
       message: "Executed symbol extraction parser",

@@ -8,10 +8,13 @@
 - **Log retention:** Logs are stored in IndexedDB with per-type retention windows exposed in settings—e.g., defaults of 30 days for errors, 7 days for warnings, and 3 days for informational entries. Each type can be tuned independently to match team audit needs.
 - **Top-swing list size:** The extension displays the top 5 swing candidates on the popup, and this default count is shown in settings alongside other adjustable values.
 - **Navigation retries:** Failed symbol crawls retry up to 10 times with a 1-second delay between attempts.
+- **Symbol URL format:** Symbol pages are expected at `https://tsetmc.com/instInfo/{symbolId}`, and the numeric suffix is used as the symbol identifier.
+- **DOM read retries:** Symbol discovery and snapshot parsing retry up to 10 times with a 1-second delay between attempts to wait for late-loading DOM content.
 
 All of these values are presented as defaults; users can update them in the extension settings to match their preferred schedule or naming scheme.
 
 ## Environment
 
 - **Offline-first:** No external APIs are required; ensure TensorFlow.js and SheetJS bundles ship with the extension.
+- **Data sources:** All market data is derived from the active page URL and the page DOM on `tsetmc.com`; no API/CDN fetches are used for market content.
 - **Permissions:** Manifest requests only the scopes needed to navigate symbol pages and store data locally.

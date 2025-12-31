@@ -119,7 +119,20 @@ async function attemptParse({ tabId, symbol, config, signal, logger }) {
         nowIso,
       },
     ],
-    { logger, now }
+    {
+      logger,
+      now,
+      label: "top-box-parse",
+      retries: config.NAVIGATION_RETRY_LIMIT,
+      retryDelayMs: config.NAVIGATION_RETRY_DELAY_MS,
+      validateResult: (result) =>
+        Boolean(
+          result?.symbolName ||
+            result?.symbolAbbreviation ||
+            Number.isFinite(result?.close) ||
+            Number.isFinite(result?.primeCost)
+        ),
+    }
   );
   logger?.log({
     type: "debug",

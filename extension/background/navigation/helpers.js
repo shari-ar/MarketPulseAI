@@ -240,9 +240,14 @@ export async function executeParser(
       if (validation.valid) {
         return result;
       }
+      const detailSummary =
+        validation.details && Object.keys(validation.details).length
+          ? ` details=${JSON.stringify(validation.details)}`
+          : "";
+      const reasonSummary = validation.reason ? ` reason=${validation.reason}` : "";
       logger?.log?.({
         type: "debug",
-        message: "Parser result incomplete; retrying",
+        message: `Parser result incomplete; retrying.${reasonSummary}${detailSummary}`,
         source: "navigator",
         context: {
           tabId,
@@ -256,9 +261,11 @@ export async function executeParser(
       lastError = new Error(validation.reason || "Parser result incomplete");
     } catch (error) {
       lastError = error;
+      const errorDetails = error?.details ? ` details=${JSON.stringify(error.details)}` : "";
+      const errorSummary = error?.message ? ` reason=${error.message}` : "";
       logger?.log?.({
         type: "warning",
-        message: "Parser execution failed",
+        message: `Parser execution failed.${errorSummary}${errorDetails}`,
         source: "navigator",
         context: { tabId, label, attempt: attempt + 1, error: error?.message },
         now,

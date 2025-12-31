@@ -191,14 +191,23 @@ export async function executeParser(
   args = [],
   { logger, now = new Date(), label = "parser", retries = 1, retryDelayMs = 0, validateResult } = {}
 ) {
-  const isValid =
-    validateResult ??
-    ((result) => {
-      if (result === null || result === undefined) return false;
-      if (Array.isArray(result)) return result.length > 0;
-      if (typeof result === "object") return Object.keys(result).length > 0;
-      return true;
-    });
+  const defaultValidateResult = (result) => {
+    if (result === null || result === undefined) return false;
+    if (Array.isArray(result)) return result.length > 0;
+    if (typeof result === "object") return Object.keys(result).length > 0;
+    return true;
+  };
+  const normalizeValidation = (validation) => {
+    if (typeof validation === "object" && validation !== null) {
+      return {
+        valid: Boolean(validation.valid),
+        reason: validation.reason ?? null,
+        details: validation.details ?? null,
+      };
+    }
+    return { valid: Boolean(validation), reason: null, details: null };
+  };
+  const runValidation = validateResult ?? defaultValidateResult;
 
   let lastError;
   for (let attempt = 0; attempt < retries; attempt += 1) {
@@ -227,22 +236,36 @@ export async function executeParser(
         },
         now,
       });
-      if (isValid(result)) {
+      const validation = normalizeValidation(runValidation(result));
+      if (validation.valid) {
         return result;
       }
+      const detailSummary =
+        validation.details && Object.keys(validation.details).length
+          ? ` details=${JSON.stringify(validation.details)}`
+          : "";
+      const reasonSummary = validation.reason ? ` reason=${validation.reason}` : "";
       logger?.log?.({
         type: "debug",
-        message: "Parser result incomplete; retrying",
+        message: `Parser result incomplete; retrying.${reasonSummary}${detailSummary}`,
         source: "navigator",
-        context: { tabId, label, attempt: attempt + 1 },
+        context: {
+          tabId,
+          label,
+          attempt: attempt + 1,
+          reason: validation.reason,
+          details: validation.details,
+        },
         now,
       });
-      lastError = new Error("Parser result incomplete");
+      lastError = new Error(validation.reason || "Parser result incomplete");
     } catch (error) {
       lastError = error;
+      const errorDetails = error?.details ? ` details=${JSON.stringify(error.details)}` : "";
+      const errorSummary = error?.message ? ` reason=${error.message}` : "";
       logger?.log?.({
         type: "warning",
-        message: "Parser execution failed",
+        message: `Parser execution failed.${errorSummary}${errorDetails}`,
         source: "navigator",
         context: { tabId, label, attempt: attempt + 1, error: error?.message },
         now,

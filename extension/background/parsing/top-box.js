@@ -1,5 +1,5 @@
 export const DEFAULT_SELECTORS = {
-  symbolHeader: "#MainBox > div.header.bigheader",
+  symbolHeader: "#MainBox > div.header.bigheader, .header.bigheader",
   symbolName: "[data-symbol-name], #symbolName, .symbol-name",
   symbolAbbreviation: "[data-symbol-code], #symbolCode, .symbol-code",
   close: "[data-close], #close, .close, #d02",

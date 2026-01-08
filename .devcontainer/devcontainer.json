@@ -2,7 +2,7 @@
   "name": "MarketPulseAI DevContainer",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
   "remoteUser": "node",
-  "postCreateCommand": "npm ci",
+  "postCreateCommand": "npm install -g npm && npm ci",
   "customizations": {
     "vscode": {
       "settings": {
